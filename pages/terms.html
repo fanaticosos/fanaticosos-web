@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Términos de Uso — FanaticOSOS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --navy:#0B1F3A; --navy-card:#1a3558; --orange:#F07820; --white:#FFFFFF; --gray:#94a3b8; --gray-light:#cbd5e1; }
+    body { background: var(--navy); color: var(--white); font-family: 'Inter', sans-serif; min-height: 100vh; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: repeating-linear-gradient(90deg, transparent, transparent 9.09%, rgba(255,255,255,0.018) 9.09%, rgba(255,255,255,0.018) 9.19%);
+      pointer-events: none; z-index: 0;
+    }
+    .page-wrap { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 60px 24px; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--gray); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 40px; transition: color 0.2s; }
+    .back-link:hover { color: var(--orange); }
+    .back-link svg { width: 14px; height: 14px; fill: currentColor; }
+    .page-eyebrow { font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 0.4em; color: var(--orange); margin-bottom: 8px; }
+    .page-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(40px, 10vw, 64px); line-height: 0.95; margin-bottom: 8px; }
+    .page-date { font-size: 12px; color: var(--gray); margin-bottom: 40px; }
+    .terms-body { background: var(--navy-card); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 36px; position: relative; overflow: hidden; }
+    .terms-body::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--orange), #c45e10); }
+    h2 { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; color: var(--orange); margin: 28px 0 10px; }
+    h2:first-child { margin-top: 0; }
+    p { font-size: 14px; color: var(--gray-light); line-height: 1.7; margin-bottom: 12px; }
+    a { color: var(--orange); }
+    footer { position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,0.07); padding: 24px; text-align: center; font-size: 12px; color: var(--gray); margin-top: 60px; }
+    footer a { color: var(--gray); text-decoration: none; margin: 0 10px; }
+    footer a:hover { color: var(--orange); }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <a class="back-link" href="/">
+      <svg viewBox="0 0 24 24"><path d="M10.78 19.03a.75.75 0 0 1-1.06 0l-6.25-6.25a.75.75 0 0 1 0-1.06l6.25-6.25a.75.75 0 1 1 1.06 1.06L5.81 11.5h14.44a.75.75 0 0 1 0 1.5H5.81l4.97 4.97a.75.75 0 0 1 0 1.06z"/></svg>
+      Volver al inicio
+    </a>
+    <p class="page-eyebrow">Fanaticosos</p>
+    <h1 class="page-title">Términos de Uso</h1>
+    <p class="page-date">Última actualización: Junio 2025</p>
+
+    <div class="terms-body">
+      <h2>1. Aceptación</h2>
+      <p>Al acceder y usar fanaticosos.com, aceptas estos términos de uso. Si no estás de acuerdo, por favor no uses el sitio.</p>
+
+      <h2>2. Contenido</h2>
+      <p>FanaticOSOS es un sitio de contenido de fans independiente sobre los Chicago Bears. No tenemos afiliación oficial con los Chicago Bears, la NFL, ni ninguna de sus marcas registradas.</p>
+      <p>Todo el contenido producido por FanaticOSOS — podcast, artículos, videos — es propiedad de sus creadores y no puede ser reproducido sin autorización expresa.</p>
+
+      <h2>3. Conducta del usuario</h2>
+      <p>Al interactuar con nuestra comunidad (Discord, redes sociales), te comprometes a mantener un ambiente respetuoso. Queda prohibido el contenido ofensivo, discriminatorio o spam.</p>
+
+      <h2>4. Servicios de terceros</h2>
+      <p>Este sitio enlaza a plataformas externas (YouTube, Twitch, RedCircle, Substack). No somos responsables del contenido ni las políticas de dichas plataformas.</p>
+
+      <h2>5. Cambios</h2>
+      <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios entran en vigor al publicarse en esta página.</p>
+
+      <h2>6. Contacto</h2>
+      <p>Para cualquier pregunta sobre estos términos, contáctanos en <a href="mailto:podcast@fanaticosos.com">podcast@fanaticosos.com</a>.</p>
+    </div>
+  </div>
+  <footer>
+    <span>© 2025 FanaticOSOS</span>
+    <a href="/pages/contact">Contacto</a>
+    <a href="/pages/terms">Términos</a>
+  </footer>
+</body>
+</html>
