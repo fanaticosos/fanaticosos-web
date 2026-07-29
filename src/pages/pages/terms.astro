@@ -1,0 +1,42 @@
+---
+import BackLink from "../../components/BackLink.astro";
+import SiteFooter from "../../components/SiteFooter.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/info-page.css";
+---
+
+<BaseLayout
+  title="Términos de Uso — FanaticOSOS"
+  description="Términos de uso del sitio FanaticOSOS."
+  canonicalPath="/pages/terms"
+  bodyClass="info-page terms-page"
+>
+  <div class="page-wrap">
+    <BackLink />
+    <p class="page-eyebrow">Fanaticosos</p>
+    <h1 class="page-title">Términos de Uso</h1>
+    <p class="page-date">Última actualización: Junio 2025</p>
+
+    <div class="terms-body">
+      <h2>1. Aceptación</h2>
+      <p>Al acceder y usar fanaticosos.com, aceptas estos términos de uso. Si no estás de acuerdo, por favor no uses el sitio.</p>
+
+      <h2>2. Contenido</h2>
+      <p>FanaticOSOS es un sitio de contenido de fans independiente sobre los Chicago Bears. No tenemos afiliación oficial con los Chicago Bears, la NFL, ni ninguna de sus marcas registradas.</p>
+      <p>Todo el contenido producido por FanaticOSOS — podcast, artículos, videos — es propiedad de sus creadores y no puede ser reproducido sin autorización expresa.</p>
+
+      <h2>3. Conducta del usuario</h2>
+      <p>Al interactuar con nuestra comunidad (Discord, redes sociales), te comprometes a mantener un ambiente respetuoso. Queda prohibido el contenido ofensivo, discriminatorio o spam.</p>
+
+      <h2>4. Servicios de terceros</h2>
+      <p>Este sitio enlaza a plataformas externas (YouTube, Twitch, RedCircle, Substack). No somos responsables del contenido ni las políticas de dichas plataformas.</p>
+
+      <h2>5. Cambios</h2>
+      <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios entran en vigor al publicarse en esta página.</p>
+
+      <h2>6. Contacto</h2>
+      <p>Para cualquier pregunta sobre estos términos, contáctanos en <a href="mailto:podcast@fanaticosos.com">podcast@fanaticosos.com</a>.</p>
+    </div>
+  </div>
+  <SiteFooter />
+</BaseLayout>

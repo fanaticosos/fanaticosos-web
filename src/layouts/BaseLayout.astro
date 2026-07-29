@@ -1,0 +1,49 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  ogDescription?: string;
+  canonicalPath?: string;
+  image?: string;
+  bodyClass?: string;
+}
+
+const {
+  title,
+  description,
+  ogDescription = description,
+  canonicalPath = "/",
+  image = "/logo.png",
+  bodyClass,
+} = Astro.props;
+
+const canonicalUrl = new URL(canonicalPath, Astro.site);
+const imageUrl = new URL(image, Astro.site);
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <meta property="og:title" content={title} />
+    {ogDescription && <meta property="og:description" content={ogDescription} />}
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class={bodyClass}>
+    <slot />
+  </body>
+</html>

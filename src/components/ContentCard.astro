@@ -1,0 +1,25 @@
+---
+interface Props {
+  href: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  cta: string;
+  iconPath: string;
+}
+
+const { href, eyebrow, title, description, cta, iconPath } = Astro.props;
+---
+
+<a class="card" href={href} target="_blank" rel="noopener">
+  <div class="card-icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d={iconPath}></path></svg>
+  </div>
+  <span class="card-eyebrow">{eyebrow}</span>
+  <span class="card-title">{title}</span>
+  <p class="card-desc">{description}</p>
+  <span class="card-cta">
+    {cta}
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.75.75 0 0 1 1.06-1.06l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0z"></path></svg>
+  </span>
+</a>
