@@ -60,6 +60,8 @@ class AdminHelperTests(unittest.TestCase):
                 "install-kokoro-english-model",
                 "export-kokoro-samples",
                 "verify-tts-template",
+                "run-spanglish-diagnostic",
+                "export-spanglish-diagnostic",
             ],
         )
 

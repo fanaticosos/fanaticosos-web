@@ -26,6 +26,7 @@ readonly kokoro_runner="$repository/scripts/tts/benchmark_kokoro.py"
 readonly kokoro_output="$data_root/work/tts-benchmark-kokoro-v2"
 readonly kokoro_pronunciations="$repository/config/tts/pronunciations.json"
 readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
+readonly spanglish_diagnostic="$data_root/work/tts-spanglish-diagnostic-v1"
 
 usage() {
   cat <<'EOF'
@@ -53,6 +54,8 @@ Commands:
   install-kokoro-english-model EXPECTED_COMMIT
   export-kokoro-samples EXPECTED_COMMIT
   verify-tts-template EXPECTED_COMMIT
+  run-spanglish-diagnostic EXPECTED_COMMIT
+  export-spanglish-diagnostic EXPECTED_COMMIT
 EOF
 }
 
@@ -566,6 +569,49 @@ command_verify_tts_template() {
   echo "PASS: Versioned TTS template has no native systemd diagnostics."
 }
 
+command_run_spanglish_diagnostic() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ ! -e "$spanglish_diagnostic" ]] || stop "Spanglish diagnostic already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-spanglish-diagnostic.service \
+    --property="User=$service_account" \
+    --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="Environment=PYTHONDONTWRITEBYTECODE=1" \
+    --property="Environment=HF_HUB_OFFLINE=1" \
+    --property="RuntimeMaxSec=5min" \
+    --property="MemoryMax=4G" \
+    --property="MemorySwapMax=512M" \
+    --property="KillMode=control-group" \
+    --property="PrivateNetwork=yes" \
+    --property="ProtectSystem=strict" \
+    --property="ReadWritePaths=$data_root/work" \
+    "$kokoro_venv/bin/python" "$repository/scripts/tts/diagnose_spanglish.py" \
+      --glossary "$repository/config/translation/glossary.json" \
+      --model-root "$kokoro_model" \
+      --output "$spanglish_diagnostic"
+  [[ -f "$spanglish_diagnostic/spanglish-ef_dora.mp3" ]] || \
+    stop "Spanglish diagnostic MP3 is missing."
+  echo "PASS: Bounded mixed-G2P diagnostic completed."
+}
+
+command_export_spanglish_diagnostic() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-spanglish-diagnostic-v1"
+  require_repository_commit "$expected"
+  [[ -f "$spanglish_diagnostic/spanglish-ef_dora.mp3" ]] || \
+    stop "Spanglish diagnostic is missing."
+  [[ ! -e "$export_root" ]] || stop "Spanglish diagnostic export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  install -o sysadmin -g sysadmin -m 0640 \
+    "$spanglish_diagnostic/spanglish-ef_dora.mp3" "$export_root/spanglish-ef_dora.mp3"
+  install -o sysadmin -g sysadmin -m 0640 \
+    "$spanglish_diagnostic/metadata.json" "$export_root/metadata.json"
+  echo "PASS: Mixed-G2P diagnostic exported."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -659,6 +705,14 @@ case "$command" in
   verify-tts-template)
     [[ $# == 1 ]] || stop "verify-tts-template requires EXPECTED_COMMIT."
     command_verify_tts_template "$1"
+    ;;
+  run-spanglish-diagnostic)
+    [[ $# == 1 ]] || stop "run-spanglish-diagnostic requires EXPECTED_COMMIT."
+    command_run_spanglish_diagnostic "$1"
+    ;;
+  export-spanglish-diagnostic)
+    [[ $# == 1 ]] || stop "export-spanglish-diagnostic requires EXPECTED_COMMIT."
+    command_export_spanglish_diagnostic "$1"
     ;;
   *)
     stop "Unsupported command: $command"
