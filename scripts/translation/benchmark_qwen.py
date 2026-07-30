@@ -132,6 +132,7 @@ def run_llama(
                     "--no-display-prompt",
                     "--no-warmup",
                     "--no-conversation",
+                    "--single-turn",
                     "--simple-io",
                     "--log-disable",
                     "--output",

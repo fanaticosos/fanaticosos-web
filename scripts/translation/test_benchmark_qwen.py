@@ -55,6 +55,7 @@ class QwenBenchmarkTests(unittest.TestCase):
             self.assertIs(kwargs["stdin"], __import__("subprocess").DEVNULL)
             self.assertIs(kwargs["stdout"], __import__("subprocess").DEVNULL)
             self.assertTrue(hasattr(kwargs["stderr"], "write"))
+            self.assertIn("--single-turn", command)
             output_path = Path(command[command.index("--output") + 1])
             output_path.write_text('{"translations":[]}', encoding="utf-8")
             kwargs["stderr"].write(b"bounded diagnostic")
