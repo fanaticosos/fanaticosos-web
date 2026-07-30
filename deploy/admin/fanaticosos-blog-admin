@@ -10,6 +10,8 @@ readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="/var/lib/fanaticosos-blog/jobs"
 readonly kokoro_venv="/var/lib/fanaticosos-blog/venvs/tts-benchmark-kokoro-v1"
 readonly kokoro_requirements="$repository/config/tts/kokoro-benchmark-requirements.txt"
+readonly kokoro_manifest="$repository/config/tts/kokoro-candidate-files.json"
+readonly kokoro_model="/var/lib/fanaticosos-blog/models/kokoro-82m/f3ff3571791e39611d31c381e3a41a3af07b4987"
 
 usage() {
   cat <<'EOF'
@@ -28,6 +30,7 @@ Commands:
   update-admin EXPECTED_COMMIT
   install-kokoro-runtime EXPECTED_COMMIT
   kokoro-runtime-status
+  download-kokoro-candidates EXPECTED_COMMIT
 EOF
 }
 
@@ -271,6 +274,20 @@ command_kokoro_runtime_status() {
   df -h /
 }
 
+command_download_kokoro_candidates() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ -d "$kokoro_venv" ]] || stop "Verified Kokoro runtime is missing."
+  [[ -f "$kokoro_manifest" ]] || stop "Pinned Kokoro file manifest is missing."
+  [[ ! -e "$kokoro_model" ]] || stop "Kokoro candidate target already exists."
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 \
+    "$kokoro_venv/bin/python" \
+    "$repository/scripts/tts/download_kokoro_candidates.py" \
+    --manifest "$kokoro_manifest" \
+    --target "$kokoro_model"
+  echo "PASS: No service, listener, or audio was created."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -328,6 +345,10 @@ case "$command" in
   kokoro-runtime-status)
     [[ $# == 0 ]] || stop "kokoro-runtime-status accepts no arguments."
     command_kokoro_runtime_status
+    ;;
+  download-kokoro-candidates)
+    [[ $# == 1 ]] || stop "download-kokoro-candidates requires EXPECTED_COMMIT."
+    command_download_kokoro_candidates "$1"
     ;;
   *)
     stop "Unsupported command: $command"

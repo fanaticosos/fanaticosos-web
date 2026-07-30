@@ -51,6 +51,7 @@ class AdminHelperTests(unittest.TestCase):
                 "update-admin",
                 "install-kokoro-runtime",
                 "kokoro-runtime-status",
+                "download-kokoro-candidates",
             ],
         )
 

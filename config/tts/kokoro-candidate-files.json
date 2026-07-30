@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "repository": "hexgrad/Kokoro-82M",
+  "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "path": "config.json",
+      "size": 2351,
+      "sha256": "5abb01e2403b072bf03d04fde160443e209d7a0dad49a423be15196b9b43c17f"
+    },
+    {
+      "path": "kokoro-v1_0.pth",
+      "size": 327212226,
+      "sha256": "496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4"
+    },
+    {
+      "path": "voices/ef_dora.pt",
+      "size": 523420,
+      "sha256": "d9d69b0f8a2b87a345f269d89639f89dfbd1a6c9da0c498ae36dd34afcf35530"
+    },
+    {
+      "path": "voices/em_alex.pt",
+      "size": 523420,
+      "sha256": "5eac53f767c3f31a081918ba531969aea850bed18fe56419b804d642c6973431"
+    },
+    {
+      "path": "voices/em_santa.pt",
+      "size": 523430,
+      "sha256": "aa8620cb96cec705823efca0d956a63e158e09ad41aca934d354b7f0778f63cb"
+    },
+    {
+      "path": "voices/af_heart.pt",
+      "size": 523425,
+      "sha256": "0ab5709b8ffab19bfd849cd11d98f75b60af7733253ad0d67b12382a102cb4ff"
+    },
+    {
+      "path": "voices/af_bella.pt",
+      "size": 523425,
+      "sha256": "8cb64e02fcc8de0327a8e13817e49c76c945ecf0052ceac97d3081480e8e48d6"
+    }
+  ]
+}
