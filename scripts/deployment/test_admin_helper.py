@@ -49,6 +49,7 @@ class AdminHelperTests(unittest.TestCase):
                 "host-health",
                 "update-admin",
                 "install-kokoro-runtime",
+                "kokoro-runtime-status",
             ],
         )
 
@@ -67,6 +68,16 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("trap cleanup_incomplete_kokoro_runtime EXIT", self.helper)
         self.assertIn("trap - EXIT", self.helper)
         self.assertNotIn("pip install kokoro", self.helper)
+
+    def test_kokoro_requirements_force_cpu_torch(self):
+        requirements = (
+            ROOT / "config" / "tts" / "kokoro-benchmark-requirements.txt"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "--extra-index-url https://download.pytorch.org/whl/cpu",
+            requirements,
+        )
+        self.assertIn("torch==2.13.0+cpu", requirements)
 
     def test_helper_validates_commit_and_job_identifiers(self):
         self.assertIn("^[0-9a-f]{7,40}$", self.helper)

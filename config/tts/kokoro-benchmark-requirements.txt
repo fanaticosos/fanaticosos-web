@@ -1,4 +1,6 @@
 # Direct dependencies for the isolated Kokoro candidate runtime.
 # The complete resolved environment is recorded after installation.
+--extra-index-url https://download.pytorch.org/whl/cpu
 kokoro==0.9.4
 soundfile==0.14.0
+torch==2.13.0+cpu

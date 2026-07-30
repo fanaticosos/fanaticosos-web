@@ -27,6 +27,7 @@ Commands:
   host-health
   update-admin EXPECTED_COMMIT
   install-kokoro-runtime EXPECTED_COMMIT
+  kokoro-runtime-status
 EOF
 }
 
@@ -250,6 +251,26 @@ command_install_kokoro_runtime() {
   echo "PASS: No model, voice, service, listener, or audio was created."
 }
 
+command_kokoro_runtime_status() {
+  dpkg-query -W -f='${binary:Package} ${Version} ${db:Status-Abbrev}\n' \
+    espeak-ng libsndfile1 2>/dev/null || true
+  if [[ -d "$kokoro_venv" ]]; then
+    stat -c 'owner=%U group=%G mode=%a size=%s path=%n' "$kokoro_venv"
+    run_as_service "$kokoro_venv/bin/python" -c \
+      'import importlib.metadata as m; import torch; print(f"kokoro={m.version(\"kokoro\")} soundfile={m.version(\"soundfile\")} torch={torch.__version__} cuda={torch.cuda.is_available()}")'
+  else
+    echo "Kokoro runtime: ABSENT"
+  fi
+  if [[ -f /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze ]]; then
+    stat -c 'owner=%U group=%G mode=%a size=%s path=%n' \
+      /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+  else
+    echo "Runtime manifest: ABSENT"
+  fi
+  pgrep -af 'pip|kokoro|KPipeline' || true
+  df -h /
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -303,6 +324,10 @@ case "$command" in
   install-kokoro-runtime)
     [[ $# == 1 ]] || stop "install-kokoro-runtime requires EXPECTED_COMMIT."
     command_install_kokoro_runtime "$1"
+    ;;
+  kokoro-runtime-status)
+    [[ $# == 0 ]] || stop "kokoro-runtime-status accepts no arguments."
+    command_kokoro_runtime_status
     ;;
   *)
     stop "Unsupported command: $command"
