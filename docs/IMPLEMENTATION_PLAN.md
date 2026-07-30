@@ -219,7 +219,7 @@ Select a local translation engine using measured Spanish sports-journalism quali
 
 ### Work
 
-- Create an owner-approved benchmark set containing headlines, match reports, analysis, quotations, names, clubs, competitions, idioms, and football terminology.
+- Create an owner-approved benchmark set containing NFL headlines, game recaps, analysis, quotations, Chicago Bears and NFC North names, statistics, idioms, and American-football terminology.
 - Define the glossary and protected-name rules.
 - Test a small number of viable open-source models on `papabear`.
 - Record model license, download size, RAM use, processing time, and observed quality.
@@ -231,7 +231,7 @@ Select a local translation engine using measured Spanish sports-journalism quali
 ### Acceptance gate
 
 - The owner accepts the selected model and test translations.
-- Names, clubs, competitions, scores, quotations, and football terminology survive validation.
+- Player, team, league, stadium, score, quotation, statistic, and NFL terminology survive validation.
 - Translation fits available CPU, RAM, storage, and acceptable wait time.
 - A failed translation leaves the prior generated English revision intact.
 

@@ -9,7 +9,7 @@ Scope: Article files, bilingual relationships, URLs, validation, and publishing 
 - Spanish is the authoritative source language. The owner writes each article once in Spanish.
 - English translation is generated automatically.
 - The language control switches the complete article: visible text, metadata, URL, and audio.
-- Translation and pronunciation handling must preserve football terminology and proper names without adding routine publishing work for the owner.
+- Translation and pronunciation handling must preserve NFL/American-football terminology, Chicago Bears context, and proper names without adding routine publishing work for the owner.
 - Publishing must remain easy and suitable for a hobby project with a zero-recurring-cost target.
 - Search-engine metadata is important, but it must not make publishing or reading difficult.
 - Generated audio, temporary files, downloaded models, and secrets must not be committed to Git.
@@ -103,7 +103,7 @@ Translation and audio metadata are operational records, not owner authoring task
 
 ## Glossary and pronunciation behavior
 
-The sports glossary and pronunciation overrides should live in centrally managed configuration, not require additions to every article. The processing pipeline applies them automatically.
+The NFL and Chicago Bears glossary and pronunciation overrides should live in centrally managed configuration, not require additions to every article. The processing pipeline applies them automatically.
 
 The editor may later expose an optional correction control for exceptional cases, but normal publishing must not require glossary or pronunciation work.
 

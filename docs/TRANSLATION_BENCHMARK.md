@@ -4,7 +4,7 @@ Status: Phase 4 benchmark design; no model selected or installed
 
 ## Objective
 
-Measure Spanish-to-English sports-journalism quality, CPU processing time, memory use, storage use, and repeatability on `papabear` without using a paid API.
+Measure Spanish-to-English NFL and Chicago Bears journalism quality, CPU processing time, memory use, storage use, and repeatability on `papabear` without using a paid API.
 
 ## Initial candidates
 
@@ -15,17 +15,16 @@ Measure Spanish-to-English sports-journalism quality, CPU processing time, memor
 
 ## Benchmark data
 
-`benchmarks/translation/es-en.json` contains synthetic, non-published examples covering:
+`benchmarks/translation/es-en.json` contains synthetic, non-published NFL examples covering:
 
 - headlines;
-- match reports;
-- tactical analysis;
+- game recaps and quarterback statistics;
+- offensive and defensive analysis;
 - quotations;
-- football terminology;
-- clubs, people, competitions, and abbreviations;
-- idioms and regional terminology;
-- women’s-football context;
-- scores, minutes, and statistics;
+- downs, drives, formations, positions, turnovers, and field conditions;
+- Chicago Bears, NFC North teams, people, stadiums, and league abbreviations;
+- idioms and NFL terminology;
+- scores, yardage, passing statistics, and game situations;
 - paragraph-level journalistic flow.
 
 `config/translation/glossary.json` centralizes standard terminology and protected names. Routine publishing will apply this configuration automatically; the owner will not maintain glossary fields for every article.

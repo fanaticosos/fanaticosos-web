@@ -170,7 +170,7 @@ Provide a private browser-based editor on `papabear`, reachable only through Net
 
 ## 7. Unknowns requiring later validation
 
-- Which local translation model provides acceptable football-journalism quality and processing time on this CPU-only server.
+- Which local translation model provides acceptable NFL and Chicago Bears journalism quality and processing time on this CPU-only server.
 - Which Spanish and English TTS voices meet the owner's quality expectations.
 - Actual model memory, storage, and article-processing times on `papabear`.
 - Final audio format, bitrate, loudness target, and maximum file-size policy.

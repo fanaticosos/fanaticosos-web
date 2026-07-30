@@ -1,24 +1,32 @@
 {
-  "version": 1,
+  "version": 2,
   "sourceLocale": "es",
   "targetLocale": "en",
   "terms": [
-    { "source": "fuera de juego", "target": "offside" },
-    { "source": "portería a cero", "target": "clean sheet" },
-    { "source": "tiros a puerta", "target": "shots on target" },
-    { "source": "segundo palo", "target": "far post" },
-    { "source": "tiempo añadido", "target": "stoppage time" },
-    { "source": "guardameta", "target": "goalkeeper" }
+    { "source": "ala cerrada", "target": "tight end" },
+    { "source": "balón suelto", "target": "fumble" },
+    { "source": "captura", "target": "sack" },
+    { "source": "cobertura 2", "target": "Cover 2" },
+    { "source": "cuarta y una", "target": "fourth-and-one" },
+    { "source": "gol de campo", "target": "field goal" },
+    { "source": "línea de golpeo", "target": "line of scrimmage" },
+    { "source": "mariscal de campo", "target": "quarterback" },
+    { "source": "salida en falso", "target": "false start" },
+    { "source": "tercera y largo", "target": "third-and-long" },
+    { "source": "zona roja", "target": "red zone" }
   ],
   "protectedNames": [
-    "América",
-    "Concacaf",
-    "Cruz Azul",
-    "Inter Miami",
-    "Pachuca",
-    "Rayados",
-    "Santiago Giménez",
-    "Tigres",
-    "VAR"
+    "Bears",
+    "Caleb Williams",
+    "Chicago",
+    "Chicago Bears",
+    "Detroit Lions",
+    "Green Bay",
+    "Green Bay Packers",
+    "Minnesota Vikings",
+    "NFC",
+    "NFC North",
+    "NFL",
+    "Soldier Field"
   ]
 }

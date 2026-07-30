@@ -24,10 +24,10 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def validate_inputs(benchmark: dict[str, Any], glossary: dict[str, Any]) -> None:
-    if benchmark.get("version") != 1:
-        raise ValueError("benchmark version must be 1")
-    if glossary.get("version") != 1:
-        raise ValueError("glossary version must be 1")
+    if not isinstance(benchmark.get("version"), int) or benchmark["version"] < 1:
+        raise ValueError("benchmark version must be a positive integer")
+    if not isinstance(glossary.get("version"), int) or glossary["version"] < 1:
+        raise ValueError("glossary version must be a positive integer")
     if benchmark.get("sourceLocale") != "es" or benchmark.get("targetLocale") != "en":
         raise ValueError("benchmark must define es-to-en translation")
     if glossary.get("sourceLocale") != "es" or glossary.get("targetLocale") != "en":
