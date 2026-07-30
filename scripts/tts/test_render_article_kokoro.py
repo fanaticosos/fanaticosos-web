@@ -163,7 +163,18 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             "configurationVersion": 1,
             "status": "pending-owner-selection",
         }
-        with self.assertRaisesRegex(ValueError, "pending owner approval"):
+        with self.assertRaisesRegex(ValueError, "not approved"):
+            resolve_production_voice(configuration, "es", {})
+
+    def test_selected_for_tuning_still_blocks_production(self):
+        configuration = {
+            "schemaVersion": 1,
+            "configurationVersion": 2,
+            "status": "selected-for-tuning",
+            "localeVariants": {"es": "es-419", "en": "en-US"},
+            "voices": {"es": "em_alex", "en": "af_heart"},
+        }
+        with self.assertRaisesRegex(ValueError, "not approved"):
             resolve_production_voice(configuration, "es", {})
 
     def test_approved_configuration_resolves_fixed_locale_voice(self):

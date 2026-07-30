@@ -1,10 +1,10 @@
 # Fanaticosos TTS benchmark
 
-Status: Kokoro rejected for production quality; replacement candidate pending
+Status: Kokoro voices selected for tuning; production approval pending
 
 ## Candidate
 
-The first benchmark used `hexgrad/Kokoro-82M`, an Apache-2.0 model with 82 million parameters. The owner rejected it because NFL names were not acceptable in Spanish and its English voices did not provide meaningfully different character. It remains benchmark history, not the production selection.
+The first benchmark used `hexgrad/Kokoro-82M`, an Apache-2.0 model with 82 million parameters. Its untuned output was not acceptable: NFL names were incorrect in Spanish and its English voices had limited character. The owner selected one voice per language as a tuning baseline, not as final production acceptance.
 
 Primary sources:
 
@@ -14,7 +14,15 @@ Primary sources:
 
 The official voice inventory warns that non-English support can be thinner than English support. Spanish quality is therefore an acceptance question, not an assumption.
 
-## Version 1 voices — rejected
+## Owner-selected tuning baseline
+
+- Latin-American Spanish target: `em_alex`
+- American English target: `af_heart`
+- Configuration status: `selected-for-tuning`
+
+Production remains blocked until centralized Spanglish pronunciation, pacing, pauses, phrasing, and long-form naturalness no longer sound conspicuously robotic and the owner approves new samples.
+
+## Version 1 comparison voices
 
 - Spanish: `ef_dora`, `em_alex`, `em_santa`
 - American English: `af_heart`, `af_bella`

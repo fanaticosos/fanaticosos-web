@@ -50,7 +50,7 @@ def resolve_production_voice(
     if not isinstance(version, int) or isinstance(version, bool) or version < 1:
         raise ValueError("TTS configuration version must be a positive integer")
     if configuration.get("status") != "approved":
-        raise ValueError("TTS production voices are pending owner approval")
+        raise ValueError("TTS production voices are not approved")
     if configuration.get("model") != EXPECTED_MODEL:
         raise ValueError("TTS configuration model is unexpected")
     if configuration.get("modelRevision") != EXPECTED_MODEL_REVISION:

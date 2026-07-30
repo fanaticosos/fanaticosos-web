@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "configurationVersion": 1,
-  "status": "pending-owner-selection",
+  "configurationVersion": 2,
+  "status": "selected-for-tuning",
   "model": "hexgrad/Kokoro-82M",
   "modelRevision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
   "localeVariants": {
@@ -9,8 +9,8 @@
     "en": "en-US"
   },
   "voices": {
-    "es": null,
-    "en": null
+    "es": "em_alex",
+    "en": "af_heart"
   },
   "encoding": {
     "codec": "mp3",
