@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly service_account="fanaticosos-blog"
+readonly repository="/srv/fanaticosos-blog/repository"
+readonly branch="feature/multilingual-audio-blog"
+readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.service"
+readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
+readonly fixture="$repository/benchmarks/translation/full-article-request.json"
+readonly jobs_root="/var/lib/fanaticosos-blog/jobs"
+
+usage() {
+  cat <<'EOF'
+Usage: sudo -n /usr/local/sbin/fanaticosos-blog-admin COMMAND [ARGS]
+
+Commands:
+  sync EXPECTED_COMMIT
+  preflight EXPECTED_COMMIT JOB_ID
+  install-translation-template EXPECTED_COMMIT
+  prepare-acceptance-job EXPECTED_COMMIT JOB_ID
+  start-translation JOB_ID
+  translation-status JOB_ID
+  translation-result JOB_ID
+  translation-failure JOB_ID
+  host-health
+  update-admin EXPECTED_COMMIT
+EOF
+}
+
+stop() {
+  echo "STOP: $*" >&2
+  exit 1
+}
+
+require_root() {
+  [[ "$(id -u)" == "0" ]] || stop "This helper must run through sudo."
+  [[ "$(hostname)" == "papabear" ]] || stop "Wrong server. Expected papabear."
+}
+
+validate_commit() {
+  [[ "${1:-}" =~ ^[0-9a-f]{7,40}$ ]] || stop "Invalid expected commit."
+}
+
+validate_job_id() {
+  [[ "${1:-}" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || stop "Invalid job ID."
+}
+
+run_as_service() {
+  runuser -u "$service_account" -- "$@"
+}
+
+repository_commit() {
+  run_as_service git -C "$repository" rev-parse HEAD
+}
+
+require_repository_commit() {
+  local expected="$1"
+  local actual
+  validate_commit "$expected"
+  actual="$(repository_commit)"
+  [[ "$actual" == "$expected"* ]] || stop "Expected commit $expected; found ${actual:0:7}."
+  [[ -z "$(run_as_service git -C "$repository" status --porcelain)" ]] || \
+    stop "Repository is not clean."
+}
+
+job_unit() {
+  printf 'fanaticosos-translation@%s.service' "$1"
+}
+
+command_sync() {
+  local expected="$1"
+  local fetched
+  validate_commit "$expected"
+  [[ -z "$(run_as_service git -C "$repository" status --porcelain)" ]] || \
+    stop "Repository is not clean."
+  run_as_service git -C "$repository" fetch origin "$branch"
+  fetched="$(run_as_service git -C "$repository" rev-parse FETCH_HEAD)"
+  [[ "$fetched" == "$expected"* ]] || stop "Fetched commit does not match $expected."
+  run_as_service git -C "$repository" merge --ff-only FETCH_HEAD
+  require_repository_commit "$expected"
+  echo "PASS: Repository synchronized to ${fetched:0:7}."
+}
+
+command_preflight() {
+  local expected="$1"
+  local job_id="$2"
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  exec "$repository/scripts/deployment/preflight_translation_acceptance.sh" \
+    --expected-commit "$expected" \
+    --job-id "$job_id"
+}
+
+command_install_translation_template() {
+  local expected="$1"
+  local diagnostics
+  require_repository_commit "$expected"
+  diagnostics="$(systemd-analyze verify "$source_unit" 2>&1)"
+  [[ -z "$diagnostics" ]] || stop "Versioned unit produced diagnostics: $diagnostics"
+  install -o root -g root -m 0644 "$source_unit" "$installed_unit"
+  systemctl daemon-reload
+  cmp -s "$source_unit" "$installed_unit" || stop "Installed unit differs from Git."
+  diagnostics="$(systemd-analyze verify "$installed_unit" 2>&1)"
+  [[ -z "$diagnostics" ]] || stop "Installed unit produced diagnostics: $diagnostics"
+  echo "PASS: Translation template installed from commit $expected."
+}
+
+command_prepare_acceptance_job() {
+  local expected="$1"
+  local job_id="$2"
+  local job_dir
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  job_dir="$jobs_root/$job_id"
+  [[ ! -e "$job_dir" ]] || stop "Job already exists: $job_id"
+  install -d -o "$service_account" -g "$service_account" -m 0700 "$job_dir"
+  install -o "$service_account" -g "$service_account" -m 0600 \
+    "$fixture" "$job_dir/request.json"
+  echo "PASS: Acceptance job prepared: $job_id"
+}
+
+command_start_translation() {
+  local job_id="$1"
+  local job_dir
+  local unit
+  validate_job_id "$job_id"
+  job_dir="$jobs_root/$job_id"
+  unit="$(job_unit "$job_id")"
+  [[ -f "$job_dir/request.json" ]] || stop "Request is missing for $job_id."
+  [[ ! -e "$job_dir/result.json" ]] || stop "Result already exists for $job_id."
+  [[ ! -e "$job_dir/failed-output.json" ]] || stop "Failure output already exists for $job_id."
+  systemctl reset-failed "$unit" 2>/dev/null || true
+  systemctl start --wait "$unit"
+  [[ "$(systemctl show "$unit" --property=Result --value)" == "success" ]] || \
+    stop "Translation unit did not report success."
+  echo "PASS: Translation job completed: $job_id"
+}
+
+command_translation_status() {
+  local job_id="$1"
+  local job_dir
+  local unit
+  validate_job_id "$job_id"
+  job_dir="$jobs_root/$job_id"
+  unit="$(job_unit "$job_id")"
+  systemctl show "$unit" \
+    --property=LoadState \
+    --property=ActiveState \
+    --property=SubState \
+    --property=Result \
+    --property=ExecMainCode \
+    --property=ExecMainStatus \
+    --property=RuntimeMaxUSec \
+    --property=MemoryMax \
+    --property=MemorySwapMax \
+    --property=KillMode \
+    --no-pager
+  if [[ -d "$job_dir" ]]; then
+    find "$job_dir" -maxdepth 1 -type f \
+      -printf '%m %u:%g %s bytes %f\n' | sort
+  fi
+}
+
+command_translation_result() {
+  local job_id="$1"
+  local result
+  validate_job_id "$job_id"
+  result="$jobs_root/$job_id/result.json"
+  [[ -f "$result" ]] || stop "Result is missing for $job_id."
+  run_as_service cat "$result"
+}
+
+command_translation_failure() {
+  local job_id="$1"
+  local failure
+  validate_job_id "$job_id"
+  failure="$jobs_root/$job_id/failed-output.json"
+  [[ -f "$failure" ]] || stop "Failure output is missing for $job_id."
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 - "$failure" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    failure = json.load(handle)
+
+print(f"Error type: {failure['errorType']}")
+print(f"Error: {failure['error']}")
+print("Final 4000 characters:")
+print(failure["lastRawOutput"][-4000:])
+PY
+}
+
+command_host_health() {
+  free -h
+  swapon --show
+  df -h /
+  systemctl is-active ssh
+  systemctl is-active netbird
+  pgrep -af 'translate_article_qwen.py|llama-cli|Qwen3-8B-Q4_K_M' || true
+}
+
+command_update_admin() {
+  local expected="$1"
+  local helper_source="$repository/deploy/admin/fanaticosos-blog-admin"
+  local sudoers_source="$repository/deploy/admin/fanaticosos-blog-admin.sudoers"
+  require_repository_commit "$expected"
+  bash -n "$helper_source"
+  visudo -cf "$sudoers_source" >/dev/null
+  install -o root -g root -m 0755 "$helper_source" \
+    /usr/local/sbin/fanaticosos-blog-admin
+  install -o root -g root -m 0440 "$sudoers_source" \
+    /etc/sudoers.d/fanaticosos-blog-admin
+  visudo -cf /etc/sudoers.d/fanaticosos-blog-admin >/dev/null
+  echo "PASS: Restricted administration helper updated from commit $expected."
+}
+
+if [[ "${1:-}" == "--help" || $# == 0 ]]; then
+  usage
+  exit 0
+fi
+
+require_root
+command="$1"
+shift
+
+case "$command" in
+  sync)
+    [[ $# == 1 ]] || stop "sync requires EXPECTED_COMMIT."
+    command_sync "$1"
+    ;;
+  preflight)
+    [[ $# == 2 ]] || stop "preflight requires EXPECTED_COMMIT JOB_ID."
+    command_preflight "$1" "$2"
+    ;;
+  install-translation-template)
+    [[ $# == 1 ]] || stop "install-translation-template requires EXPECTED_COMMIT."
+    command_install_translation_template "$1"
+    ;;
+  prepare-acceptance-job)
+    [[ $# == 2 ]] || stop "prepare-acceptance-job requires EXPECTED_COMMIT JOB_ID."
+    command_prepare_acceptance_job "$1" "$2"
+    ;;
+  start-translation)
+    [[ $# == 1 ]] || stop "start-translation requires JOB_ID."
+    command_start_translation "$1"
+    ;;
+  translation-status)
+    [[ $# == 1 ]] || stop "translation-status requires JOB_ID."
+    command_translation_status "$1"
+    ;;
+  translation-result)
+    [[ $# == 1 ]] || stop "translation-result requires JOB_ID."
+    command_translation_result "$1"
+    ;;
+  translation-failure)
+    [[ $# == 1 ]] || stop "translation-failure requires JOB_ID."
+    command_translation_failure "$1"
+    ;;
+  host-health)
+    [[ $# == 0 ]] || stop "host-health accepts no arguments."
+    command_host_health
+    ;;
+  update-admin)
+    [[ $# == 1 ]] || stop "update-admin requires EXPECTED_COMMIT."
+    command_update_admin "$1"
+    ;;
+  *)
+    stop "Unsupported command: $command"
+    ;;
+esac

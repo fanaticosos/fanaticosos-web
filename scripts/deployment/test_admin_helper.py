@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+import re
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[2]
+HELPER = ROOT / "deploy" / "admin" / "fanaticosos-blog-admin"
+SUDOERS = ROOT / "deploy" / "admin" / "fanaticosos-blog-admin.sudoers"
+INSTALLER = ROOT / "deploy" / "admin" / "install-fanaticosos-blog-admin.sh"
+
+
+class AdminHelperTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.helper = HELPER.read_text(encoding="utf-8")
+        cls.sudoers = SUDOERS.read_text(encoding="utf-8")
+        cls.installer = INSTALLER.read_text(encoding="utf-8")
+
+    def test_sudoers_allows_only_fixed_root_owned_helper(self):
+        active = [
+            line.strip()
+            for line in self.sudoers.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        self.assertEqual(
+            active,
+            [
+                "sysadmin ALL=(root) NOPASSWD: "
+                "/usr/local/sbin/fanaticosos-blog-admin *"
+            ],
+        )
+
+    def test_helper_has_no_shell_or_arbitrary_command_subcommand(self):
+        case_block = self.helper.split('case "$command" in', 1)[1]
+        commands = re.findall(r"^  ([a-z][a-z-]*)\)", case_block, re.MULTILINE)
+        self.assertEqual(
+            commands,
+            [
+                "sync",
+                "preflight",
+                "install-translation-template",
+                "prepare-acceptance-job",
+                "start-translation",
+                "translation-status",
+                "translation-result",
+                "translation-failure",
+                "host-health",
+                "update-admin",
+            ],
+        )
+
+    def test_helper_validates_commit_and_job_identifiers(self):
+        self.assertIn("^[0-9a-f]{7,40}$", self.helper)
+        self.assertIn("^[a-z0-9]+(-[a-z0-9]+)*$", self.helper)
+        self.assertNotIn("eval ", self.helper)
+
+    def test_installer_refuses_overwrite(self):
+        self.assertIn('if [[ -e "$target" ]]', self.installer)
+        self.assertIn("visudo -cf", self.installer)
+
+
+if __name__ == "__main__":
+    unittest.main()

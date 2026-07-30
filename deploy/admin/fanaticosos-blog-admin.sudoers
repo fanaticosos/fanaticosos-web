@@ -1,0 +1,2 @@
+# Fanaticosos blog: permit only the root-owned fixed-command administration helper.
+sysadmin ALL=(root) NOPASSWD: /usr/local/sbin/fanaticosos-blog-admin *
