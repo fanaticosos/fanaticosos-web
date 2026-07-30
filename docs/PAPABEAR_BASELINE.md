@@ -1,6 +1,6 @@
 # Papabear Processing Baseline
 
-Status: Proposed Phase 3 implementation record
+Status: Phase 3 implemented and verified on 2026-07-30
 
 ## Scope
 
@@ -16,6 +16,7 @@ This document defines the reproducible private processing baseline for the Fanat
 - GPU runtime: none
 - Private management: NetBird `100.121.48.92`
 - SSH: key-only authentication verified
+- Repository access: dedicated read-only GitHub deploy key for `fanaticosos/fanaticosos-web`
 - AppArmor: enabled and active
 - Automatic Ubuntu security updates: enabled
 - Firewall: UFW remains unchanged during Phase 3
@@ -55,7 +56,7 @@ Every installation or upgrade must download the versioned archive and official `
 
 ## Ubuntu-managed baseline packages
 
-The proposed initial package set is intentionally small:
+The installed package set is intentionally small:
 
 - `ffmpeg` — provides FFmpeg and ffprobe
 - `python3-venv` — isolated Python environments
@@ -74,7 +75,7 @@ Translation- or TTS-specific native libraries will be considered only after a be
 
 ## Dedicated account
 
-Proposed account:
+Dedicated account:
 
 ```text
 fanaticosos-blog
@@ -92,7 +93,7 @@ Properties:
 
 Interactive maintenance will be performed by `sysadmin` through narrowly scoped `sudo -u fanaticosos-blog` commands. A login shell will not be enabled.
 
-## Proposed directory layout
+## Directory layout
 
 ```text
 /srv/fanaticosos-blog/
@@ -160,10 +161,24 @@ Logging will use the system journal initially. A separate `/var/log` tree will b
 - SSH, NetBird, AppArmor, unattended upgrades, and existing services remain healthy.
 - Rebuild steps are documented with exact versions and checksums.
 
-## Unknown information not decided here
+## Verified completion record
 
-- The dedicated GitHub deploy-key or machine-account design for `papabear`.
+- Node `v24.18.0` and npm `11.16.0` run from `/opt/nodejs/current/bin`.
+- Ubuntu packages installed: `build-essential` `12.10ubuntu1`, `ffmpeg` `7:6.1.1-3ubuntu5`, `python3-dev` `3.12.3-0ubuntu2.1`, and `python3-venv` `3.12.3-0ubuntu2.1`.
+- Python `3.12.3` created an isolated virtual environment, and FFmpeg generated, probed, and decoded a test MP3 successfully.
+- The `fanaticosos-blog` account cannot use passwordless sudo and has no interactive login shell.
+- GitHub accepted the repository-specific deploy key, and read-only repository access succeeded.
+- The repository is checked out cleanly at `feature/multilingual-audio-blog`, commit `ca66ec81394b3b182e3c3d4a63e3bd5189a1fcf9`.
+- `npm ci` installed 287 locked packages with zero reported vulnerabilities.
+- The Astro production build completed with zero errors, warnings, or hints; content, settings, routes, and 12 output files passed validation.
+- No persistent project process or new public listener was introduced.
+- SSH, NetBird, AppArmor, unattended upgrades, and the host remained healthy after the build.
+- Final measured root usage was 12 GiB of 98 GiB, with 81 GiB available; 31 GiB RAM and 8 GiB swap remained available for later model benchmarks.
+
+## Information deferred to later phases
+
 - Final storage placement after model and audio measurements; the root filesystem is sufficient for the baseline only.
 - Model-specific Python packages and native libraries.
 - Retention limits for models, build work, releases, logs, and generated audio.
 - Future systemd unit boundaries and resource limits.
+- NetBird-aware UFW rules and required NetBird ports; UFW remains unchanged and inactive pending a separately approved firewall design.
