@@ -103,6 +103,7 @@ Interactive maintenance will be performed by `sysadmin` through narrowly scoped 
 
 /var/lib/fanaticosos-blog/
 ├── generated/audio/     # Generated MP3 files; never committed
+├── jobs/                # Private bounded translation/TTS job directories
 ├── models/              # Downloaded translation and TTS models
 ├── state/               # Job state and release manifests
 ├── work/                # Staging and temporary job work
@@ -180,5 +181,5 @@ Logging will use the system journal initially. A separate `/var/log` tree will b
 - Final storage placement after model and audio measurements; the root filesystem is sufficient for the baseline only.
 - Model-specific Python packages and native libraries.
 - Retention limits for models, build work, releases, logs, and generated audio.
-- Future systemd unit boundaries and resource limits.
+- TTS-specific systemd boundaries and resource limits. The translation boundary is documented in `docs/TRANSLATION_DEPLOYMENT.md`.
 - NetBird-aware UFW rules and required NetBird ports; UFW remains unchanged and inactive pending a separately approved firewall design.

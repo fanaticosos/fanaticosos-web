@@ -213,6 +213,8 @@ Stop and disable new project services and remove only the dedicated project runt
 
 ## Phase 4 — Translation benchmark and integration
 
+Status: Engine, worker, contract, and bounded systemd execution verified; full-article and editor-preview gates remain
+
 ### Objective
 
 Integrate the owner-selected Qwen3 8B Q4 engine using measured Spanish NFL-journalism quality and automatic resource containment.
