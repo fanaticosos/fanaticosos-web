@@ -456,7 +456,9 @@ command_kokoro_benchmark_status() {
 
 command_install_kokoro_english_model() {
   local expected="$1"
-  local wheel="$data_root/work/en_core_web_sm-3.8.0.installing.whl"
+  local staging_dir="$data_root/work/spacy-model-installing"
+  local wheel="$staging_dir/en_core_web_sm-3.8.0-py3-none-any.whl"
+  local legacy_wheel="$data_root/work/en_core_web_sm-3.8.0.installing.whl"
   local source
   local expected_size
   local expected_sha256
@@ -469,7 +471,7 @@ command_install_kokoro_english_model() {
   run_as_service "$kokoro_venv/bin/python" -c \
     'import spacy, sys; sys.exit(0 if "en_core_web_sm" not in spacy.util.get_installed_models() else 1)' || \
     stop "spaCy English model is already installed."
-  [[ ! -e "$wheel" ]] || stop "spaCy model staging file already exists."
+  [[ ! -e "$staging_dir" ]] || stop "spaCy model staging directory already exists."
 
   source="$(jq -er '.source' "$spacy_model_manifest")"
   expected_size="$(jq -er '.size' "$spacy_model_manifest")"
@@ -480,12 +482,26 @@ command_install_kokoro_english_model() {
   [[ "$expected_sha256" == "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85" ]] || \
     stop "Unexpected spaCy model checksum."
 
-  cleanup_spacy_wheel() {
-    rm -f -- "$wheel"
+  cleanup_spacy_install() {
+    rm -f -- \
+      "$data_root/work/spacy-model-installing/en_core_web_sm-3.8.0-py3-none-any.whl" \
+      "$data_root/work/en_core_web_sm-3.8.0.installing.whl"
+    rmdir "$data_root/work/spacy-model-installing" 2>/dev/null || true
   }
-  trap cleanup_spacy_wheel EXIT
-  run_as_service curl --fail --location --silent --show-error \
-    "$source" --output "$wheel"
+  trap cleanup_spacy_install EXIT
+  install -d -o "$service_account" -g "$service_account" -m 0700 "$staging_dir"
+  if [[ -f "$legacy_wheel" ]]; then
+    [[ "$(stat -c %U:%G "$legacy_wheel")" == "$service_account:$service_account" ]] || \
+      stop "Legacy spaCy staging file has unexpected ownership."
+    [[ "$(stat -c %s "$legacy_wheel")" == "$expected_size" ]] || \
+      stop "Legacy spaCy staging file has unexpected size."
+    [[ "$(sha256sum "$legacy_wheel" | cut -d' ' -f1)" == "$expected_sha256" ]] || \
+      stop "Legacy spaCy staging file has unexpected checksum."
+    mv "$legacy_wheel" "$wheel"
+  else
+    run_as_service curl --fail --location --silent --show-error \
+      "$source" --output "$wheel"
+  fi
   actual_size="$(stat -c %s "$wheel")"
   actual_sha256="$(sha256sum "$wheel" | cut -d' ' -f1)"
   [[ "$actual_size" == "$expected_size" ]] || stop "spaCy model size mismatch."
@@ -494,7 +510,7 @@ command_install_kokoro_english_model() {
     --disable-pip-version-check --no-deps "$wheel"
   run_as_service "$kokoro_venv/bin/python" -c \
     'import spacy; assert "en_core_web_sm" in spacy.util.get_installed_models(); spacy.load("en_core_web_sm")'
-  cleanup_spacy_wheel
+  cleanup_spacy_install
   trap - EXIT
   run_as_service "$kokoro_venv/bin/python" -m pip freeze \
     > "$data_root/work/kokoro-benchmark-runtime.freeze"

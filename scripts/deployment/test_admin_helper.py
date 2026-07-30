@@ -147,6 +147,9 @@ class AdminHelperTests(unittest.TestCase):
             installer,
         )
         self.assertIn("--no-deps", installer)
+        self.assertIn("en_core_web_sm-3.8.0-py3-none-any.whl", installer)
+        self.assertIn("cleanup_spacy_install", installer)
+        self.assertIn("Legacy spaCy staging file has unexpected checksum", installer)
         self.assertNotIn('"$2"', installer)
 
     def test_installer_refuses_overwrite(self):
