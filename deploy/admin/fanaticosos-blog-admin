@@ -276,7 +276,7 @@ command_kokoro_runtime_status() {
   if [[ -d "$kokoro_venv" ]]; then
     stat -c 'owner=%U group=%G mode=%a size=%s path=%n' "$kokoro_venv"
     run_as_service "$kokoro_venv/bin/python" -c \
-      'import importlib.metadata as m; import torch; print("kokoro={} soundfile={} torch={} cuda={}".format(m.version("kokoro"), m.version("soundfile"), torch.__version__, torch.cuda.is_available()))'
+      'import importlib.metadata as m; import spacy, torch; print("kokoro={} misaki={} spacy={} soundfile={} torch={} cuda={} spacy_models={}".format(m.version("kokoro"), m.version("misaki"), m.version("spacy"), m.version("soundfile"), torch.__version__, torch.cuda.is_available(), list(spacy.util.get_installed_models())))'
   else
     echo "Kokoro runtime: ABSENT"
   fi

@@ -92,6 +92,11 @@ class AdminHelperTests(unittest.TestCase):
         for command in commands:
             compile(shlex.split(shlex.quote(command))[0], "<admin-helper>", "exec")
 
+    def test_runtime_status_reports_phonemizer_dependencies(self):
+        self.assertIn('m.version("misaki")', self.helper)
+        self.assertIn('m.version("spacy")', self.helper)
+        self.assertIn('spacy.util.get_installed_models()', self.helper)
+
     def test_helper_validates_commit_and_job_identifiers(self):
         self.assertIn("^[0-9a-f]{7,40}$", self.helper)
         self.assertIn("^[a-z0-9]+(-[a-z0-9]+)*$", self.helper)
