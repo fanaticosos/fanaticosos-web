@@ -42,6 +42,16 @@ class QwenBenchmarkTests(unittest.TestCase):
         )
         self.assertEqual(extract_translations(raw, ["one"]), {"one": "One"})
 
+    def test_extracts_final_translation_object_after_echoed_prompt_json(self):
+        raw = (
+            'User prompt schema: {"translations":[{"id":"example",'
+            '"translation":"Example"}]}\n'
+            'Input: [{"id":"one","text":"Uno"}]\n'
+            'Assistant:\n'
+            '{"translations":[{"id":"one","translation":"One"}]}\n'
+        )
+        self.assertEqual(extract_translations(raw, ["one"]), {"one": "One"})
+
     def test_rejects_wrong_order(self):
         raw = (
             '{"translations":[{"id":"two","translation":"Two"},'

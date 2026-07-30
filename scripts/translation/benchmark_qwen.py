@@ -71,11 +71,25 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
             lines = lines[:-1]
         text = "\n".join(lines).strip()
 
-    start = text.find("{")
-    end = text.rfind("}")
-    if start < 0 or end < start:
-        raise ValueError("model output does not contain a JSON object")
-    value = json.loads(text[start : end + 1])
+    decoder = json.JSONDecoder()
+    candidates: list[dict[str, Any]] = []
+    position = 0
+    while True:
+        start = text.find("{", position)
+        if start < 0:
+            break
+        try:
+            decoded, consumed = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            position = start + 1
+            continue
+        if isinstance(decoded, dict) and isinstance(decoded.get("translations"), list):
+            candidates.append(decoded)
+        position = start + max(consumed, 1)
+
+    if not candidates:
+        raise ValueError("model output does not contain a translations JSON object")
+    value = candidates[-1]
     entries = value.get("translations") if isinstance(value, dict) else None
     if not isinstance(entries, list):
         raise ValueError("model output must contain a translations array")
