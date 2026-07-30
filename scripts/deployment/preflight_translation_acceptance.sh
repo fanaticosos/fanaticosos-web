@@ -122,8 +122,8 @@ glossary_version="$(
       "$glossary"
 )"
 
-if [[ "$glossary_version" != "4" ]]; then
-  echo "STOP: Expected glossary version 4; found $glossary_version."
+if [[ "$glossary_version" != "5" ]]; then
+  echo "STOP: Expected glossary version 5; found $glossary_version."
   exit 1
 fi
 

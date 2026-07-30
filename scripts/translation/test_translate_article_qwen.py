@@ -147,6 +147,61 @@ class TranslateArticleQwenTests(unittest.TestCase):
                 glossary,
             )
 
+    def test_editorial_phrase_requires_drive(self):
+        segment = {
+            "id": "analysis",
+            "kind": "paragraph",
+            "text": "Los Bears abrieron con una serie ofensiva de 12 jugadas.",
+            "preserve": ["Bears", "12"],
+        }
+        glossary = {
+            "version": 5,
+            "protectedNames": ["Bears"],
+            "terms": [{"source": "serie ofensiva", "target": "drive"}],
+        }
+        with self.assertRaisesRegex(ValueError, "serie ofensiva -> drive"):
+            validate_segment_translation(
+                segment,
+                "The Bears opened with a 12-play offensive series.",
+                glossary,
+            )
+        validate_segment_translation(
+            segment,
+            "The Bears opened with a 12-play drive.",
+            glossary,
+        )
+
+    def test_editorial_phrase_requires_natural_punting_construction(self):
+        segment = {
+            "id": "weather",
+            "kind": "paragraph",
+            "text": "El viento complicó los despejes.",
+            "preserve": [],
+        }
+        glossary = {
+            "version": 5,
+            "protectedNames": [],
+            "terms": [
+                {
+                    "source": "complicó los despejes",
+                    "target": "made punting difficult",
+                }
+            ],
+        }
+        with self.assertRaisesRegex(
+            ValueError, "complicó los despejes -> made punting difficult"
+        ):
+            validate_segment_translation(
+                segment,
+                "The wind complicated the punts.",
+                glossary,
+            )
+        validate_segment_translation(
+            segment,
+            "The wind made punting difficult.",
+            glossary,
+        )
+
     def test_translates_batches_and_builds_provenance(self):
         responses = iter(
             [
