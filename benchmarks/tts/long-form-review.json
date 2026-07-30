@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "purpose": "Owner listening review for bilingual NFL long-form narration",
+  "requests": [
+    {
+      "schemaVersion": 1,
+      "articleId": "00000000-0000-4000-8000-000000000101",
+      "locale": "es",
+      "sourceRevision": "1111111111111111111111111111111111111111111111111111111111111111",
+      "title": "Remontada de los Chicago Bears en Soldier Field",
+      "segments": [
+        {
+          "id": "opening",
+          "text": "Los Chicago Bears vencieron 27 a 24 a Green Bay Packers con un gol de campo de último segundo."
+        },
+        {
+          "id": "quarterback",
+          "text": "Caleb Williams completó 24 de 35 pases para 278 yardas, dos touchdowns y una intercepción. En tercera y largo, el mariscal de campo escapó de la presión y encontró al ala cerrada más allá de la línea por ganar."
+        },
+        {
+          "id": "defense",
+          "text": "La defensa alternó cobertura dos y formaciones nickel, forzó un balón suelto en la zona roja y consiguió dos capturas."
+        },
+        {
+          "id": "weather",
+          "text": "El viento en Soldier Field hizo más difíciles los despejes y obligó a ambos equipos a cuidar cada posesión."
+        },
+        {
+          "id": "division",
+          "text": "Con este resultado, Chicago mantiene el paso frente a Detroit Lions y Minnesota Vikings dentro de la NFC North."
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "articleId": "00000000-0000-4000-8000-000000000102",
+      "locale": "en",
+      "sourceRevision": "2222222222222222222222222222222222222222222222222222222222222222",
+      "title": "Chicago Bears Rally at Soldier Field",
+      "segments": [
+        {
+          "id": "opening",
+          "text": "The Chicago Bears beat the Green Bay Packers 27 to 24 with a last-second field goal."
+        },
+        {
+          "id": "quarterback",
+          "text": "Caleb Williams completed 24 of 35 passes for 278 yards, two touchdowns, and an interception. On third-and-long, the quarterback escaped the pressure and found the tight end beyond the line to gain."
+        },
+        {
+          "id": "defense",
+          "text": "The defense switched between Cover 2 and nickel packages, forced a fumble in the red zone, and recorded two sacks."
+        },
+        {
+          "id": "weather",
+          "text": "The wind at Soldier Field made punting difficult and forced both teams to protect every possession."
+        },
+        {
+          "id": "division",
+          "text": "With the result, Chicago kept pace with the Detroit Lions and Minnesota Vikings in the NFC North."
+        }
+      ]
+    }
+  ]
+}

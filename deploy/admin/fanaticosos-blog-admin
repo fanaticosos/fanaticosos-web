@@ -29,6 +29,7 @@ readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
 readonly spanglish_diagnostic="$data_root/work/tts-spanglish-diagnostic-v1"
 readonly tts_tuning_output="$data_root/work/tts-selected-voice-tuning-v1"
 readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v1"
+readonly long_form_review="$data_root/work/tts-long-form-review-v1"
 
 usage() {
   cat <<'EOF'
@@ -62,6 +63,8 @@ Commands:
   export-tts-tuning-matrix EXPECTED_COMMIT
   run-latino-diagnostic EXPECTED_COMMIT
   export-latino-diagnostic EXPECTED_COMMIT
+  run-tts-long-form-review EXPECTED_COMMIT
+  export-tts-long-form-review EXPECTED_COMMIT
 EOF
 }
 
@@ -711,6 +714,56 @@ command_export_latino_diagnostic() {
   echo "PASS: Latino broadcast diagnostic exported."
 }
 
+command_run_tts_long_form_review() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ ! -e "$long_form_review" ]] || stop "Long-form TTS review already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-tts-long-form-review.service \
+    --property="User=$service_account" \
+    --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="Environment=PYTHONDONTWRITEBYTECODE=1" \
+    --property="Environment=HF_HUB_OFFLINE=1" \
+    --property="RuntimeMaxSec=10min" \
+    --property="MemoryMax=8G" \
+    --property="MemorySwapMax=1G" \
+    --property="KillMode=control-group" \
+    --property="PrivateTmp=yes" \
+    --property="PrivateNetwork=yes" \
+    --property="ProtectSystem=strict" \
+    --property="ReadWritePaths=$data_root/work" \
+    "$kokoro_venv/bin/python" "$repository/scripts/tts/review_long_form.py" \
+      --review "$repository/benchmarks/tts/long-form-review.json" \
+      --configuration "$repository/config/tts/production.json" \
+      --pronunciations "$kokoro_pronunciations" \
+      --manifest "$kokoro_manifest" \
+      --model-root "$kokoro_model" \
+      --output "$long_form_review"
+  [[ -f "$long_form_review/summary.json" ]] || stop "Review summary is missing."
+  [[ "$(find "$long_form_review" -type f -name '*.mp3' | wc -l)" == "2" ]] || \
+    stop "Long-form review did not produce two MP3 files."
+  echo "PASS: Bounded bilingual long-form TTS review completed."
+}
+
+command_export_tts_long_form_review() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-tts-long-form-review-v1"
+  require_repository_commit "$expected"
+  [[ -f "$long_form_review/summary.json" ]] || stop "Long-form review is missing."
+  [[ ! -e "$export_root" ]] || stop "Long-form review export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  while IFS= read -r -d '' artifact; do
+    install -o sysadmin -g sysadmin -m 0640 \
+      "$artifact" "$export_root/$(basename "$artifact")"
+  done < <(find "$long_form_review" -type f \
+    \( -name '*.mp3' -o -name 'summary.json' \) -print0)
+  [[ "$(find "$export_root" -maxdepth 1 -type f | wc -l)" == "3" ]] || \
+    stop "Long-form review export did not contain three files."
+  echo "PASS: Bilingual long-form TTS review exported."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -828,6 +881,14 @@ case "$command" in
   export-latino-diagnostic)
     [[ $# == 1 ]] || stop "export-latino-diagnostic requires EXPECTED_COMMIT."
     command_export_latino_diagnostic "$1"
+    ;;
+  run-tts-long-form-review)
+    [[ $# == 1 ]] || stop "run-tts-long-form-review requires EXPECTED_COMMIT."
+    command_run_tts_long_form_review "$1"
+    ;;
+  export-tts-long-form-review)
+    [[ $# == 1 ]] || stop "export-tts-long-form-review requires EXPECTED_COMMIT."
+    command_export_tts_long_form_review "$1"
     ;;
   *)
     stop "Unsupported command: $command"

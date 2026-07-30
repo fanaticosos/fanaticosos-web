@@ -66,6 +66,8 @@ class AdminHelperTests(unittest.TestCase):
                 "export-tts-tuning-matrix",
                 "run-latino-diagnostic",
                 "export-latino-diagnostic",
+                "run-tts-long-form-review",
+                "export-tts-long-form-review",
             ],
         )
 
@@ -217,6 +219,21 @@ class AdminHelperTests(unittest.TestCase):
             self.assertIn(value, diagnostic)
         self.assertIn("diagnose_latino_delivery.py", diagnostic)
         self.assertNotIn('"$2"', diagnostic)
+
+    def test_long_form_review_has_fixed_automatic_limits(self):
+        review = self.helper.split(
+            "command_run_tts_long_form_review()", 1
+        )[1].split("\n}\n", 1)[0]
+        for value in (
+            "RuntimeMaxSec=10min",
+            "MemoryMax=8G",
+            "MemorySwapMax=1G",
+            "PrivateTmp=yes",
+            "PrivateNetwork=yes",
+        ):
+            self.assertIn(value, review)
+        self.assertIn("long-form-review.json", review)
+        self.assertNotIn('"$2"', review)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)
