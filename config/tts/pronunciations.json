@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 3,
+  "version": 4,
   "overrides": {
     "es": [
       {
@@ -37,6 +37,11 @@
         "written": "touchdown",
         "spoken": "tóchdaun",
         "reason": "Avoid awkward English word separation in Spanish narration"
+      },
+      {
+        "written": "Detroit Lions",
+        "spoken": "Ditróit Láions",
+        "reason": "Preserve Detroit and avoid narration sounding like destroy"
       }
     ],
     "en": []

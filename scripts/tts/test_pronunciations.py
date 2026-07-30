@@ -43,6 +43,12 @@ class PronunciationTests(unittest.TestCase):
             "Anotó dos tóchdauns y el segundo tóchdaun decidió el partido.",
         )
 
+    def test_detroit_lions_does_not_sound_like_destroy(self):
+        written = "Los Detroit Lions visitan Chicago."
+        spoken = apply_pronunciations(written, "es", self.configuration)
+        self.assertEqual(spoken, "Los Ditróit Láions visitan Chicago.")
+        self.assertIn("Detroit Lions", written)
+
     def test_does_not_replace_inside_longer_word(self):
         text = "NotGreen BayArea"
         self.assertEqual(apply_pronunciations(text, "es", self.configuration), text)
