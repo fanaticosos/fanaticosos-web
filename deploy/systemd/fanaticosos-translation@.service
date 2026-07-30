@@ -1,0 +1,66 @@
+[Unit]
+Description=Fanaticosos bounded article translation job %i
+Documentation=file:/srv/fanaticosos-blog/repository/docs/TRANSLATION_JOB_CONTRACT.md
+After=local-fs.target
+ConditionPathIsRegular=/var/lib/fanaticosos-blog/jobs/%i/request.json
+
+[Service]
+Type=exec
+User=fanaticosos-blog
+Group=fanaticosos-blog
+WorkingDirectory=/srv/fanaticosos-blog/repository
+UMask=0077
+
+Environment=HOME=/var/lib/fanaticosos-blog
+Environment=NO_COLOR=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=OMP_NUM_THREADS=12
+
+ExecStart=/usr/bin/python3 /srv/fanaticosos-blog/repository/scripts/translation/translate_article_qwen.py \
+  --request /var/lib/fanaticosos-blog/jobs/%i/request.json \
+  --glossary /srv/fanaticosos-blog/repository/config/translation/glossary.json \
+  --llama-cli /var/lib/fanaticosos-blog/tools/llama.cpp-b10195/llama-b10195/llama-cli \
+  --model-file /var/lib/fanaticosos-blog/models/qwen3-8b-gguf/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf \
+  --model-revision 7c41481f57cb95916b40956ab2f0b139b296d974 \
+  --runtime-version b10195-47f686f53 \
+  --configuration-version 1 \
+  --output /var/lib/fanaticosos-blog/jobs/%i/result.json \
+  --threads 12 \
+  --context 8192 \
+  --output-tokens 2048 \
+  --max-batch-characters 6000
+
+Restart=no
+RuntimeMaxSec=5min
+TimeoutStopSec=30s
+KillMode=control-group
+
+MemoryAccounting=yes
+MemoryMax=16G
+MemorySwapMax=1G
+CPUAccounting=yes
+CPUWeight=50
+Nice=5
+
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/fanaticosos-blog/jobs/%i
+RestrictRealtime=yes
+LockPersonality=yes
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fanaticosos-translation-%i
+
+[Install]
+# Intentionally not enabled. The private publishing workflow starts one instance per job.

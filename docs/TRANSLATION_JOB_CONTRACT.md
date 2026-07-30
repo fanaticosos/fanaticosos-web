@@ -73,3 +73,11 @@ The contract permits at most 512 segments, 12,000 characters per segment, and 25
 - Only a complete validated result may atomically replace a draft translation result.
 - A failure never changes the accepted English article or public site.
 - The editor receives a concise error; the owner does not inspect system resources or processes.
+
+## On-demand execution boundary
+
+`deploy/systemd/fanaticosos-translation@.service` is the versioned production template. A job identifier maps to a private directory under `/var/lib/fanaticosos-blog/jobs/` containing `request.json` and, only after success, `result.json`.
+
+The template is intentionally not enabled and does not run a persistent model listener. The future private publishing workflow starts one instance for a prepared job. systemd applies the approved five-minute runtime, 16 GiB memory, 1 GiB swap, control-group cleanup, private network, read-only host filesystem, and mode-`0600` output boundaries automatically.
+
+Installing the template into `/etc/systemd/system` and authorizing the private editor to start instances are separate deployment actions requiring owner approval and server-side verification.
