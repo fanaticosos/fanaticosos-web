@@ -1,0 +1,65 @@
+---
+import type { Article } from "../lib/articles";
+import { articlePath, indexPath } from "../lib/articles";
+import BaseLayout from "./BaseLayout.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import "../styles/article.css";
+
+interface Props {
+  article: Article;
+  alternate: Article;
+}
+
+const { article, alternate } = Astro.props;
+const locale = article.data.locale;
+const canonicalPath = articlePath(article);
+const alternatePath = articlePath(alternate);
+const spanishPath = locale === "es" ? canonicalPath : alternatePath;
+const englishPath = locale === "en" ? canonicalPath : alternatePath;
+---
+
+<BaseLayout
+  title={`${article.data.title} — FanaticOSOS`}
+  lang={locale}
+  description={article.data.description}
+  canonicalPath={canonicalPath}
+  image={article.data.featuredImage?.src}
+  bodyClass="article-page"
+  alternatePaths={{ es: spanishPath, en: englishPath, "x-default": spanishPath }}
+>
+  <header class="article-header">
+    <a class="brand-link" href={indexPath(locale)} aria-label={locale === "es" ? "Volver al blog" : "Back to the blog"}>
+      <img src="/logo.png" alt="FanaticOSOS" />
+    </a>
+    <a class="language-switch" href={alternatePath} lang={alternate.data.locale} hreflang={alternate.data.locale}>
+      {locale === "es" ? "Read in English" : "Leer en español"}
+    </a>
+  </header>
+
+  <main class="article-shell">
+    <article>
+      <p class="article-category">{article.data.category}</p>
+      <h1>{article.data.title}</h1>
+      <p class="article-description">{article.data.description}</p>
+      <p class="article-byline">
+        {locale === "es" ? "Por" : "By"} {article.data.author}
+      </p>
+      {
+        article.data.featuredImage && (
+          <figure>
+            <img src={article.data.featuredImage.src} alt={article.data.featuredImage.alt} />
+            {(article.data.featuredImage.caption || article.data.featuredImage.credit) && (
+              <figcaption>
+                {article.data.featuredImage.caption}
+                {article.data.featuredImage.credit && ` — ${article.data.featuredImage.credit}`}
+              </figcaption>
+            )}
+          </figure>
+        )
+      }
+      <div class="article-body"><slot /></div>
+    </article>
+  </main>
+
+  <SiteFooter locale={locale} />
+</BaseLayout>

@@ -10,6 +10,7 @@ const routes = [
     route: "/",
     file: "index.html",
     title: "FanaticOSOS — BearDown Chicago Bears",
+    lang: "es",
     canonical: "https://fanaticosos.com/",
     requiredLinks: ["/pages/contact", "/pages/terms"],
   },
@@ -17,6 +18,7 @@ const routes = [
     route: "/pages/contact",
     file: "pages/contact/index.html",
     title: "Contacto — FanaticOSOS",
+    lang: "es",
     canonical: "https://fanaticosos.com/pages/contact",
     requiredLinks: ["/", "/pages/contact", "/pages/terms"],
   },
@@ -24,8 +26,35 @@ const routes = [
     route: "/pages/terms",
     file: "pages/terms/index.html",
     title: "Términos de Uso — FanaticOSOS",
+    lang: "es",
     canonical: "https://fanaticosos.com/pages/terms",
     requiredLinks: ["/", "/pages/contact", "/pages/terms"],
+  },
+  {
+    route: "/blog/",
+    file: "blog/index.html",
+    title: "Blog — FanaticOSOS",
+    lang: "es",
+    canonical: "https://fanaticosos.com/blog/",
+    requiredLinks: ["/", "/en/blog/", "/pages/contact", "/pages/terms"],
+    alternates: {
+      es: "https://fanaticosos.com/blog/",
+      en: "https://fanaticosos.com/en/blog/",
+      "x-default": "https://fanaticosos.com/blog/",
+    },
+  },
+  {
+    route: "/en/blog/",
+    file: "en/blog/index.html",
+    title: "Blog — FanaticOSOS",
+    lang: "en",
+    canonical: "https://fanaticosos.com/en/blog/",
+    requiredLinks: ["/", "/blog/", "/pages/contact", "/pages/terms"],
+    alternates: {
+      es: "https://fanaticosos.com/blog/",
+      en: "https://fanaticosos.com/en/blog/",
+      "x-default": "https://fanaticosos.com/blog/",
+    },
   },
 ];
 
@@ -107,7 +136,7 @@ for (const page of routes) {
 
   record(/^<!doctype html>/i.test(html), `${page.route}: missing HTML5 doctype`);
   record(htmlTags.length === 1, `${page.route}: expected one html element`);
-  record(htmlTags[0]?.attributes.get("lang") === "es", `${page.route}: html lang must be es`);
+  record(htmlTags[0]?.attributes.get("lang") === page.lang, `${page.route}: html lang must be ${page.lang}`);
   record(titleMatch?.[1] === page.title, `${page.route}: unexpected page title`);
 
   const viewport = metaTags.find((entry) => entry.attributes.get("name") === "viewport");
@@ -128,6 +157,16 @@ for (const page of routes) {
   record(twitterCard?.attributes.get("content") === "summary_large_image", `${page.route}: invalid Twitter card metadata`);
   record(canonicals.length === 1, `${page.route}: expected exactly one canonical link`);
   record(canonicals[0]?.attributes.get("href") === page.canonical, `${page.route}: invalid canonical URL`);
+
+  if (page.alternates) {
+    const alternates = linkTags.filter((entry) => entry.attributes.get("rel") === "alternate");
+    for (const [hreflang, href] of Object.entries(page.alternates)) {
+      record(
+        alternates.some((entry) => entry.attributes.get("hreflang") === hreflang && entry.attributes.get("href") === href),
+        `${page.route}: missing ${hreflang} alternate ${href}`,
+      );
+    }
+  }
 
   const hrefs = anchorTags.map((entry) => entry.attributes.get("href")).filter(Boolean);
   for (const requiredLink of page.requiredLinks) {

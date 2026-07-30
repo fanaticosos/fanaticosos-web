@@ -1,0 +1,27 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import ArticleLayout from "../../../layouts/ArticleLayout.astro";
+import { isBuildEligible, pairedArticle } from "../../../lib/articles";
+
+export async function getStaticPaths() {
+  const eligible = (await getCollection("articles")).filter(isBuildEligible);
+  return eligible
+    .filter((article) => article.data.locale === "en")
+    .map((article) => ({
+      params: { slug: article.data.slug },
+      props: { article, alternate: pairedArticle(article, eligible) },
+    }));
+}
+
+interface Props {
+  article: CollectionEntry<"articles">;
+  alternate: CollectionEntry<"articles">;
+}
+
+const { article, alternate } = Astro.props;
+const { Content } = await render(article);
+---
+
+<ArticleLayout article={article} alternate={alternate}>
+  <Content />
+</ArticleLayout>

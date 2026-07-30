@@ -3,20 +3,24 @@ import "../styles/global.css";
 
 interface Props {
   title: string;
+  lang?: "es" | "en";
   description?: string;
   ogDescription?: string;
   canonicalPath?: string;
   image?: string;
   bodyClass?: string;
+  alternatePaths?: Partial<Record<"es" | "en" | "x-default", string>>;
 }
 
 const {
   title,
+  lang = "es",
   description,
   ogDescription = description,
   canonicalPath = "/",
   image = "/logo.png",
   bodyClass,
+  alternatePaths = {},
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath, Astro.site);
@@ -24,7 +28,7 @@ const imageUrl = new URL(image, Astro.site);
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -36,6 +40,11 @@ const imageUrl = new URL(image, Astro.site);
     <meta property="og:url" content={canonicalUrl} />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href={canonicalUrl} />
+    {
+      Object.entries(alternatePaths).map(([hreflang, alternatePath]) => (
+        <link rel="alternate" hreflang={hreflang} href={new URL(alternatePath, Astro.site)} />
+      ))
+    }
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

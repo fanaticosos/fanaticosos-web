@@ -1,5 +1,13 @@
+---
+interface Props {
+  locale?: "es" | "en";
+}
+
+const { locale = "es" } = Astro.props;
+---
+
 <footer>
   <span>© 2025 FanaticOSOS</span>
-  <a href="/pages/contact">Contacto</a>
-  <a href="/pages/terms">Términos</a>
+  <a href="/pages/contact">{locale === "es" ? "Contacto" : "Contact"}</a>
+  <a href="/pages/terms">{locale === "es" ? "Términos" : "Terms"}</a>
 </footer>

@@ -1,0 +1,45 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import SiteFooter from "../../../components/SiteFooter.astro";
+import { articlePath, isBuildEligible } from "../../../lib/articles";
+import "../../../styles/article.css";
+
+const articles = (await getCollection("articles"))
+  .filter((article) => article.data.locale === "en" && isBuildEligible(article))
+  .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf());
+---
+
+<BaseLayout
+  title="Blog — FanaticOSOS"
+  lang="en"
+  description="FanaticOSOS sports journalism and analysis in English."
+  canonicalPath="/en/blog/"
+  bodyClass="article-page"
+  alternatePaths={{ es: "/blog/", en: "/en/blog/", "x-default": "/blog/" }}
+>
+  <header class="article-header">
+    <a class="brand-link" href="/" aria-label="Home"><img src="/logo.png" alt="FanaticOSOS" /></a>
+    <a class="language-switch" href="/blog/" lang="es" hreflang="es">Leer en español</a>
+  </header>
+  <main class="article-shell blog-index">
+    <h1>Blog</h1>
+    <p class="article-description">Sports journalism and analysis from the FanaticOSOS perspective.</p>
+    {
+      articles.length > 0 ? (
+        <div class="article-list">
+          {articles.map((article) => (
+            <article>
+              <p class="article-category">{article.data.category}</p>
+              <h2><a href={articlePath(article)}>{article.data.title}</a></h2>
+              <p>{article.data.description}</p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p class="empty-state">The first articles are being prepared.</p>
+      )
+    }
+  </main>
+  <SiteFooter locale="en" />
+</BaseLayout>
