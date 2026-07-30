@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "configurationVersion": 2,
+  "configurationVersion": 3,
   "status": "selected-for-tuning",
   "model": "hexgrad/Kokoro-82M",
   "modelRevision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
@@ -12,6 +12,19 @@
     "es": "em_alex",
     "en": "af_heart"
   },
+  "delivery": {
+    "es": {
+      "profile": "broadcast",
+      "speed": 1.02,
+      "pauseSeconds": 0.16
+    },
+    "en": {
+      "profile": "broadcast",
+      "speed": 1.02,
+      "pauseSeconds": 0.16
+    }
+  },
+  "pronunciationVersion": 2,
   "encoding": {
     "codec": "mp3",
     "sampleRateHz": 48000,

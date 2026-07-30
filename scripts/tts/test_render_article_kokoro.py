@@ -8,7 +8,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from render_article_kokoro import render_article, resolve_production_voice, validate_voice
+from render_article_kokoro import (
+    render_article,
+    resolve_delivery,
+    resolve_production_voice,
+    validate_voice,
+)
 
 
 ARTICLE_ID = "00000000-0000-4000-8000-000000000001"
@@ -57,7 +62,9 @@ def manifest_fixture(model_root):
     }
 
 
-def fake_synthesizer(request, manifest, model_root, voice, wav_path):
+def fake_synthesizer(
+    request, manifest, model_root, voice, wav_path, speed, pause_seconds
+):
     wav_path.write_bytes(b"fake-wav")
     return {"generationSeconds": 1.0}
 
@@ -110,6 +117,59 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             published = json.loads((output / "result.json").read_text())
             self.assertEqual(published["voice"], "ef_dora")
             self.assertEqual(published["sha256"], hashlib.sha256(b"fake-mp3").hexdigest())
+
+    def test_spanish_pronunciations_change_only_synthesizer_input(self):
+        captured = {}
+
+        def capture(request, manifest, model_root, voice, wav_path, speed, pause_seconds):
+            captured["request"] = request
+            captured["speed"] = speed
+            captured["pauseSeconds"] = pause_seconds
+            return fake_synthesizer(
+                request, manifest, model_root, voice, wav_path, speed, pause_seconds
+            )
+
+        pronunciations = {
+            "schemaVersion": 1,
+            "version": 2,
+            "overrides": {
+                "es": [
+                    {
+                        "written": "Caleb Williams",
+                        "spoken": "Kéileb Uíliams",
+                        "reason": "reviewed narration",
+                    }
+                ],
+                "en": [],
+            },
+        }
+        source = request_fixture()
+        source["title"] = "Caleb Williams gana"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            model_root = root / "model"
+            manifest = manifest_fixture(model_root)
+            with patch("render_article_kokoro.run_ffmpeg", fake_ffmpeg), patch(
+                "render_article_kokoro.probe_audio", fake_probe
+            ):
+                result = render_article(
+                    source,
+                    manifest,
+                    model_root,
+                    root / "result",
+                    "em_alex",
+                    3,
+                    capture,
+                    speed=1.02,
+                    pause_seconds=0.16,
+                    pronunciations=pronunciations,
+                    pronunciation_version=2,
+                )
+        self.assertEqual(source["title"], "Caleb Williams gana")
+        self.assertEqual(captured["request"]["title"], "Kéileb Uíliams gana")
+        self.assertEqual(captured["speed"], 1.02)
+        self.assertEqual(captured["pauseSeconds"], 0.16)
+        self.assertEqual(result["pronunciationVersion"], 2)
 
     def test_failure_removes_staging_and_publishes_nothing(self):
         def failure(*args):
@@ -176,6 +236,25 @@ class KokoroArticleWorkerTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "not approved"):
             resolve_production_voice(configuration, "es", {})
+
+    def test_broadcast_delivery_is_fixed_for_both_locales(self):
+        configuration = {
+            "delivery": {
+                "es": {
+                    "profile": "broadcast",
+                    "speed": 1.02,
+                    "pauseSeconds": 0.16,
+                },
+                "en": {
+                    "profile": "broadcast",
+                    "speed": 1.02,
+                    "pauseSeconds": 0.16,
+                },
+            },
+            "pronunciationVersion": 2,
+        }
+        self.assertEqual(resolve_delivery(configuration, "es"), (1.02, 0.16, 2))
+        self.assertEqual(resolve_delivery(configuration, "en"), (1.02, 0.16, 2))
 
     def test_approved_configuration_resolves_fixed_locale_voice(self):
         manifest = {

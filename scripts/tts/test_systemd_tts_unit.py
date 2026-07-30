@@ -16,6 +16,7 @@ class TtsSystemdUnitTests(unittest.TestCase):
     def test_unit_has_fixed_worker_and_configuration(self):
         self.assertIn("scripts/tts/render_article_kokoro.py", self.unit)
         self.assertIn("--configuration /opt/fanaticosos-blog/repository/config/tts/production.json", self.unit)
+        self.assertIn("--pronunciations /opt/fanaticosos-blog/repository/config/tts/pronunciations.json", self.unit)
         self.assertNotIn("--voice", self.unit)
 
     def test_unit_has_automatic_resource_boundaries(self):

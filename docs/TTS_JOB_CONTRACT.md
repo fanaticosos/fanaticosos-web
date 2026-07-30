@@ -1,6 +1,6 @@
 # TTS Article Job Contract
 
-Status: validated contract; production voices remain pending owner selection
+Status: validated contract; voices and broadcast delivery selected, production approval pending
 
 ## Boundary
 
@@ -26,4 +26,4 @@ The worker writes to a private staging directory. It may publish a result only a
 
 The Spanish and English production voice IDs are intentionally not selected by this contract. The owner will choose them after listening to the fixed Kokoro samples. Recording that choice changes versioned voice configuration, not this request/result boundary.
 
-The owner selected `em_alex` for Latin-American Spanish tuning and `af_heart` for American English tuning. `config/tts/production.json` remains `selected-for-tuning`, so the worker rejects production execution before loading Kokoro. The systemd template never accepts a voice argument; only an explicit later owner approval may change the versioned status to `approved`.
+The owner selected `em_alex` for Latin-American Spanish tuning and `af_heart` for American English, with the broadcast profile for both. Spanish narration applies the centralized pronunciation dictionary before synthesis; canonical article text and its hash remain unchanged. `config/tts/production.json` remains `selected-for-tuning`, so the worker rejects production execution before loading Kokoro. The systemd template accepts neither a voice nor pronunciation overrides from a caller; only versioned repository configuration controls them, and only an explicit later owner approval may change the status to `approved`.

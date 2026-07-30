@@ -1,6 +1,6 @@
 # Fanaticosos TTS benchmark
 
-Status: Kokoro voices selected for tuning; production approval pending
+Status: Kokoro voices and broadcast delivery selected; long-form production approval pending
 
 ## Candidate
 
@@ -18,9 +18,11 @@ The official voice inventory warns that non-English support can be thinner than 
 
 - Latin-American Spanish target: `em_alex`
 - American English target: `af_heart`
+- Delivery profile: `broadcast` for both languages (`1.02` speed, 0.16-second pause)
+- Spanish narration applies centralized Latino sports-broadcast pronunciations without changing visible article text.
 - Configuration status: `selected-for-tuning`
 
-Production remains blocked until centralized Spanglish pronunciation, pacing, pauses, phrasing, and long-form naturalness no longer sound conspicuously robotic and the owner approves new samples.
+The owner accepted the short Latino name-delivery diagnostic as the integration baseline. Production remains blocked until long-form phrasing and listening comfort are accepted; a short diagnostic does not by itself approve the engine for published articles.
 
 ## Version 1 comparison voices
 

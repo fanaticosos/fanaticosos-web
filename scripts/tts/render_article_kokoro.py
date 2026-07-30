@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import json
 import os
@@ -23,6 +24,7 @@ from benchmark_kokoro import (
     verify_candidate_files,
 )
 from download_kokoro_candidates import validate_manifest
+from pronunciations import apply_pronunciations, validate_pronunciations
 
 
 ALLOWED_VOICES = {
@@ -79,12 +81,30 @@ def resolve_production_voice(
     return voice, version
 
 
+def resolve_delivery(configuration: Any, locale: str) -> tuple[float, float, int]:
+    delivery = configuration.get("delivery") if isinstance(configuration, dict) else None
+    if not isinstance(delivery, dict) or set(delivery) != {"es", "en"}:
+        raise ValueError("TTS configuration must define Spanish and English delivery")
+    selected = delivery.get(locale)
+    expected = {"profile": "broadcast", "speed": 1.02, "pauseSeconds": 0.16}
+    if selected != expected:
+        raise ValueError(f"TTS {locale} delivery configuration is unexpected")
+    pronunciation_version = configuration.get("pronunciationVersion")
+    if not isinstance(pronunciation_version, int) or isinstance(
+        pronunciation_version, bool
+    ) or pronunciation_version < 1:
+        raise ValueError("TTS pronunciation version must be a positive integer")
+    return selected["speed"], selected["pauseSeconds"], pronunciation_version
+
+
 def synthesize_kokoro(
     request: dict[str, Any],
     manifest: dict[str, Any],
     model_root: Path,
     voice: str,
     wav_path: Path,
+    speed: float,
+    pause_seconds: float,
 ) -> dict[str, Any]:
     import soundfile
     import torch
@@ -106,15 +126,21 @@ def synthesize_kokoro(
     )
     voice_path = model_root / "voices" / f"{voice}.pt"
     started = time.monotonic()
-    chunks = [
+    generated = [
         result.audio
         for result in pipeline(
             [request["title"], *(item["text"] for item in request["segments"])],
             voice=str(voice_path),
-            speed=1,
+            speed=speed,
         )
         if result.audio is not None
     ]
+    silence = torch.zeros(round(SAMPLE_RATE * pause_seconds))
+    chunks = []
+    for index, chunk in enumerate(generated):
+        if index:
+            chunks.append(silence)
+        chunks.append(chunk)
     audio = concatenate_audio(chunks, torch)
     generation_seconds = time.monotonic() - started
     soundfile.write(wav_path, audio.numpy(), SAMPLE_RATE, subtype="PCM_16")
@@ -133,12 +159,35 @@ def render_article(
     voice: str,
     configuration_version: int,
     synthesizer: Callable[..., dict[str, Any]] = synthesize_kokoro,
+    *,
+    speed: float = 1.0,
+    pause_seconds: float = 0.0,
+    pronunciations: dict[str, Any] | None = None,
+    pronunciation_version: int | None = None,
 ) -> dict[str, Any]:
     validate_request(request)
     validate_manifest(manifest)
     validate_voice(request["locale"], voice)
     if not isinstance(configuration_version, int) or configuration_version < 1:
         raise ValueError("configuration version must be a positive integer")
+    if not isinstance(speed, (int, float)) or isinstance(speed, bool) or speed <= 0:
+        raise ValueError("speed must be positive")
+    if not isinstance(pause_seconds, (int, float)) or isinstance(
+        pause_seconds, bool
+    ) or pause_seconds < 0:
+        raise ValueError("pause seconds must not be negative")
+    spoken_request = copy.deepcopy(request)
+    if pronunciations is not None:
+        validate_pronunciations(pronunciations)
+        if pronunciation_version != pronunciations["version"]:
+            raise ValueError("pronunciation configuration version is stale")
+        spoken_request["title"] = apply_pronunciations(
+            request["title"], request["locale"], pronunciations
+        )
+        for source, spoken in zip(request["segments"], spoken_request["segments"]):
+            spoken["text"] = apply_pronunciations(
+                source["text"], request["locale"], pronunciations
+            )
     verify_candidate_files(manifest, model_root)
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
@@ -152,11 +201,13 @@ def render_article(
     mp3_path = staging / file_name
     try:
         runtime_metrics = synthesizer(
-            request,
+            spoken_request,
             manifest,
             model_root,
             voice,
             wav_path,
+            speed,
+            pause_seconds,
         )
         if not wav_path.is_file() or wav_path.stat().st_size <= 0:
             raise ValueError("synthesizer did not produce a WAV file")
@@ -171,6 +222,10 @@ def render_article(
             "textHash": text_hash(request),
             "voice": voice,
             "configurationVersion": configuration_version,
+            "deliveryProfile": "broadcast" if speed == 1.02 else "custom",
+            "speed": speed,
+            "pauseSeconds": pause_seconds,
+            "pronunciationVersion": pronunciation_version,
             "engine": "Kokoro",
             "modelRevision": manifest["revision"],
             "file": file_name,
@@ -214,6 +269,7 @@ def main() -> None:
     selection.add_argument("--voice")
     selection.add_argument("--configuration", type=Path)
     parser.add_argument("--configuration-version", type=int)
+    parser.add_argument("--pronunciations", type=Path)
     args = parser.parse_args()
     with args.request.open(encoding="utf-8") as handle:
         request = json.load(handle)
@@ -227,11 +283,22 @@ def main() -> None:
         voice, configuration_version = resolve_production_voice(
             configuration, request["locale"], manifest
         )
+        speed, pause_seconds, pronunciation_version = resolve_delivery(
+            configuration, request["locale"]
+        )
+        if args.pronunciations is None:
+            parser.error("--pronunciations is required with --configuration")
+        with args.pronunciations.open(encoding="utf-8") as handle:
+            pronunciations = json.load(handle)
     else:
         if args.configuration_version is None:
             parser.error("--configuration-version is required with --voice")
         voice = args.voice
         configuration_version = args.configuration_version
+        speed = 1.0
+        pause_seconds = 0.0
+        pronunciation_version = None
+        pronunciations = None
     render_article(
         request,
         manifest,
@@ -239,6 +306,10 @@ def main() -> None:
         args.output,
         voice,
         configuration_version,
+        speed=speed,
+        pause_seconds=pause_seconds,
+        pronunciations=pronunciations,
+        pronunciation_version=pronunciation_version,
     )
     print(f"PASS: Kokoro article audio generated at {args.output}")
 
