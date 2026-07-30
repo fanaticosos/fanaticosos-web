@@ -57,6 +57,7 @@ class AdminHelperTests(unittest.TestCase):
                 "finalize-opt-layout",
                 "run-kokoro-benchmark",
                 "kokoro-benchmark-status",
+                "install-kokoro-english-model",
             ],
         )
 
@@ -134,6 +135,19 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('HF_HUB_OFFLINE=1', runner)
         self.assertIn('ReadWritePaths=$data_root/work', runner)
         self.assertNotIn('"$2"', runner)
+
+    def test_spacy_model_installer_is_pinned_and_verified(self):
+        installer = self.helper.split(
+            "command_install_kokoro_english_model()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn("en_core_web_sm-3.8.0-py3-none-any.whl", installer)
+        self.assertIn("12806118", installer)
+        self.assertIn(
+            "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85",
+            installer,
+        )
+        self.assertIn("--no-deps", installer)
+        self.assertNotIn('"$2"', installer)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)

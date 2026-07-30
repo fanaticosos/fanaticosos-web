@@ -23,6 +23,7 @@ readonly kokoro_model="$data_root/models/kokoro-82m/f3ff3571791e39611d31c381e3a4
 readonly kokoro_benchmark="$repository/benchmarks/tts/es-en.json"
 readonly kokoro_runner="$repository/scripts/tts/benchmark_kokoro.py"
 readonly kokoro_output="$data_root/work/tts-benchmark-kokoro-v1"
+readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
 
 usage() {
   cat <<'EOF'
@@ -47,6 +48,7 @@ Commands:
   finalize-opt-layout EXPECTED_COMMIT
   run-kokoro-benchmark EXPECTED_COMMIT
   kokoro-benchmark-status
+  install-kokoro-english-model EXPECTED_COMMIT
 EOF
 }
 
@@ -452,6 +454,56 @@ command_kokoro_benchmark_status() {
   swapon --show
 }
 
+command_install_kokoro_english_model() {
+  local expected="$1"
+  local wheel="$data_root/work/en_core_web_sm-3.8.0.installing.whl"
+  local source
+  local expected_size
+  local expected_sha256
+  local actual_size
+  local actual_sha256
+
+  require_repository_commit "$expected"
+  [[ -x "$kokoro_venv/bin/python" ]] || stop "Kokoro runtime is missing."
+  [[ -f "$spacy_model_manifest" ]] || stop "spaCy model manifest is missing."
+  run_as_service "$kokoro_venv/bin/python" -c \
+    'import spacy, sys; sys.exit(0 if "en_core_web_sm" not in spacy.util.get_installed_models() else 1)' || \
+    stop "spaCy English model is already installed."
+  [[ ! -e "$wheel" ]] || stop "spaCy model staging file already exists."
+
+  source="$(jq -er '.source' "$spacy_model_manifest")"
+  expected_size="$(jq -er '.size' "$spacy_model_manifest")"
+  expected_sha256="$(jq -er '.sha256' "$spacy_model_manifest")"
+  [[ "$source" == "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" ]] || \
+    stop "Unexpected spaCy model source."
+  [[ "$expected_size" == "12806118" ]] || stop "Unexpected spaCy model size."
+  [[ "$expected_sha256" == "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85" ]] || \
+    stop "Unexpected spaCy model checksum."
+
+  cleanup_spacy_wheel() {
+    rm -f -- "$wheel"
+  }
+  trap cleanup_spacy_wheel EXIT
+  run_as_service curl --fail --location --silent --show-error \
+    "$source" --output "$wheel"
+  actual_size="$(stat -c %s "$wheel")"
+  actual_sha256="$(sha256sum "$wheel" | cut -d' ' -f1)"
+  [[ "$actual_size" == "$expected_size" ]] || stop "spaCy model size mismatch."
+  [[ "$actual_sha256" == "$expected_sha256" ]] || stop "spaCy model checksum mismatch."
+  run_as_service "$kokoro_venv/bin/python" -m pip install \
+    --disable-pip-version-check --no-deps "$wheel"
+  run_as_service "$kokoro_venv/bin/python" -c \
+    'import spacy; assert "en_core_web_sm" in spacy.util.get_installed_models(); spacy.load("en_core_web_sm")'
+  cleanup_spacy_wheel
+  trap - EXIT
+  run_as_service "$kokoro_venv/bin/python" -m pip freeze \
+    > "$data_root/work/kokoro-benchmark-runtime.freeze"
+  chown "$service_account:$service_account" \
+    "$data_root/work/kokoro-benchmark-runtime.freeze"
+  chmod 0600 "$data_root/work/kokoro-benchmark-runtime.freeze"
+  echo "PASS: Verified spaCy English model installed for offline Kokoro use."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -533,6 +585,10 @@ case "$command" in
   kokoro-benchmark-status)
     [[ $# == 0 ]] || stop "kokoro-benchmark-status accepts no arguments."
     command_kokoro_benchmark_status
+    ;;
+  install-kokoro-english-model)
+    [[ $# == 1 ]] || stop "install-kokoro-english-model requires EXPECTED_COMMIT."
+    command_install_kokoro_english_model "$1"
     ;;
   *)
     stop "Unsupported command: $command"
