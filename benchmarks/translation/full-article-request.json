@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "articleId": "00000000-0000-4000-8000-000000000003",
+  "sourceLocale": "es",
+  "targetLocale": "en",
+  "segments": [
+    {
+      "id": "title",
+      "kind": "title",
+      "text": "Remontada en Chicago: los Bears vencen 27-24 a Green Bay con un gol de campo de último segundo",
+      "preserve": ["Bears", "27-24", "Green Bay"]
+    },
+    {
+      "id": "game-recap",
+      "kind": "paragraph",
+      "text": "Caleb Williams completó 24 de 35 pases para 278 yardas, dos touchdowns y una intercepción.",
+      "preserve": ["Caleb Williams", "24", "35", "278"]
+    },
+    {
+      "id": "defensive-analysis",
+      "kind": "paragraph",
+      "text": "La defensa de Chicago alternó cobertura 2 y formaciones nickel para limitar los pases profundos, pero el blitz no llegó a tiempo.",
+      "preserve": ["Chicago"]
+    },
+    {
+      "id": "coach-quotation",
+      "kind": "quote",
+      "text": "«No podemos regalar el balón y esperar ganar en esta división», dijo el entrenador después del partido."
+    },
+    {
+      "id": "down-and-distance",
+      "kind": "paragraph",
+      "text": "En tercera y largo, el mariscal de campo escapó de la presión y encontró al ala cerrada más allá de la línea por ganar."
+    },
+    {
+      "id": "division-context",
+      "kind": "paragraph",
+      "text": "Chicago Bears, Green Bay Packers, Detroit Lions y Minnesota Vikings compiten en la NFC North.",
+      "preserve": ["Chicago Bears", "Green Bay Packers", "Detroit Lions", "Minnesota Vikings", "NFC North"]
+    },
+    {
+      "id": "turnover-analysis",
+      "kind": "paragraph",
+      "text": "A los Bears se les escapó el partido de las manos después de perder un balón suelto en la zona roja.",
+      "preserve": ["Bears"]
+    },
+    {
+      "id": "league-schedule",
+      "kind": "paragraph",
+      "text": "La NFL confirmó que el duelo de la NFC se jugará el domingo por la noche.",
+      "preserve": ["NFL", "NFC"]
+    },
+    {
+      "id": "pass-rush",
+      "kind": "paragraph",
+      "text": "El edge rusher consiguió dos capturas, forzó un balón suelto y golpeó al quarterback en cinco ocasiones."
+    },
+    {
+      "id": "fourth-down",
+      "kind": "paragraph",
+      "text": "En cuarta y una desde la yarda 42, una salida en falso movió a Chicago detrás de la línea de golpeo.",
+      "preserve": ["42", "Chicago"]
+    },
+    {
+      "id": "soldier-field-weather",
+      "kind": "paragraph",
+      "text": "El viento en Soldier Field complicó los despejes y obligó al pateador a mantener bajos sus intentos de gol de campo.",
+      "preserve": ["Soldier Field"]
+    },
+    {
+      "id": "long-form-analysis",
+      "kind": "paragraph",
+      "text": "Los Bears controlaron la primera mitad con una serie ofensiva de 12 jugadas, pero perdieron ritmo después del descanso. Green Bay cargó la caja para frenar la carrera y obligó a Chicago a convertir terceras oportunidades. El marcador de 20-17 reflejó un partido decidido en las trincheras.",
+      "preserve": ["Bears", "12", "Green Bay", "Chicago", "20-17"]
+    }
+  ]
+}

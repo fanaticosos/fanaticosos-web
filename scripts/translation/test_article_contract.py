@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import copy
+import json
 import unittest
+from pathlib import Path
 
 from article_contract import (
     source_revision,
@@ -94,6 +96,20 @@ class ArticleContractTests(unittest.TestCase):
         invalid["segments"].reverse()
         with self.assertRaisesRegex(ValueError, "ids/order mismatch"):
             validate_translation_result(invalid, self.request)
+
+    def test_full_article_acceptance_fixture_matches_contract(self):
+        fixture_path = (
+            Path(__file__).resolve().parents[2]
+            / "benchmarks"
+            / "translation"
+            / "full-article-request.json"
+        )
+        with fixture_path.open(encoding="utf-8") as handle:
+            fixture = json.load(handle)
+        normalized = validate_translation_request(fixture)
+        self.assertEqual(len(normalized["segments"]), 12)
+        self.assertEqual(normalized["segments"][0]["kind"], "title")
+        self.assertEqual(len(source_revision(normalized)), 64)
 
 
 if __name__ == "__main__":
