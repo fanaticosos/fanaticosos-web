@@ -46,7 +46,7 @@ Protected names: {protected}
 Terminology mappings:
 {mappings}
 
-Return only one valid JSON object containing a `translations` array.
+Return only one valid JSON array.
 Every array item must contain exactly two string fields named `id` and `translation`.
 Return one entry for every input id, in the original order. Do not use Markdown fences.
 <|im_end|>
@@ -76,6 +76,15 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
 
     decoder = json.JSONDecoder()
     candidates: list[dict[str, Any]] = []
+    try:
+        direct, _ = decoder.raw_decode(text)
+    except json.JSONDecodeError:
+        direct = None
+    if isinstance(direct, list):
+        candidates.append({"translations": direct})
+    elif isinstance(direct, dict) and isinstance(direct.get("translations"), list):
+        candidates.append(direct)
+
     position = 0
     while True:
         start = text.find("{", position)

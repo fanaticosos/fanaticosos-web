@@ -35,7 +35,7 @@ Supported segment kinds are `title`, `description`, `heading`, `paragraph`, `quo
 
 The contract permits at most 512 segments, 12,000 characters per segment, and 250,000 characters per article. These are input-safety limits, not single-model-invocation sizes. The worker will create smaller bounded inference batches.
 
-Production configuration version 3 limits a model batch to 700 source characters and includes only glossary entries and protected names relevant to that batch. This keeps the English-translation instruction prominent and avoids overwhelming the model with unrelated terminology.
+Production configuration version 4 limits a model batch to 700 source characters, includes only glossary entries and protected names relevant to that batch, accepts the model's validated bare-array response, and applies inflection-aware terminology checks. This keeps the English-translation instruction prominent and avoids overwhelming the model with unrelated terminology.
 
 ## Successful result
 
@@ -49,7 +49,7 @@ Production configuration version 3 limits a model batch to 700 source characters
   "modelRevision": "7c41481f57cb95916b40956ab2f0b139b296d974",
   "runtimeVersion": "b10195-47f686f53",
   "configurationVersion": "1",
-  "glossaryVersion": 3,
+  "glossaryVersion": 4,
   "generatedAt": "<UTC ISO-8601 timestamp>",
   "segments": [
     {

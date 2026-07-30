@@ -36,6 +36,14 @@ class QwenBenchmarkTests(unittest.TestCase):
         )
         self.assertEqual(actual, {"one": "One", "two": "Two"})
 
+    def test_extracts_bare_translation_array(self):
+        actual = extract_translations(
+            '[{"id":"one","translation":"One"},'
+            '{"id":"two","translation":"Two"}]',
+            ["one", "two"],
+        )
+        self.assertEqual(actual, {"one": "One", "two": "Two"})
+
     def test_extracts_fenced_json_after_thinking(self):
         raw = (
             "<think>ignored</think>\n```json\n"

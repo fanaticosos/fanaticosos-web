@@ -73,7 +73,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
         self.assertIn("Qwen3-8B-Q4_K_M.gguf", command)
         self.assertIn("7c41481f57cb95916b40956ab2f0b139b296d974", command)
         self.assertIn("b10195-47f686f53", command)
-        self.assertIn("--configuration-version 3", command)
+        self.assertIn("--configuration-version 4", command)
         self.assertIn("%i/failed-output.json", command)
         self.assertIn("--max-batch-characters 700", command)
 

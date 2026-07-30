@@ -17,7 +17,7 @@ from article_contract import (
     validate_translation_request,
     validate_translation_result,
 )
-from benchmark_opus import atomic_write_json, glossary_failures, read_json
+from benchmark_opus import atomic_write_json, read_json
 from benchmark_qwen import extract_translations, run_llama
 
 ENGINE = "llama.cpp"
@@ -63,6 +63,10 @@ def normalized_word_variants(value: str) -> set[str]:
         variants.add(normalized[:-1])
     if len(normalized) > 4 and normalized.endswith("es"):
         variants.add(normalized[:-2])
+    if len(normalized) > 5 and normalized.endswith("ing"):
+        stem = normalized[:-3]
+        variants.add(stem)
+        variants.add(f"{stem}e")
     return variants
 
 
@@ -151,7 +155,7 @@ Protected names: {protected}
 Terminology mappings:
 {mappings}
 
-Return only one valid JSON object containing a `translations` array.
+Return only one valid JSON array.
 Every array item must contain exactly two string fields named `id` and `translation`.
 Return every input id exactly once and in its original order. Do not use Markdown fences.
 <|im_end|>
@@ -204,7 +208,12 @@ def validate_segment_translation(
         raise ValueError(
             f"{segment['id']}: missing protected values: {', '.join(missing)}"
         )
-    failures = glossary_failures(segment["text"], translation, glossary["terms"])
+    failures = [
+        {"source": term["source"], "expectedTarget": term["target"]}
+        for term in glossary["terms"]
+        if glossary_term_occurs(term["source"], segment["text"])
+        and not glossary_term_occurs(term["target"], translation)
+    ]
     if failures:
         details = ", ".join(
             f"{failure['source']} -> {failure['expectedTarget']}"

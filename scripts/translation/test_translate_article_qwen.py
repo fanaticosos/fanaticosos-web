@@ -85,6 +85,43 @@ class TranslateArticleQwenTests(unittest.TestCase):
             )
         )
 
+    def test_glossary_validation_accepts_natural_inflection(self):
+        segment = {
+            "id": "turnover",
+            "kind": "paragraph",
+            "text": "Los Bears perdieron un balón suelto.",
+            "preserve": ["Bears"],
+        }
+        glossary = {
+            "version": 4,
+            "protectedNames": ["Bears"],
+            "terms": [{"source": "balón suelto", "target": "fumble"}],
+        }
+        validate_segment_translation(
+            segment,
+            "The Bears lost possession after fumbling.",
+            glossary,
+        )
+
+    def test_glossary_validation_requires_punt_not_kick(self):
+        segment = {
+            "id": "weather",
+            "kind": "paragraph",
+            "text": "El viento complicó los despejes.",
+            "preserve": [],
+        }
+        glossary = {
+            "version": 4,
+            "protectedNames": [],
+            "terms": [{"source": "despeje", "target": "punt"}],
+        }
+        with self.assertRaisesRegex(ValueError, "despeje -> punt"):
+            validate_segment_translation(
+                segment,
+                "The wind complicated the kicks.",
+                glossary,
+            )
+
     def test_translates_batches_and_builds_provenance(self):
         responses = iter(
             [

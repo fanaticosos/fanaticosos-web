@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "sourceLocale": "es",
   "targetLocale": "en",
   "scope": "NFL and Chicago Bears sports journalism",
@@ -40,6 +40,7 @@
     { "category": "positions", "source": "retornador de patadas", "target": "kick returner" },
     { "category": "positions", "source": "retornador de despejes", "target": "punt returner" },
 
+    { "category": "plays", "source": "despeje", "target": "punt" },
     { "category": "plays", "source": "balón suelto", "target": "fumble" },
     { "category": "plays", "source": "captura", "target": "sack" },
     { "category": "plays", "source": "pase completo", "target": "completion" },
