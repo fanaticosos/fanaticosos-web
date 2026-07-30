@@ -109,56 +109,62 @@ def run_llama(
 ) -> tuple[str, str, float]:
     with tempfile.TemporaryDirectory(prefix="fanaticosos-qwen-") as directory:
         output_path = Path(directory) / "output.txt"
+        stderr_path = Path(directory) / "stderr.txt"
         started = time.perf_counter()
-        completed = subprocess.run(
-            [
-                str(llama_cli),
-                "-m",
-                str(model_file),
-                "-t",
-                str(threads),
-                "-c",
-                str(context),
-                "-n",
-                str(output_tokens),
-                "--temp",
-                "0",
-                "--top-k",
-                "1",
-                "--seed",
-                "0",
-                "--no-display-prompt",
-                "--no-warmup",
-                "--no-conversation",
-                "--simple-io",
-                "--log-disable",
-                "--output",
-                str(output_path),
-                "-p",
-                prompt,
-            ],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env={
-                **os.environ,
-                "NO_COLOR": "1",
-                "OMP_NUM_THREADS": str(threads),
-            },
-            check=False,
-        )
+        with stderr_path.open("wb") as stderr_file:
+            completed = subprocess.run(
+                [
+                    str(llama_cli),
+                    "-m",
+                    str(model_file),
+                    "-t",
+                    str(threads),
+                    "-c",
+                    str(context),
+                    "-n",
+                    str(output_tokens),
+                    "--temp",
+                    "0",
+                    "--top-k",
+                    "1",
+                    "--seed",
+                    "0",
+                    "--no-display-prompt",
+                    "--no-warmup",
+                    "--no-conversation",
+                    "--simple-io",
+                    "--log-disable",
+                    "--output",
+                    str(output_path),
+                    "-p",
+                    prompt,
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=stderr_file,
+                env={
+                    **os.environ,
+                    "NO_COLOR": "1",
+                    "OMP_NUM_THREADS": str(threads),
+                },
+                check=False,
+            )
         elapsed = time.perf_counter() - started
+        with stderr_path.open("rb") as stderr_file:
+            stderr_file.seek(0, os.SEEK_END)
+            stderr_size = stderr_file.tell()
+            stderr_file.seek(max(0, stderr_size - 65_536))
+            stderr = stderr_file.read().decode("utf-8", errors="replace")
         if completed.returncode != 0:
             raise RuntimeError(
-                f"llama-cli exited {completed.returncode}: {completed.stderr.strip()}"
+                f"llama-cli exited {completed.returncode}: {stderr.strip()}"
             )
         if not output_path.is_file():
             raise RuntimeError("llama-cli did not create its explicit output file")
         output = output_path.read_text(encoding="utf-8")
         if not output.strip():
             raise RuntimeError("llama-cli explicit output file is empty")
-        return output, completed.stderr, elapsed
+        return output, stderr, elapsed
 
 
 def parse_args() -> argparse.Namespace:
