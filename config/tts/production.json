@@ -24,7 +24,7 @@
       "pauseSeconds": 0.16
     }
   },
-  "pronunciationVersion": 2,
+  "pronunciationVersion": 3,
   "encoding": {
     "codec": "mp3",
     "sampleRateHz": 48000,

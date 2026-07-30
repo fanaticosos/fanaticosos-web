@@ -14,8 +14,8 @@ from pronunciations import apply_pronunciations, validate_pronunciations
 
 
 TEXT = (
-    "Los Chicago Bears y Caleb Williams enfrentan a Green Bay Packers en "
-    "Soldier Field dentro de la NFC North."
+    "Caleb Williams lanzó dos touchdowns para los Chicago Bears. "
+    "El segundo touchdown llegó en Soldier Field."
 )
 VOICE = "em_alex"
 SPEED = 1.02
@@ -60,7 +60,7 @@ def main() -> None:
         ]
         audio = concatenate_audio(chunks, torch)
         wav = staging / "diagnostic.wav"
-        mp3 = staging / "latino-em_alex-broadcast.mp3"
+        mp3 = staging / "latino-em_alex-broadcast-v2.mp3"
         soundfile.write(wav, audio.numpy(), 24000, subtype="PCM_16")
         run_ffmpeg(wav, mp3)
         wav.unlink()

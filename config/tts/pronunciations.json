@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 2,
+  "version": 3,
   "overrides": {
     "es": [
       {
@@ -27,6 +27,16 @@
         "written": "NFC North",
         "spoken": "ene efe ce Nort",
         "reason": "Latin-American sports-broadcast pronunciation"
+      },
+      {
+        "written": "touchdowns",
+        "spoken": "tóchdauns",
+        "reason": "Avoid awkward English word separation in Spanish narration"
+      },
+      {
+        "written": "touchdown",
+        "spoken": "tóchdaun",
+        "reason": "Avoid awkward English word separation in Spanish narration"
       }
     ],
     "en": []

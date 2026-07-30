@@ -35,6 +35,14 @@ class PronunciationTests(unittest.TestCase):
         text = "The Bears beat Green Bay."
         self.assertEqual(apply_pronunciations(text, "en", self.configuration), text)
 
+    def test_spanish_touchdown_terms_use_one_broadcast_word(self):
+        written = "Anotó dos touchdowns y el segundo touchdown decidió el partido."
+        spoken = apply_pronunciations(written, "es", self.configuration)
+        self.assertEqual(
+            spoken,
+            "Anotó dos tóchdauns y el segundo tóchdaun decidió el partido.",
+        )
+
     def test_does_not_replace_inside_longer_word(self):
         text = "NotGreen BayArea"
         self.assertEqual(apply_pronunciations(text, "es", self.configuration), text)
