@@ -1,32 +1,32 @@
 [Unit]
 Description=Fanaticosos bounded article translation job %i
-Documentation=file:/srv/fanaticosos-blog/repository/docs/TRANSLATION_JOB_CONTRACT.md
+Documentation=file:/opt/fanaticosos-blog/repository/docs/TRANSLATION_JOB_CONTRACT.md
 After=local-fs.target
-ConditionPathExists=/var/lib/fanaticosos-blog/jobs/%i/request.json
+ConditionPathExists=/opt/fanaticosos-blog/jobs/%i/request.json
 
 [Service]
 Type=exec
 User=fanaticosos-blog
 Group=fanaticosos-blog
-WorkingDirectory=/srv/fanaticosos-blog/repository
+WorkingDirectory=/opt/fanaticosos-blog/repository
 UMask=0077
 
-Environment=HOME=/var/lib/fanaticosos-blog
+Environment=HOME=/opt/fanaticosos-blog
 Environment=NO_COLOR=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=OMP_NUM_THREADS=12
 
-ExecCondition=/usr/bin/test -f /var/lib/fanaticosos-blog/jobs/%i/request.json
-ExecStart=/usr/bin/python3 /srv/fanaticosos-blog/repository/scripts/translation/translate_article_qwen.py \
-  --request /var/lib/fanaticosos-blog/jobs/%i/request.json \
-  --glossary /srv/fanaticosos-blog/repository/config/translation/glossary.json \
-  --llama-cli /var/lib/fanaticosos-blog/tools/llama.cpp-b10195/llama-b10195/llama-cli \
-  --model-file /var/lib/fanaticosos-blog/models/qwen3-8b-gguf/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf \
+ExecCondition=/usr/bin/test -f /opt/fanaticosos-blog/jobs/%i/request.json
+ExecStart=/usr/bin/python3 /opt/fanaticosos-blog/repository/scripts/translation/translate_article_qwen.py \
+  --request /opt/fanaticosos-blog/jobs/%i/request.json \
+  --glossary /opt/fanaticosos-blog/repository/config/translation/glossary.json \
+  --llama-cli /opt/fanaticosos-blog/tools/llama.cpp-b10195/llama-b10195/llama-cli \
+  --model-file /opt/fanaticosos-blog/models/qwen3-8b-gguf/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf \
   --model-revision 7c41481f57cb95916b40956ab2f0b139b296d974 \
   --runtime-version b10195-47f686f53 \
   --configuration-version 6 \
-  --output /var/lib/fanaticosos-blog/jobs/%i/result.json \
-  --failure-output /var/lib/fanaticosos-blog/jobs/%i/failed-output.json \
+  --output /opt/fanaticosos-blog/jobs/%i/result.json \
+  --failure-output /opt/fanaticosos-blog/jobs/%i/failed-output.json \
   --threads 12 \
   --context 8192 \
   --output-tokens 2048 \
@@ -56,7 +56,7 @@ ProtectKernelLogs=yes
 ProtectKernelModules=yes
 ProtectKernelTunables=yes
 ProtectSystem=strict
-ReadWritePaths=/var/lib/fanaticosos-blog/jobs/%i
+ReadWritePaths=/opt/fanaticosos-blog/jobs/%i
 RestrictRealtime=yes
 LockPersonality=yes
 

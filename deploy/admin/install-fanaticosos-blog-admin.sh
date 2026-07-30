@@ -11,7 +11,7 @@ if [[ "$(id -u)" != "0" ]]; then
   exit 1
 fi
 
-repository="/srv/fanaticosos-blog/repository"
+repository="/opt/fanaticosos-blog/repository"
 helper_source="$repository/deploy/admin/fanaticosos-blog-admin"
 sudoers_source="$repository/deploy/admin/fanaticosos-blog-admin.sudoers"
 helper_target="/usr/local/sbin/fanaticosos-blog-admin"

@@ -46,14 +46,14 @@ if [[ ! "$job_id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
 fi
 
 service_account="fanaticosos-blog"
-repository="/srv/fanaticosos-blog/repository"
+repository="/opt/fanaticosos-blog/repository"
 source_unit="$repository/deploy/systemd/fanaticosos-translation@.service"
 installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
 fixture="$repository/benchmarks/translation/full-article-request.json"
 glossary="$repository/config/translation/glossary.json"
-model="/var/lib/fanaticosos-blog/models/qwen3-8b-gguf/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf"
-llama_cli="/var/lib/fanaticosos-blog/tools/llama.cpp-b10195/llama-b10195/llama-cli"
-job_dir="/var/lib/fanaticosos-blog/jobs/$job_id"
+model="/opt/fanaticosos-blog/models/qwen3-8b-gguf/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf"
+llama_cli="/opt/fanaticosos-blog/tools/llama.cpp-b10195/llama-b10195/llama-cli"
+job_dir="/opt/fanaticosos-blog/jobs/$job_id"
 
 echo "=== Identity and repository ==="
 current_commit="$(
@@ -183,7 +183,7 @@ if sudo test -e "$job_dir"; then
 fi
 
 for prior in full-article-0001 full-article-0002; do
-  prior_dir="/var/lib/fanaticosos-blog/jobs/$prior"
+  prior_dir="/opt/fanaticosos-blog/jobs/$prior"
   if ! sudo -u "$service_account" -H \
     test -s "$prior_dir/failed-output.json"; then
     echo "STOP: Prior failure evidence is missing for $prior."

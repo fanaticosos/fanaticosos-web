@@ -52,12 +52,13 @@ class AdminHelperTests(unittest.TestCase):
                 "install-kokoro-runtime",
                 "kokoro-runtime-status",
                 "download-kokoro-candidates",
+                "migrate-to-opt",
             ],
         )
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(
-            'readonly kokoro_venv="/var/lib/fanaticosos-blog/venvs/tts-benchmark-kokoro-v1"',
+            'readonly kokoro_venv="$data_root/runtimes/tts-benchmark-kokoro-v1"',
             self.helper,
         )
         self.assertIn(

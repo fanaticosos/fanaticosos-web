@@ -2,16 +2,24 @@
 set -euo pipefail
 
 readonly service_account="fanaticosos-blog"
-readonly repository="/srv/fanaticosos-blog/repository"
+readonly project_root="/opt/fanaticosos-blog"
+readonly legacy_repository="/srv/fanaticosos-blog/repository"
+if [[ -d "$project_root/repository/.git" ]]; then
+  readonly repository="$project_root/repository"
+  readonly data_root="$project_root"
+else
+  readonly repository="$legacy_repository"
+  readonly data_root="/var/lib/fanaticosos-blog"
+fi
 readonly branch="feature/multilingual-audio-blog"
 readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.service"
 readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
-readonly jobs_root="/var/lib/fanaticosos-blog/jobs"
-readonly kokoro_venv="/var/lib/fanaticosos-blog/venvs/tts-benchmark-kokoro-v1"
+readonly jobs_root="$data_root/jobs"
+readonly kokoro_venv="$data_root/runtimes/tts-benchmark-kokoro-v1"
 readonly kokoro_requirements="$repository/config/tts/kokoro-benchmark-requirements.txt"
 readonly kokoro_manifest="$repository/config/tts/kokoro-candidate-files.json"
-readonly kokoro_model="/var/lib/fanaticosos-blog/models/kokoro-82m/f3ff3571791e39611d31c381e3a41a3af07b4987"
+readonly kokoro_model="$data_root/models/kokoro-82m/f3ff3571791e39611d31c381e3a41a3af07b4987"
 
 usage() {
   cat <<'EOF'
@@ -31,6 +39,7 @@ Commands:
   install-kokoro-runtime EXPECTED_COMMIT
   kokoro-runtime-status
   download-kokoro-candidates EXPECTED_COMMIT
+  migrate-to-opt EXPECTED_COMMIT
 EOF
 }
 
@@ -245,10 +254,10 @@ command_install_kokoro_runtime() {
     'import importlib.metadata as m; import kokoro, soundfile, torch; print("kokoro={} soundfile={} torch={}".format(m.version("kokoro"), m.version("soundfile"), torch.__version__))'
   trap - EXIT
   run_as_service "$kokoro_venv/bin/python" -m pip freeze \
-    > /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+    > "$data_root/work/kokoro-benchmark-runtime.freeze"
   chown "$service_account:$service_account" \
-    /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
-  chmod 0600 /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+    "$data_root/work/kokoro-benchmark-runtime.freeze"
+  chmod 0600 "$data_root/work/kokoro-benchmark-runtime.freeze"
 
   echo "PASS: Isolated Kokoro benchmark runtime installed."
   echo "PASS: No model, voice, service, listener, or audio was created."
@@ -264,9 +273,9 @@ command_kokoro_runtime_status() {
   else
     echo "Kokoro runtime: ABSENT"
   fi
-  if [[ -f /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze ]]; then
+  if [[ -f "$data_root/work/kokoro-benchmark-runtime.freeze" ]]; then
     stat -c 'owner=%U group=%G mode=%a size=%s path=%n' \
-      /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+      "$data_root/work/kokoro-benchmark-runtime.freeze"
   else
     echo "Runtime manifest: ABSENT"
   fi
@@ -286,6 +295,41 @@ command_download_kokoro_candidates() {
     --manifest "$kokoro_manifest" \
     --target "$kokoro_model"
   echo "PASS: No service, listener, or audio was created."
+}
+
+command_migrate_to_opt() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ "$repository" == "$legacy_repository" ]] || stop "Repository is already under /opt."
+  [[ ! -e "$project_root" ]] || stop "Target already exists: $project_root"
+  ! pgrep -f 'translate_article_qwen.py|llama-cli|KPipeline' >/dev/null || \
+    stop "A project model process is running."
+
+  install -d -o "$service_account" -g "$service_account" -m 0750 "$project_root"
+  mv "$legacy_repository" "$project_root/repository"
+  shopt -s dotglob nullglob
+  for source in /var/lib/fanaticosos-blog/*; do
+    name="$(basename "$source")"
+    target_name="$name"
+    [[ "$name" != "venvs" ]] || target_name="runtimes"
+    [[ ! -e "$project_root/$target_name" ]] || \
+      stop "Migration target already exists: $project_root/$target_name"
+    mv "$source" "$project_root/$target_name"
+  done
+  shopt -u dotglob nullglob
+  if [[ -e /var/cache/fanaticosos-blog ]]; then
+    mv /var/cache/fanaticosos-blog "$project_root/cache"
+  fi
+  usermod --home "$project_root" "$service_account"
+  install -o root -g root -m 0755 \
+    "$project_root/repository/deploy/admin/fanaticosos-blog-admin" \
+    /usr/local/sbin/fanaticosos-blog-admin
+  install -o root -g root -m 0644 \
+    "$project_root/repository/deploy/systemd/fanaticosos-translation@.service" \
+    "$installed_unit"
+  systemctl daemon-reload
+  rmdir /srv/fanaticosos-blog /var/lib/fanaticosos-blog 2>/dev/null || true
+  echo "PASS: Fanaticosos Blog migrated to $project_root."
 }
 
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
@@ -349,6 +393,10 @@ case "$command" in
   download-kokoro-candidates)
     [[ $# == 1 ]] || stop "download-kokoro-candidates requires EXPECTED_COMMIT."
     command_download_kokoro_candidates "$1"
+    ;;
+  migrate-to-opt)
+    [[ $# == 1 ]] || stop "migrate-to-opt requires EXPECTED_COMMIT."
+    command_migrate_to_opt "$1"
     ;;
   *)
     stop "Unsupported command: $command"

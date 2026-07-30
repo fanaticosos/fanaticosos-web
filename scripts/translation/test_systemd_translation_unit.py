@@ -30,7 +30,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
         self.assertIn("%i/request.json", self.parser["Unit"]["ConditionPathExists"])
         self.assertEqual(
             self.parser["Service"]["ExecCondition"],
-            "/usr/bin/test -f /var/lib/fanaticosos-blog/jobs/%i/request.json",
+            "/usr/bin/test -f /opt/fanaticosos-blog/jobs/%i/request.json",
         )
         self.assertNotIn("WantedBy", self.parser["Install"])
 
@@ -64,7 +64,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
             self.assertEqual(service[directive], "yes")
         self.assertEqual(service["ProtectSystem"], "strict")
         self.assertEqual(
-            service["ReadWritePaths"], "/var/lib/fanaticosos-blog/jobs/%i"
+            service["ReadWritePaths"], "/opt/fanaticosos-blog/jobs/%i"
         )
 
     def test_pins_model_runtime_and_worker_configuration(self):
