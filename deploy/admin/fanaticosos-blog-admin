@@ -28,7 +28,7 @@ readonly kokoro_pronunciations="$repository/config/tts/pronunciations.json"
 readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
 readonly spanglish_diagnostic="$data_root/work/tts-spanglish-diagnostic-v1"
 readonly tts_tuning_output="$data_root/work/tts-selected-voice-tuning-v1"
-readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v3"
+readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v4"
 readonly long_form_review="$data_root/work/tts-long-form-review-v2"
 
 usage() {
@@ -691,7 +691,7 @@ command_run_latino_diagnostic() {
       --pronunciations "$kokoro_pronunciations" \
       --model-root "$kokoro_model" \
       --output "$latino_diagnostic"
-  [[ -f "$latino_diagnostic/latino-em_alex-broadcast-v3.mp3" ]] || \
+  [[ -f "$latino_diagnostic/latino-em_alex-broadcast-v4.mp3" ]] || \
     stop "Latino diagnostic MP3 is missing."
   [[ -f "$latino_diagnostic/metadata.json" ]] || \
     stop "Latino diagnostic metadata is missing."
@@ -700,15 +700,15 @@ command_run_latino_diagnostic() {
 
 command_export_latino_diagnostic() {
   local expected="$1"
-  local export_root="/home/sysadmin/fanaticosos-latino-diagnostic-v3"
+  local export_root="/home/sysadmin/fanaticosos-latino-diagnostic-v4"
   require_repository_commit "$expected"
-  [[ -f "$latino_diagnostic/latino-em_alex-broadcast-v3.mp3" ]] || \
+  [[ -f "$latino_diagnostic/latino-em_alex-broadcast-v4.mp3" ]] || \
     stop "Latino diagnostic is missing."
   [[ ! -e "$export_root" ]] || stop "Latino diagnostic export already exists."
   install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
   install -o sysadmin -g sysadmin -m 0640 \
-    "$latino_diagnostic/latino-em_alex-broadcast-v3.mp3" \
-    "$export_root/latino-em_alex-broadcast-v3.mp3"
+    "$latino_diagnostic/latino-em_alex-broadcast-v4.mp3" \
+    "$export_root/latino-em_alex-broadcast-v4.mp3"
   install -o sysadmin -g sysadmin -m 0640 \
     "$latino_diagnostic/metadata.json" "$export_root/metadata.json"
   echo "PASS: Latino broadcast diagnostic exported."

@@ -24,7 +24,7 @@ The official voice inventory warns that non-English support can be thinner than 
 
 The owner accepted the short Latino name-delivery diagnostic as the integration baseline. Production remains blocked until long-form phrasing and listening comfort are accepted; a short diagnostic does not by itself approve the engine for published articles.
 
-The owner accepted the English `af_heart` long-form review on 2026-07-30. The owner also accepted Spanish pronunciation corrections for NFL names and loanwords through pronunciation dictionary version 4, including `Detroit Lions`, `touchdown`, and `touchdowns`. A revised Spanish long-form review remains the final TTS quality gate; production status remains unchanged until that review is accepted.
+The owner accepted the English `af_heart` long-form review on 2026-07-30. The owner also accepted Spanish pronunciation corrections for NFL names and loanwords through pronunciation dictionary version 4, including `Detroit Lions`, `touchdown`, and `touchdowns`. Dictionary version 5 introduces required categories for teams, cities, players, stadiums, divisions, and football terms, and adds a pending owner review for `Minnesota Vikings`. This centralized dictionary is the single narration source; articles do not carry routine pronunciation instructions. A revised Spanish long-form review remains the final TTS quality gate; production status remains unchanged until that review is accepted.
 
 ## Version 1 comparison voices
 

@@ -7,6 +7,9 @@ import re
 from typing import Any
 
 
+ALLOWED_CATEGORIES = {"city", "division", "player", "stadium", "team", "term"}
+
+
 def validate_pronunciations(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict) or value.get("schemaVersion") != 1:
         raise ValueError("pronunciation schema version must be 1")
@@ -23,6 +26,9 @@ def validate_pronunciations(value: Any) -> dict[str, Any]:
         for item in entries:
             if not isinstance(item, dict):
                 raise ValueError("pronunciation override must be an object")
+            category = item.get("category")
+            if category not in ALLOWED_CATEGORIES:
+                raise ValueError("pronunciation override category is invalid")
             written = item.get("written")
             spoken = item.get("spoken")
             if not isinstance(written, str) or not written.strip() or written != written.strip():

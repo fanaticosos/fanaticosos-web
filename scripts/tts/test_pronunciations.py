@@ -49,6 +49,17 @@ class PronunciationTests(unittest.TestCase):
         self.assertEqual(spoken, "Los Ditróit Láions visitan Chicago.")
         self.assertIn("Detroit Lions", written)
 
+    def test_minnesota_vikings_preserves_vikings_diphthong(self):
+        written = "Los Minnesota Vikings visitan Chicago."
+        spoken = apply_pronunciations(written, "es", self.configuration)
+        self.assertEqual(spoken, "Los Minesóta Váikings visitan Chicago.")
+
+    def test_uncategorized_override_is_rejected(self):
+        invalid = copy.deepcopy(self.configuration)
+        del invalid["overrides"]["es"][0]["category"]
+        with self.assertRaisesRegex(ValueError, "category"):
+            validate_pronunciations(invalid)
+
     def test_does_not_replace_inside_longer_word(self):
         text = "NotGreen BayArea"
         self.assertEqual(apply_pronunciations(text, "es", self.configuration), text)

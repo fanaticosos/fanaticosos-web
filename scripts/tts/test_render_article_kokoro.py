@@ -135,6 +135,7 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             "overrides": {
                 "es": [
                     {
+                        "category": "player",
                         "written": "Caleb Williams",
                         "spoken": "Kéileb Uíliams",
                         "reason": "reviewed narration",

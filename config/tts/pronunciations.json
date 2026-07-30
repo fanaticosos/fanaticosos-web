@@ -1,47 +1,61 @@
 {
   "schemaVersion": 1,
-  "version": 4,
+  "version": 5,
   "overrides": {
     "es": [
       {
+        "category": "team",
         "written": "Chicago Bears",
         "spoken": "Chicágo Bers",
         "reason": "Latin-American sports-broadcast pronunciation"
       },
       {
+        "category": "player",
         "written": "Caleb Williams",
         "spoken": "Kéileb Uíliams",
         "reason": "Latin-American sports-broadcast pronunciation"
       },
       {
+        "category": "team",
         "written": "Green Bay Packers",
         "spoken": "Grin Béi Páquers",
         "reason": "Latin-American sports-broadcast pronunciation"
       },
       {
+        "category": "stadium",
         "written": "Soldier Field",
         "spoken": "Sóldier Fíld",
         "reason": "Latin-American sports-broadcast pronunciation"
       },
       {
+        "category": "division",
         "written": "NFC North",
         "spoken": "ene efe ce Nort",
         "reason": "Latin-American sports-broadcast pronunciation"
       },
       {
+        "category": "term",
         "written": "touchdowns",
         "spoken": "tóchdauns",
         "reason": "Avoid awkward English word separation in Spanish narration"
       },
       {
+        "category": "term",
         "written": "touchdown",
         "spoken": "tóchdaun",
         "reason": "Avoid awkward English word separation in Spanish narration"
       },
       {
+        "category": "team",
         "written": "Detroit Lions",
         "spoken": "Ditróit Láions",
         "reason": "Preserve Detroit and avoid narration sounding like destroy"
+      },
+      {
+        "category": "team",
+        "written": "Minnesota Vikings",
+        "spoken": "Minesóta Váikings",
+        "reason": "Preserve the Vikings diphthong in Spanish narration"
       }
     ],
     "en": []
