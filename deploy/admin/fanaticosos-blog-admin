@@ -41,6 +41,7 @@ Commands:
   download-kokoro-candidates EXPECTED_COMMIT
   migrate-to-opt EXPECTED_COMMIT
   release-layout-status
+  finalize-opt-layout EXPECTED_COMMIT
 EOF
 }
 
@@ -358,6 +359,31 @@ command_release_layout_status() {
   done
 }
 
+command_finalize_opt_layout() {
+  local expected="$1"
+  local legacy_root="/srv/fanaticosos-blog"
+  local legacy_releases="$legacy_root/releases"
+  local target_releases="$project_root/releases"
+
+  require_repository_commit "$expected"
+  [[ -d "$legacy_releases" ]] || stop "Legacy release directory is missing."
+  [[ -z "$(find "$legacy_releases" -mindepth 1 -print -quit)" ]] || \
+    stop "Legacy release directory is not empty."
+  [[ ! -e "$target_releases" ]] || stop "Target already exists: $target_releases"
+  [[ ! -e /var/lib/fanaticosos-blog ]] || stop "Legacy data root still exists."
+  [[ ! -e /var/cache/fanaticosos-blog ]] || stop "Legacy cache root still exists."
+
+  mv "$legacy_releases" "$target_releases"
+  chown "$service_account:$service_account" "$target_releases"
+  chmod 0750 "$target_releases"
+  rmdir "$legacy_root"
+
+  [[ -d "$target_releases" ]] || stop "Target release directory was not created."
+  [[ ! -e "$legacy_root" ]] || stop "Legacy project root still exists."
+  echo "PASS: Empty release directory moved to $target_releases."
+  echo "PASS: Legacy project roots are absent."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -427,6 +453,10 @@ case "$command" in
   release-layout-status)
     [[ $# == 0 ]] || stop "release-layout-status accepts no arguments."
     command_release_layout_status
+    ;;
+  finalize-opt-layout)
+    [[ $# == 1 ]] || stop "finalize-opt-layout requires EXPECTED_COMMIT."
+    command_finalize_opt_layout "$1"
     ;;
   *)
     stop "Unsupported command: $command"

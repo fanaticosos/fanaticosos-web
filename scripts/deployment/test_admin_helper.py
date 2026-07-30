@@ -54,6 +54,7 @@ class AdminHelperTests(unittest.TestCase):
                 "download-kokoro-candidates",
                 "migrate-to-opt",
                 "release-layout-status",
+                "finalize-opt-layout",
             ],
         )
 
@@ -103,6 +104,16 @@ class AdminHelperTests(unittest.TestCase):
         )[0]
         self.assertNotIn("rm ", inventory)
         self.assertNotIn("mv ", inventory)
+
+    def test_layout_finalizer_requires_empty_fixed_legacy_directory(self):
+        finalizer = self.helper.split("command_finalize_opt_layout()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('local legacy_root="/srv/fanaticosos-blog"', finalizer)
+        self.assertIn('find "$legacy_releases" -mindepth 1 -print -quit', finalizer)
+        self.assertIn('[[ ! -e "$target_releases" ]]', finalizer)
+        self.assertIn('rmdir "$legacy_root"', finalizer)
+        self.assertNotIn("rm ", finalizer)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)
