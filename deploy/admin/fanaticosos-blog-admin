@@ -23,7 +23,8 @@ readonly kokoro_manifest="$repository/config/tts/kokoro-candidate-files.json"
 readonly kokoro_model="$data_root/models/kokoro-82m/f3ff3571791e39611d31c381e3a41a3af07b4987"
 readonly kokoro_benchmark="$repository/benchmarks/tts/es-en.json"
 readonly kokoro_runner="$repository/scripts/tts/benchmark_kokoro.py"
-readonly kokoro_output="$data_root/work/tts-benchmark-kokoro-v1"
+readonly kokoro_output="$data_root/work/tts-benchmark-kokoro-v2"
+readonly kokoro_pronunciations="$repository/config/tts/pronunciations.json"
 readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
 
 usage() {
@@ -435,6 +436,7 @@ command_run_kokoro_benchmark() {
       --benchmark "$kokoro_benchmark" \
       --manifest "$kokoro_manifest" \
       --model-root "$kokoro_model" \
+      --pronunciations "$kokoro_pronunciations" \
       --output "$kokoro_output"
 
   [[ -f "$kokoro_output/metrics.json" ]] || stop "Kokoro metrics are missing."
@@ -525,7 +527,7 @@ command_install_kokoro_english_model() {
 
 command_export_kokoro_samples() {
   local expected="$1"
-  local export_root="/home/sysadmin/fanaticosos-tts-samples"
+  local export_root="/home/sysadmin/fanaticosos-tts-samples-v2"
   local sample
 
   require_repository_commit "$expected"

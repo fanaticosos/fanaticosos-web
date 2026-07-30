@@ -16,6 +16,7 @@ from typing import Any
 
 from download_kokoro_candidates import validate_manifest
 from validate_benchmark import validate_benchmark
+from pronunciations import apply_pronunciations, validate_pronunciations
 
 
 SAMPLE_RATE = 24_000
@@ -129,9 +130,11 @@ def generate_benchmark(
     manifest: dict[str, Any],
     model_root: Path,
     output: Path,
+    pronunciations: dict[str, Any],
 ) -> None:
     validate_benchmark(benchmark)
     verify_candidate_files(manifest, model_root)
+    validate_pronunciations(pronunciations)
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
     staging = output.with_name(f"{output.name}.generating")
@@ -169,7 +172,9 @@ def generate_benchmark(
                 chunks = [
                     result.audio
                     for result in pipeline(
-                        sample["text"],
+                        apply_pronunciations(
+                            sample["text"], locale, pronunciations
+                        ),
                         voice=str(voice_path),
                         speed=1,
                     )
@@ -206,6 +211,7 @@ def generate_benchmark(
             "peakResidentMemoryKiB": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             "sampleRateHz": SAMPLE_RATE,
             "normalization": "EBU R128 I=-16 LUFS, TP=-1.5 dB, LRA=11 LU",
+            "pronunciationVersion": pronunciations["version"],
             "results": results,
         }
         metrics_path = staging / "metrics.json"
@@ -227,12 +233,17 @@ def main() -> None:
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--model-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--pronunciations", required=True, type=Path)
     args = parser.parse_args()
     with args.benchmark.open(encoding="utf-8") as handle:
         benchmark = json.load(handle)
     with args.manifest.open(encoding="utf-8") as handle:
         manifest = json.load(handle)
-    generate_benchmark(benchmark, manifest, args.model_root, args.output)
+    with args.pronunciations.open(encoding="utf-8") as handle:
+        pronunciations = json.load(handle)
+    generate_benchmark(
+        benchmark, manifest, args.model_root, args.output, pronunciations
+    )
     print(f"PASS: Kokoro listening benchmark generated at {args.output}")
 
 

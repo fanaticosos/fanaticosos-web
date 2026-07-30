@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "overrides": {
+    "es": [
+      {
+        "written": "Green Bay",
+        "spoken": "Grin Bei",
+        "reason": "Spanish phonemizer otherwise pronounces the team/place name as gre-em bye"
+      }
+    ],
+    "en": []
+  }
+}
