@@ -29,7 +29,7 @@ readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
 readonly spanglish_diagnostic="$data_root/work/tts-spanglish-diagnostic-v1"
 readonly tts_tuning_output="$data_root/work/tts-selected-voice-tuning-v1"
 readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v3"
-readonly long_form_review="$data_root/work/tts-long-form-review-v1"
+readonly long_form_review="$data_root/work/tts-long-form-review-v2"
 
 usage() {
   cat <<'EOF'
@@ -749,7 +749,7 @@ command_run_tts_long_form_review() {
 
 command_export_tts_long_form_review() {
   local expected="$1"
-  local export_root="/home/sysadmin/fanaticosos-tts-long-form-review-v1"
+  local export_root="/home/sysadmin/fanaticosos-tts-long-form-review-v2"
   require_repository_commit "$expected"
   [[ -f "$long_form_review/summary.json" ]] || stop "Long-form review is missing."
   [[ ! -e "$export_root" ]] || stop "Long-form review export already exists."

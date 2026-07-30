@@ -24,6 +24,8 @@ The official voice inventory warns that non-English support can be thinner than 
 
 The owner accepted the short Latino name-delivery diagnostic as the integration baseline. Production remains blocked until long-form phrasing and listening comfort are accepted; a short diagnostic does not by itself approve the engine for published articles.
 
+The owner accepted the English `af_heart` long-form review on 2026-07-30. The owner also accepted Spanish pronunciation corrections for NFL names and loanwords through pronunciation dictionary version 4, including `Detroit Lions`, `touchdown`, and `touchdowns`. A revised Spanish long-form review remains the final TTS quality gate; production status remains unchanged until that review is accepted.
+
 ## Version 1 comparison voices
 
 - Spanish: `ef_dora`, `em_alex`, `em_santa`
