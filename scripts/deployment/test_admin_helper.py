@@ -55,6 +55,8 @@ class AdminHelperTests(unittest.TestCase):
                 "migrate-to-opt",
                 "release-layout-status",
                 "finalize-opt-layout",
+                "run-kokoro-benchmark",
+                "kokoro-benchmark-status",
             ],
         )
 
@@ -114,6 +116,19 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('[[ ! -e "$target_releases" ]]', finalizer)
         self.assertIn('rmdir "$legacy_root"', finalizer)
         self.assertNotIn("rm ", finalizer)
+
+    def test_kokoro_benchmark_is_fixed_bounded_and_offline(self):
+        runner = self.helper.split("command_run_kokoro_benchmark()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('RuntimeMaxSec=15min', runner)
+        self.assertIn('MemoryMax=8G', runner)
+        self.assertIn('MemorySwapMax=1G', runner)
+        self.assertIn('PrivateNetwork=yes', runner)
+        self.assertIn('ProtectSystem=strict', runner)
+        self.assertIn('HF_HUB_OFFLINE=1', runner)
+        self.assertIn('ReadWritePaths=$data_root/work', runner)
+        self.assertNotIn('"$2"', runner)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)
