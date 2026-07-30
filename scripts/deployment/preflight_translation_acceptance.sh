@@ -58,10 +58,10 @@ job_dir="/var/lib/fanaticosos-blog/jobs/$job_id"
 echo "=== Identity and repository ==="
 current_commit="$(
   sudo -u "$service_account" -H \
-    git -C "$repository" rev-parse --short HEAD
+    git -C "$repository" rev-parse HEAD
 )"
 echo "Host: $(hostname)"
-echo "Repository commit: $current_commit"
+echo "Repository commit: ${current_commit:0:7}"
 
 if [[ "$current_commit" != "$expected_commit" ]]; then
   echo "STOP: Expected commit $expected_commit; found $current_commit."
