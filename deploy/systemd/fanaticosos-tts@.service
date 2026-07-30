@@ -1,10 +1,9 @@
 [Unit]
 Description=Fanaticosos bounded article TTS job %i
-Documentation=/opt/fanaticosos-blog/repository/docs/TTS_JOB_CONTRACT.md
 After=local-fs.target
 
 [Service]
-Type=oneshot
+Type=exec
 User=fanaticosos-blog
 Group=fanaticosos-blog
 WorkingDirectory=/opt/fanaticosos-blog/repository

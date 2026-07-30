@@ -19,6 +19,8 @@ class TtsSystemdUnitTests(unittest.TestCase):
         self.assertNotIn("--voice", self.unit)
 
     def test_unit_has_automatic_resource_boundaries(self):
+        self.assertIn("Type=exec", self.unit)
+        self.assertNotIn("Type=oneshot", self.unit)
         for directive in (
             "RuntimeMaxSec=15min",
             "MemoryMax=8G",
