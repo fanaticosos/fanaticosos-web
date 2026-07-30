@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "sourceLocale": "es",
+  "targetLocale": "en",
+  "description": "Synthetic Fanaticosos sports-journalism translation benchmark.",
+  "cases": [
+    {
+      "id": "headline-comeback",
+      "category": "headline",
+      "source": "Remontada inolvidable: el América vence 3-2 a Cruz Azul en el último minuto",
+      "mustPreserve": ["América", "3-2", "Cruz Azul"],
+      "notes": "Use a natural English sports headline; do not translate club names."
+    },
+    {
+      "id": "match-report-score-minute",
+      "category": "match-report",
+      "source": "Santiago Giménez abrió el marcador al minuto 17 y México conservó la ventaja hasta el descanso.",
+      "mustPreserve": ["Santiago Giménez", "17", "México"],
+      "notes": "Preserve the player, country and minute while using idiomatic match-report language."
+    },
+    {
+      "id": "tactical-analysis",
+      "category": "analysis",
+      "source": "El doble pivote cerró los espacios interiores, pero dejó al lateral derecho expuesto a los cambios de orientación.",
+      "mustPreserve": [],
+      "notes": "Translate football tactics accurately rather than literally."
+    },
+    {
+      "id": "direct-quotation",
+      "category": "quotation",
+      "source": "«No vinimos a defender el empate; vinimos a buscar los tres puntos», afirmó la entrenadora después del partido.",
+      "mustPreserve": [],
+      "notes": "Preserve the meaning, attribution and quotation boundaries."
+    },
+    {
+      "id": "football-terminology",
+      "category": "terminology",
+      "source": "El delantero quedó en fuera de juego antes de enviar el centro al segundo palo.",
+      "mustPreserve": [],
+      "notes": "Use standard English football terms: striker, offside, cross and far post."
+    },
+    {
+      "id": "competition-proper-names",
+      "category": "proper-names",
+      "source": "Rayados recibirá a Inter Miami en la Copa de Campeones de la Concacaf.",
+      "mustPreserve": ["Rayados", "Inter Miami", "Concacaf"],
+      "notes": "Do not invent, anglicize or partially translate names."
+    },
+    {
+      "id": "idiomatic-pressure",
+      "category": "idiom",
+      "source": "El equipo puso toda la carne en el asador y encerró al rival en su propia área.",
+      "mustPreserve": [],
+      "notes": "Prefer an idiomatic English rendering over a literal food metaphor."
+    },
+    {
+      "id": "var-penalty",
+      "category": "abbreviation",
+      "source": "Tras revisar el VAR, la árbitra anuló el penalti y reanudó el juego con un bote neutral.",
+      "mustPreserve": ["VAR"],
+      "notes": "Preserve VAR and use natural English officiating terminology."
+    },
+    {
+      "id": "women-football",
+      "category": "gender-context",
+      "source": "La capitana levantó el trofeo después de que sus compañeras mantuvieran la portería a cero por cuarta vez consecutiva.",
+      "mustPreserve": [],
+      "notes": "Preserve the women’s-team context and translate clean sheet idiomatically."
+    },
+    {
+      "id": "statistics",
+      "category": "statistics",
+      "source": "El conjunto local registró 61 % de posesión, 14 remates y cinco tiros a puerta.",
+      "mustPreserve": ["61", "14"],
+      "notes": "Preserve every statistic and distinguish shots from shots on target."
+    },
+    {
+      "id": "injury-time",
+      "category": "regional-terminology",
+      "source": "El gol del triunfo llegó en el 90+4, cuando el guardameta rechazó un disparo y el rebote quedó a merced del atacante.",
+      "mustPreserve": ["90+4"],
+      "notes": "Use natural English terminology for goalkeeper, save/rebound and stoppage time."
+    },
+    {
+      "id": "mixed-style-paragraph",
+      "category": "long-form",
+      "source": "Aunque Tigres dominó durante la primera media hora, el ritmo cambió después del descanso. Pachuca adelantó sus líneas, recuperó el balón cerca del área rival y convirtió dos transiciones rápidas en ocasiones claras. El 1-0 no contó toda la historia del encuentro.",
+      "mustPreserve": ["Tigres", "Pachuca", "1-0"],
+      "notes": "Maintain paragraph flow, tense consistency and a journalistic closing sentence."
+    }
+  ]
+}

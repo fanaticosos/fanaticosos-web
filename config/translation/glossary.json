@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "sourceLocale": "es",
+  "targetLocale": "en",
+  "terms": [
+    { "source": "fuera de juego", "target": "offside" },
+    { "source": "portería a cero", "target": "clean sheet" },
+    { "source": "tiros a puerta", "target": "shots on target" },
+    { "source": "segundo palo", "target": "far post" },
+    { "source": "tiempo añadido", "target": "stoppage time" },
+    { "source": "guardameta", "target": "goalkeeper" }
+  ],
+  "protectedNames": [
+    "América",
+    "Concacaf",
+    "Cruz Azul",
+    "Inter Miami",
+    "Pachuca",
+    "Rayados",
+    "Santiago Giménez",
+    "Tigres",
+    "VAR"
+  ]
+}
