@@ -1,0 +1,32 @@
+[Unit]
+Description=Fanaticosos bounded article TTS job %i
+Documentation=/opt/fanaticosos-blog/repository/docs/TTS_JOB_CONTRACT.md
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=fanaticosos-blog
+Group=fanaticosos-blog
+WorkingDirectory=/opt/fanaticosos-blog/repository
+Environment=HOME=/opt/fanaticosos-blog
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HF_HUB_OFFLINE=1
+Environment=HF_HUB_DISABLE_TELEMETRY=1
+ExecStartPre=/usr/bin/test -f /opt/fanaticosos-blog/jobs/%i/request.json
+ExecStartPre=/usr/bin/test ! -e /opt/fanaticosos-blog/jobs/%i/audio
+ExecStart=/opt/fanaticosos-blog/runtimes/tts-benchmark-kokoro-v1/bin/python /opt/fanaticosos-blog/repository/scripts/tts/render_article_kokoro.py --request /opt/fanaticosos-blog/jobs/%i/request.json --manifest /opt/fanaticosos-blog/repository/config/tts/kokoro-candidate-files.json --model-root /opt/fanaticosos-blog/models/kokoro-82m/f3ff3571791e39611d31c381e3a41a3af07b4987 --output /opt/fanaticosos-blog/jobs/%i/audio --configuration /opt/fanaticosos-blog/repository/config/tts/production.json
+RuntimeMaxSec=15min
+MemoryMax=8G
+MemorySwapMax=1G
+KillMode=control-group
+Restart=no
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/fanaticosos-blog/jobs/%i
+UMask=0077
+
+[Install]
+# Static template: instances are started explicitly by the private publisher.

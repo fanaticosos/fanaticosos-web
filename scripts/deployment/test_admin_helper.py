@@ -59,6 +59,7 @@ class AdminHelperTests(unittest.TestCase):
                 "kokoro-benchmark-status",
                 "install-kokoro-english-model",
                 "export-kokoro-samples",
+                "verify-tts-template",
             ],
         )
 
@@ -168,6 +169,13 @@ class AdminHelperTests(unittest.TestCase):
             self.assertIn(sample, exporter)
         self.assertIn('[[ ! -e "$export_root" ]]', exporter)
         self.assertNotIn('"$2"', exporter)
+
+    def test_tts_template_verification_has_fixed_scope(self):
+        verifier = self.helper.split("command_verify_tts_template()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('systemd-analyze verify "$tts_source_unit"', verifier)
+        self.assertNotIn('"$2"', verifier)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)

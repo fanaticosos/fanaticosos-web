@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from render_article_kokoro import render_article, validate_voice
+from render_article_kokoro import render_article, resolve_production_voice, validate_voice
 
 
 ARTICLE_ID = "00000000-0000-4000-8000-000000000001"
@@ -156,6 +156,63 @@ class KokoroArticleWorkerTests(unittest.TestCase):
         changed = copy.deepcopy(request)
         self.assertEqual(changed["locale"], "en")
         validate_voice(changed["locale"], "af_bella")
+
+    def test_pending_configuration_stops_before_voice_selection(self):
+        configuration = {
+            "schemaVersion": 1,
+            "configurationVersion": 1,
+            "status": "pending-owner-selection",
+        }
+        with self.assertRaisesRegex(ValueError, "pending owner approval"):
+            resolve_production_voice(configuration, "es", {})
+
+    def test_approved_configuration_resolves_fixed_locale_voice(self):
+        manifest = {
+            "repository": "hexgrad/Kokoro-82M",
+            "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+        }
+        configuration = {
+            "schemaVersion": 1,
+            "configurationVersion": 2,
+            "status": "approved",
+            "model": manifest["repository"],
+            "modelRevision": manifest["revision"],
+            "voices": {"es": "ef_dora", "en": "af_heart"},
+            "encoding": {
+                "codec": "mp3",
+                "sampleRateHz": 48000,
+                "channels": 1,
+                "bitRate": 128000,
+                "loudness": "EBU R128 I=-16 LUFS, TP=-1.5 dB, LRA=11 LU",
+            },
+        }
+        self.assertEqual(
+            resolve_production_voice(configuration, "en", manifest),
+            ("af_heart", 2),
+        )
+
+    def test_configuration_rejects_cross_language_voice(self):
+        manifest = {
+            "repository": "hexgrad/Kokoro-82M",
+            "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+        }
+        configuration = {
+            "schemaVersion": 1,
+            "configurationVersion": 2,
+            "status": "approved",
+            "model": manifest["repository"],
+            "modelRevision": manifest["revision"],
+            "voices": {"es": "af_heart", "en": "af_bella"},
+            "encoding": {
+                "codec": "mp3",
+                "sampleRateHz": 48000,
+                "channels": 1,
+                "bitRate": 128000,
+                "loudness": "EBU R128 I=-16 LUFS, TP=-1.5 dB, LRA=11 LU",
+            },
+        }
+        with self.assertRaisesRegex(ValueError, "not permitted"):
+            resolve_production_voice(configuration, "es", manifest)
 
 
 if __name__ == "__main__":

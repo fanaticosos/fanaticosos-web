@@ -30,11 +30,51 @@ ALLOWED_VOICES = {
     "en": {"af_heart", "af_bella"},
 }
 LANGUAGE_CODES = {"es": "e", "en": "a"}
+EXPECTED_MODEL = "hexgrad/Kokoro-82M"
+EXPECTED_MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
 
 
 def validate_voice(locale: str, voice: str) -> None:
     if voice not in ALLOWED_VOICES.get(locale, set()):
         raise ValueError(f"voice {voice!r} is not permitted for locale {locale!r}")
+
+
+def resolve_production_voice(
+    configuration: Any,
+    locale: str,
+    manifest: dict[str, Any],
+) -> tuple[str, int]:
+    if not isinstance(configuration, dict) or configuration.get("schemaVersion") != 1:
+        raise ValueError("TTS configuration schema version must be 1")
+    version = configuration.get("configurationVersion")
+    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+        raise ValueError("TTS configuration version must be a positive integer")
+    if configuration.get("status") != "approved":
+        raise ValueError("TTS production voices are pending owner approval")
+    if configuration.get("model") != EXPECTED_MODEL:
+        raise ValueError("TTS configuration model is unexpected")
+    if configuration.get("modelRevision") != EXPECTED_MODEL_REVISION:
+        raise ValueError("TTS configuration model revision is unexpected")
+    if manifest.get("repository") != configuration["model"] or manifest.get(
+        "revision"
+    ) != configuration["modelRevision"]:
+        raise ValueError("TTS configuration does not match candidate manifest")
+    voices = configuration.get("voices")
+    if not isinstance(voices, dict) or set(voices) != {"es", "en"}:
+        raise ValueError("TTS configuration must contain Spanish and English voices")
+    voice = voices.get(locale)
+    validate_voice(locale, voice)
+    encoding = configuration.get("encoding")
+    expected_encoding = {
+        "codec": "mp3",
+        "sampleRateHz": 48000,
+        "channels": 1,
+        "bitRate": 128000,
+        "loudness": "EBU R128 I=-16 LUFS, TP=-1.5 dB, LRA=11 LU",
+    }
+    if encoding != expected_encoding:
+        raise ValueError("TTS encoding configuration is unexpected")
+    return voice, version
 
 
 def synthesize_kokoro(
@@ -168,20 +208,35 @@ def main() -> None:
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--model-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--voice", required=True)
-    parser.add_argument("--configuration-version", required=True, type=int)
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--voice")
+    selection.add_argument("--configuration", type=Path)
+    parser.add_argument("--configuration-version", type=int)
     args = parser.parse_args()
     with args.request.open(encoding="utf-8") as handle:
         request = json.load(handle)
     with args.manifest.open(encoding="utf-8") as handle:
         manifest = json.load(handle)
+    if args.configuration is not None:
+        if args.configuration_version is not None:
+            parser.error("--configuration-version cannot accompany --configuration")
+        with args.configuration.open(encoding="utf-8") as handle:
+            configuration = json.load(handle)
+        voice, configuration_version = resolve_production_voice(
+            configuration, request["locale"], manifest
+        )
+    else:
+        if args.configuration_version is None:
+            parser.error("--configuration-version is required with --voice")
+        voice = args.voice
+        configuration_version = args.configuration_version
     render_article(
         request,
         manifest,
         args.model_root,
         args.output,
-        args.voice,
-        args.configuration_version,
+        voice,
+        configuration_version,
     )
     print(f"PASS: Kokoro article audio generated at {args.output}")
 

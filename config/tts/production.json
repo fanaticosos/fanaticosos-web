@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "configurationVersion": 1,
+  "status": "pending-owner-selection",
+  "model": "hexgrad/Kokoro-82M",
+  "modelRevision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+  "voices": {
+    "es": null,
+    "en": null
+  },
+  "encoding": {
+    "codec": "mp3",
+    "sampleRateHz": 48000,
+    "channels": 1,
+    "bitRate": 128000,
+    "loudness": "EBU R128 I=-16 LUFS, TP=-1.5 dB, LRA=11 LU"
+  }
+}

@@ -14,6 +14,7 @@ fi
 readonly branch="feature/multilingual-audio-blog"
 readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.service"
 readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
+readonly tts_source_unit="$repository/deploy/systemd/fanaticosos-tts@.service"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="$data_root/jobs"
 readonly kokoro_venv="$data_root/runtimes/tts-benchmark-kokoro-v1"
@@ -50,6 +51,7 @@ Commands:
   kokoro-benchmark-status
   install-kokoro-english-model EXPECTED_COMMIT
   export-kokoro-samples EXPECTED_COMMIT
+  verify-tts-template EXPECTED_COMMIT
 EOF
 }
 
@@ -552,6 +554,16 @@ command_export_kokoro_samples() {
   echo "PASS: Six fixed Kokoro review artifacts exported to $export_root."
 }
 
+command_verify_tts_template() {
+  local expected="$1"
+  local diagnostics
+  require_repository_commit "$expected"
+  [[ -f "$tts_source_unit" ]] || stop "Versioned TTS unit is missing."
+  diagnostics="$(systemd-analyze verify "$tts_source_unit" 2>&1)"
+  [[ -z "$diagnostics" ]] || stop "Versioned TTS unit produced diagnostics: $diagnostics"
+  echo "PASS: Versioned TTS template has no native systemd diagnostics."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -641,6 +653,10 @@ case "$command" in
   export-kokoro-samples)
     [[ $# == 1 ]] || stop "export-kokoro-samples requires EXPECTED_COMMIT."
     command_export_kokoro_samples "$1"
+    ;;
+  verify-tts-template)
+    [[ $# == 1 ]] || stop "verify-tts-template requires EXPECTED_COMMIT."
+    command_verify_tts_template "$1"
     ;;
   *)
     stop "Unsupported command: $command"

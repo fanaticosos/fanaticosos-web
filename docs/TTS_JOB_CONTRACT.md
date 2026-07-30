@@ -25,3 +25,5 @@ The worker writes to a private staging directory. It may publish a result only a
 ## Pending owner decision
 
 The Spanish and English production voice IDs are intentionally not selected by this contract. The owner will choose them after listening to the fixed Kokoro samples. Recording that choice changes versioned voice configuration, not this request/result boundary.
+
+Until that decision, `config/tts/production.json` remains `pending-owner-selection` with null voice IDs. The worker rejects this status before loading Kokoro. The systemd template never accepts a voice argument; after approval it resolves the locale-specific voice only from that versioned configuration.
