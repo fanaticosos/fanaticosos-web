@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "voices": {
+    "es": "em_alex",
+    "en": "af_heart"
+  },
+  "profiles": [
+    { "id": "natural", "speed": 0.97, "pauseSeconds": 0.22 },
+    { "id": "relaxed", "speed": 0.92, "pauseSeconds": 0.32 },
+    { "id": "broadcast", "speed": 1.02, "pauseSeconds": 0.16 }
+  ]
+}

@@ -62,6 +62,8 @@ class AdminHelperTests(unittest.TestCase):
                 "verify-tts-template",
                 "run-spanglish-diagnostic",
                 "export-spanglish-diagnostic",
+                "run-tts-tuning-matrix",
+                "export-tts-tuning-matrix",
             ],
         )
 
@@ -184,6 +186,20 @@ class AdminHelperTests(unittest.TestCase):
             "command_run_spanglish_diagnostic()", 1
         )[1].split("\n}\n", 1)[0]
         self.assertIn('PrivateTmp=yes', diagnostic)
+
+    def test_tuning_matrix_has_fixed_automatic_limits(self):
+        tuning = self.helper.split("command_run_tts_tuning_matrix()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        for value in (
+            "RuntimeMaxSec=10min",
+            "MemoryMax=4G",
+            "MemorySwapMax=512M",
+            "PrivateTmp=yes",
+            "PrivateNetwork=yes",
+        ):
+            self.assertIn(value, tuning)
+        self.assertNotIn('"$2"', tuning)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)
