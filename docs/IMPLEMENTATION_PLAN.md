@@ -215,7 +215,7 @@ Stop and disable new project services and remove only the dedicated project runt
 
 ### Objective
 
-Select a local translation engine using measured Spanish sports-journalism quality, resource use, and processing time.
+Integrate the owner-selected Qwen3 8B Q4 engine using measured Spanish NFL-journalism quality and automatic resource containment.
 
 ### Work
 
@@ -224,15 +224,20 @@ Select a local translation engine using measured Spanish sports-journalism quali
 - Test a small number of viable open-source models on `papabear`.
 - Record model license, download size, RAM use, processing time, and observed quality.
 - Present blind or side-by-side samples to the owner.
-- Integrate only the selected model.
+- Integrate pinned `Qwen/Qwen3-8B-GGUF` `Q4_K_M` through pinned llama.cpp.
+- Execute each job in a transient systemd service with hard runtime, memory, swap, and control-group limits.
+- Use structured article segments, atomic output, and automatic preservation and glossary validation.
+- Keep model execution private and on demand; do not create a persistent inference listener.
 - Store translation provenance and regenerate only when the Spanish source or translation configuration changes.
 - Provide a preview and correction step before publication.
 
 ### Acceptance gate
 
-- The owner accepts the selected model and test translations.
+- The owner has accepted Qwen3 8B Q4 as the selected production-integration candidate.
 - Player, team, league, stadium, score, quotation, statistic, and NFL terminology survive validation.
-- Translation fits available CPU, RAM, storage, and acceptable wait time.
+- A bounded verification completes, exits without orphaned processes, and requires no manual resource monitoring.
+- A representative full article completes inside the approved automatic resource envelope.
+- The editor presents generated English as a reviewable draft before publication.
 - A failed translation leaves the prior generated English revision intact.
 
 ### Rollback
