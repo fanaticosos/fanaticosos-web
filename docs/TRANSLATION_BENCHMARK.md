@@ -43,7 +43,7 @@ Each candidate must process the identical ordered cases after a cold start and a
 - whether glossary application changes the raw output;
 - owner quality rating after side-by-side review.
 
-The benchmark must not edit article source files or production output. Results belong under `/var/lib/fanaticosos-blog/work` until the selected integration and its provenance format are approved.
+The benchmark must not edit article source files or production output. Results belong under `/opt/fanaticosos-blog/work` until the selected integration and its provenance format are approved.
 
 ## Selection rule
 

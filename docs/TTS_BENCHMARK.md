@@ -42,7 +42,7 @@ No candidate becomes the production voice until the owner listens to generated s
 
 ## Isolated runtime
 
-The candidate runtime uses Python 3.12 in `/var/lib/fanaticosos-blog/venvs/tts-benchmark-kokoro-v1`. Direct Python requirements are pinned in `config/tts/kokoro-benchmark-requirements.txt`; the complete resolved environment is recorded privately after installation. The requirements explicitly select PyTorch's CPU wheel because Papabear has no GPU and the default Linux package can resolve unnecessary CUDA dependencies. Ubuntu provides `espeak-ng`, which the official Kokoro documentation requires for Spanish and fallback pronunciation.
+The candidate runtime uses Python 3.12 in `/opt/fanaticosos-blog/runtimes/tts-benchmark-kokoro-v1`. Direct Python requirements are pinned in `config/tts/kokoro-benchmark-requirements.txt`; the complete resolved environment is recorded privately after installation. The requirements explicitly select PyTorch's CPU wheel because Papabear has no GPU and the default Linux package can resolve unnecessary CUDA dependencies. Ubuntu provides `espeak-ng`, which the official Kokoro documentation requires for Spanish and fallback pronunciation.
 
 Installing this runtime does not approve Kokoro, download its model or voices, generate audio, or create a persistent process. Those remain separate acceptance steps.
 

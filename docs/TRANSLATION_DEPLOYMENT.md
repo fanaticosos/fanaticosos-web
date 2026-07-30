@@ -17,7 +17,7 @@ Status: Installed and bounded-worker integration verified on `papabear` on 2026-
 The versioned source is:
 
 ```text
-/srv/fanaticosos-blog/repository/deploy/systemd/fanaticosos-translation@.service
+/opt/fanaticosos-blog/repository/deploy/systemd/fanaticosos-translation@.service
 ```
 
 The installed root-owned copy is:
@@ -35,7 +35,7 @@ The template is static: it is not enabled, scheduled, or persistent. A prepared 
 Each job has a safe identifier and a private directory:
 
 ```text
-/var/lib/fanaticosos-blog/jobs/<job-id>/
+/opt/fanaticosos-blog/jobs/<job-id>/
 ├── request.json
 └── result.json
 ```

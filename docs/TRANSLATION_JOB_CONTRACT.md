@@ -81,7 +81,7 @@ Glossary version 5 also enforces reviewed editorial phrases where a literal but 
 
 ## On-demand execution boundary
 
-`deploy/systemd/fanaticosos-translation@.service` is the versioned production template. A job identifier maps to a private directory under `/var/lib/fanaticosos-blog/jobs/` containing `request.json` and, only after success, `result.json`.
+`deploy/systemd/fanaticosos-translation@.service` is the versioned production template. A job identifier maps to a private directory under `/opt/fanaticosos-blog/jobs/` containing `request.json` and, only after success, `result.json`.
 
 The template is intentionally not enabled and does not run a persistent model listener. The future private publishing workflow starts one instance for a prepared job. systemd applies the approved five-minute runtime, 16 GiB memory, 1 GiB swap, control-group cleanup, private network, read-only host filesystem, and mode-`0600` output boundaries automatically.
 

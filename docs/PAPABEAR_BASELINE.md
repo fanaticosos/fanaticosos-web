@@ -87,7 +87,7 @@ Properties:
 - no password;
 - no interactive shell;
 - no sudo membership;
-- home/state root at `/var/lib/fanaticosos-blog`;
+- home and complete project root at `/opt/fanaticosos-blog`;
 - owns only project source, work, model, cache, generated-media, and release content that requires write access;
 - cannot read `sysadmin` SSH or other unrelated credentials.
 
@@ -96,27 +96,20 @@ Interactive maintenance will be performed by `sysadmin` through narrowly scoped 
 ## Directory layout
 
 ```text
-/srv/fanaticosos-blog/
+/opt/fanaticosos-blog/
 ├── repository/          # Git working copy
 ├── releases/            # Immutable validated release directories
-└── current -> releases/<release-id>
-
-/var/lib/fanaticosos-blog/
 ├── generated/audio/     # Generated MP3 files; never committed
 ├── jobs/                # Private bounded translation/TTS job directories
 ├── models/              # Downloaded translation and TTS models
+├── runtimes/            # Isolated Python environments
+├── tools/               # Pinned private executable runtimes
 ├── state/               # Job state and release manifests
 ├── work/                # Staging and temporary job work
-└── venvs/               # Isolated Python environments
-
-/var/cache/fanaticosos-blog/
-├── npm/
-├── pip/
-└── model-downloads/
-
-/var/backups/fanaticosos-blog/
-└── configuration/       # Root-controlled rebuild-critical backups
+└── cache/               # Reproducible npm, pip, and model-download caches
 ```
+
+`/opt/fanaticosos-blog` is the single project backup and restore boundary. A full backup includes the complete tree with ownership, permissions, links, and private files preserved. `cache/` may be excluded when reducing backup size because it is reproducible. Host integration outside this tree—principally the root-owned systemd unit, restricted administration helper, sudoers rule, and required Ubuntu packages—must be recreated from the repository deployment documentation after restoring the project tree.
 
 Logging will use the system journal initially. A separate `/var/log` tree will be added only if measured retention or export requirements justify it.
 
@@ -124,7 +117,7 @@ Logging will use the system journal initially. A separate `/var/log` tree will b
 
 - `/opt/nodejs` is root-owned and not writable by the service account.
 - Project runtime directories are owned by `fanaticosos-blog:fanaticosos-blog` and are not world-writable.
-- Backup storage is root-owned and unreadable by the service account unless a specific restore operation requires access.
+- Backup destinations and encryption credentials are root-controlled and unreadable by the service account. Backup archives preserve the service-owned project tree without being stored inside it.
 - Releases become read-only after validation.
 - Secrets will be stored outside Git with restrictive permissions during the later phase that first requires them.
 
