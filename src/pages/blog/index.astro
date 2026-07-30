@@ -2,7 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
-import { articlePath, isBuildEligible } from "../../lib/articles";
+import { articlePath, categoryPath, isBuildEligible } from "../../lib/articles";
 import "../../styles/article.css";
 
 const articles = (await getCollection("articles"))
@@ -29,7 +29,7 @@ const articles = (await getCollection("articles"))
         <div class="article-list">
           {articles.map((article) => (
             <article>
-              <p class="article-category">{article.data.category}</p>
+              <p class="article-category"><a href={categoryPath("es", article.data.category)}>{article.data.category}</a></p>
               <h2><a href={articlePath(article)}>{article.data.title}</a></h2>
               <p>{article.data.description}</p>
             </article>

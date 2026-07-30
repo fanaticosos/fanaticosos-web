@@ -45,7 +45,7 @@ export function validateArticles(articles) {
 
     const es = pair.es.data;
     const en = pair.en.data;
-    for (const field of ["author", "publishedAt", "status", "sourceRevision", "fixture"]) {
+    for (const field of ["author", "publishedAt", "status", "categoryId", "sourceRevision", "fixture"]) {
       if (comparable(es[field]) !== comparable(en[field])) {
         failures.push(`${articleId}: paired field ${field} does not match`);
       }

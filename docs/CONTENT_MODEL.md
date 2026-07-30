@@ -73,6 +73,7 @@ The content collection schema should validate the following fields at build time
 | `publishedAt` | Original publication time | System/editor |
 | `updatedAt` | Optional material-update time | System |
 | `status` | `draft`, `review`, `ready`, `published`, or `archived` | Workflow |
+| `categoryId` | Stable category identifier shared by the language pair | System |
 | `category` | Primary sports category | Owner |
 | `tags` | Optional discovery terms | Owner |
 | `featuredImage` | Optional image path | Owner/editor |

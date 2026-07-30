@@ -34,6 +34,12 @@ async function verifyPage({ file, lang, canonical, alternate, alternateLang, tit
   for (const hreflang of ["es", "en", "x-default"]) {
     assert.match(html, new RegExp(`<link\\b[^>]*hreflang="${hreflang}"[^>]*>`));
   }
+  const jsonLd = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(jsonLd, `${file} is missing JSON-LD`);
+  const structuredData = JSON.parse(jsonLd);
+  assert.equal(structuredData["@type"], "NewsArticle");
+  assert.equal(structuredData.inLanguage, lang);
+  assert.equal(structuredData.mainEntityOfPage, canonical);
 }
 
 let failure;
@@ -55,7 +61,28 @@ try {
     alternateLang: "es",
     title: "Unpublished test article",
   });
-  console.log("Validated bilingual fixture routes, reciprocal language links, canonicals, and hreflang metadata.");
+  const spanishCategory = await readFile(path.join(projectRoot, "dist/blog/categoria/prueba/index.html"), "utf8");
+  const englishCategory = await readFile(path.join(projectRoot, "dist/en/blog/category/test/index.html"), "utf8");
+  assert.match(spanishCategory, /href="\/en\/blog\/category\/test\/"/);
+  assert.match(spanishCategory, /href="\/blog\/articulo-de-prueba\/"/);
+  assert.match(englishCategory, /href="\/blog\/categoria\/prueba\/"/);
+  assert.match(englishCategory, /href="\/en\/blog\/unpublished-test-article\/"/);
+
+  const spanishFeed = await readFile(path.join(projectRoot, "dist/rss.xml"), "utf8");
+  const englishFeed = await readFile(path.join(projectRoot, "dist/en/rss.xml"), "utf8");
+  assert.match(spanishFeed, /https:\/\/fanaticosos\.com\/blog\/articulo-de-prueba\//);
+  assert.match(englishFeed, /https:\/\/fanaticosos\.com\/en\/blog\/unpublished-test-article\//);
+
+  const sitemap = await readFile(path.join(projectRoot, "dist/sitemap-0.xml"), "utf8");
+  for (const route of [
+    "/blog/articulo-de-prueba/",
+    "/en/blog/unpublished-test-article/",
+    "/blog/categoria/prueba/",
+    "/en/blog/category/test/",
+  ]) {
+    assert.match(sitemap, new RegExp(`https://fanaticosos\\.com${route}`));
+  }
+  console.log("Validated bilingual articles, categories, feeds, sitemap entries, language links, and structured data.");
 } catch (error) {
   failure = error;
 } finally {

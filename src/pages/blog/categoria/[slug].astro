@@ -1,0 +1,36 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import CategoryLayout from "../../../layouts/CategoryLayout.astro";
+import { categorySlug, isBuildEligible } from "../../../lib/articles";
+
+export async function getStaticPaths() {
+  const eligible = (await getCollection("articles")).filter(isBuildEligible);
+  const spanish = eligible.filter((article) => article.data.locale === "es");
+  const categories = new Map<string, { name: string; articles: typeof spanish }>();
+  for (const article of spanish) {
+    const group = categories.get(article.data.categoryId) ?? { name: article.data.category, articles: [] };
+    group.articles.push(article);
+    categories.set(article.data.categoryId, group);
+  }
+  return [...categories.entries()].map(([categoryId, group]) => {
+    const alternate = eligible.find(
+      (article) => article.data.locale === "en" && article.data.categoryId === categoryId,
+    );
+    if (!alternate) throw new Error(`Missing English category label for ${categoryId}`);
+    return {
+      params: { slug: categorySlug(group.name) },
+      props: { category: group.name, alternateCategory: alternate.data.category, articles: group.articles },
+    };
+  });
+}
+
+interface Props {
+  category: string;
+  alternateCategory: string;
+  articles: CollectionEntry<"articles">[];
+}
+
+const { category, alternateCategory, articles } = Astro.props;
+---
+
+<CategoryLayout locale="es" category={category} alternateCategory={alternateCategory} articles={articles} />

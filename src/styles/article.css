@@ -52,6 +52,15 @@
   text-transform: uppercase;
 }
 
+.article-category a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.article-category a:hover {
+  text-decoration: underline;
+}
+
 .article-shell h1 {
   font-family: "Bebas Neue", sans-serif;
   font-size: clamp(44px, 8vw, 76px);

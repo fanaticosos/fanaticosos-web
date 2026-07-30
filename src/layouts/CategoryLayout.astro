@@ -1,0 +1,54 @@
+---
+import type { Article, ArticleLocale } from "../lib/articles";
+import { articlePath, categoryPath, indexPath } from "../lib/articles";
+import BaseLayout from "./BaseLayout.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import "../styles/article.css";
+
+interface Props {
+  locale: ArticleLocale;
+  category: string;
+  alternateCategory: string;
+  articles: Article[];
+}
+
+const { locale, category, alternateCategory, articles } = Astro.props;
+const canonicalPath = categoryPath(locale, category);
+const alternateLocale = locale === "es" ? "en" : "es";
+const alternatePath = categoryPath(alternateLocale, alternateCategory);
+const spanishPath = locale === "es" ? canonicalPath : alternatePath;
+const englishPath = locale === "en" ? canonicalPath : alternatePath;
+---
+
+<BaseLayout
+  title={`${category} — FanaticOSOS`}
+  lang={locale}
+  description={locale === "es" ? `Artículos de ${category} en FanaticOSOS.` : `${category} articles from FanaticOSOS.`}
+  canonicalPath={canonicalPath}
+  bodyClass="article-page"
+  alternatePaths={{ es: spanishPath, en: englishPath, "x-default": spanishPath }}
+>
+  <header class="article-header">
+    <a class="brand-link" href={indexPath(locale)} aria-label={locale === "es" ? "Volver al blog" : "Back to the blog"}>
+      <img src="/logo.png" alt="FanaticOSOS" />
+    </a>
+    <a class="language-switch" href={alternatePath} lang={alternateLocale} hreflang={alternateLocale}>
+      {locale === "es" ? "Read in English" : "Leer en español"}
+    </a>
+  </header>
+  <main class="article-shell blog-index">
+    <p class="article-category">{locale === "es" ? "Categoría" : "Category"}</p>
+    <h1>{category}</h1>
+    <div class="article-list">
+      {
+        articles.map((article) => (
+          <article>
+            <h2><a href={articlePath(article)}>{article.data.title}</a></h2>
+            <p>{article.data.description}</p>
+          </article>
+        ))
+      }
+    </div>
+  </main>
+  <SiteFooter locale={locale} />
+</BaseLayout>

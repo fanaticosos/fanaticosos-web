@@ -147,6 +147,10 @@ for (const page of routes) {
   const ogUrl = metaTags.find((entry) => entry.attributes.get("property") === "og:url");
   const twitterCard = metaTags.find((entry) => entry.attributes.get("name") === "twitter:card");
   const canonicals = linkTags.filter((entry) => entry.attributes.get("rel") === "canonical");
+  const sitemapLinks = linkTags.filter((entry) => entry.attributes.get("rel") === "sitemap");
+  const feedLinks = linkTags.filter(
+    (entry) => entry.attributes.get("rel") === "alternate" && entry.attributes.get("type") === "application/rss+xml",
+  );
 
   record(viewport?.attributes.get("content") === "width=device-width, initial-scale=1.0", `${page.route}: invalid viewport metadata`);
   record(Boolean(description?.attributes.get("content")), `${page.route}: missing meta description`);
@@ -157,6 +161,13 @@ for (const page of routes) {
   record(twitterCard?.attributes.get("content") === "summary_large_image", `${page.route}: invalid Twitter card metadata`);
   record(canonicals.length === 1, `${page.route}: expected exactly one canonical link`);
   record(canonicals[0]?.attributes.get("href") === page.canonical, `${page.route}: invalid canonical URL`);
+  record(sitemapLinks.length === 1, `${page.route}: expected one sitemap discovery link`);
+  record(sitemapLinks[0]?.attributes.get("href") === "/sitemap-index.xml", `${page.route}: invalid sitemap discovery link`);
+  record(feedLinks.length === 1, `${page.route}: expected one RSS discovery link`);
+  record(
+    feedLinks[0]?.attributes.get("href") === (page.lang === "es" ? "https://fanaticosos.com/rss.xml" : "https://fanaticosos.com/en/rss.xml"),
+    `${page.route}: invalid localized RSS discovery link`,
+  );
 
   if (page.alternates) {
     const alternates = linkTags.filter((entry) => entry.attributes.get("rel") === "alternate");
@@ -208,6 +219,25 @@ for (const outputFile of outputFiles) {
   record(!forbiddenNames.test(outputFile), `dist contains forbidden private or development file: ${outputFile}`);
   record(!forbiddenGeneratedMedia.test(outputFile), `Phase 1 dist unexpectedly contains generated audio: ${outputFile}`);
 }
+
+async function requireOutput(relativeFile, expectedPatterns) {
+  const absoluteFile = path.join(distRoot, relativeFile);
+  record(await fileExists(absoluteFile), `missing required generated file: ${relativeFile}`);
+  if (!(await fileExists(absoluteFile))) return;
+  const content = await readFile(absoluteFile, "utf8");
+  for (const pattern of expectedPatterns) {
+    record(pattern.test(content), `${relativeFile}: missing expected content ${pattern}`);
+  }
+}
+
+await requireOutput("rss.xml", [/<language>es<\/language>/, /<title>FanaticOSOS<\/title>/]);
+await requireOutput("en/rss.xml", [/<language>en<\/language>/, /<title>FanaticOSOS<\/title>/]);
+await requireOutput("robots.txt", [/User-agent: \*/, /Sitemap: https:\/\/fanaticosos\.com\/sitemap-index\.xml/]);
+await requireOutput("sitemap-index.xml", [/https:\/\/fanaticosos\.com\/sitemap-0\.xml/]);
+await requireOutput("sitemap-0.xml", [
+  /https:\/\/fanaticosos\.com\/blog\//,
+  /https:\/\/fanaticosos\.com\/en\/blog\//,
+]);
 
 if (failures.length > 0) {
   console.error("Static build validation failed:");

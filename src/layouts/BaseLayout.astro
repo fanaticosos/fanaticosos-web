@@ -10,6 +10,8 @@ interface Props {
   image?: string;
   bodyClass?: string;
   alternatePaths?: Partial<Record<"es" | "en" | "x-default", string>>;
+  structuredData?: Record<string, unknown>;
+  feedPath?: string;
 }
 
 const {
@@ -21,10 +23,15 @@ const {
   image = "/logo.png",
   bodyClass,
   alternatePaths = {},
+  structuredData,
+  feedPath = lang === "es" ? "/rss.xml" : "/en/rss.xml",
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath, Astro.site);
 const imageUrl = new URL(image, Astro.site);
+const serializedStructuredData = structuredData
+  ? JSON.stringify(structuredData).replaceAll("<", "\\u003c")
+  : undefined;
 ---
 
 <!doctype html>
@@ -40,11 +47,14 @@ const imageUrl = new URL(image, Astro.site);
     <meta property="og:url" content={canonicalUrl} />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href={canonicalUrl} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="alternate" type="application/rss+xml" title="FanaticOSOS" href={new URL(feedPath, Astro.site)} />
     {
       Object.entries(alternatePaths).map(([hreflang, alternatePath]) => (
         <link rel="alternate" hreflang={hreflang} href={new URL(alternatePath, Astro.site)} />
       ))
     }
+    {serializedStructuredData && <script is:inline type="application/ld+json" set:html={serializedStructuredData} />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

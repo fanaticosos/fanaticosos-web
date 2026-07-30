@@ -7,6 +7,7 @@ const shared = {
   author: "Fanaticosos",
   publishedAt: new Date("2026-07-29T17:00:00.000Z"),
   status: "draft",
+  categoryId: "test",
   sourceRevision: "fixture-es-v1",
   fixture: true,
 };

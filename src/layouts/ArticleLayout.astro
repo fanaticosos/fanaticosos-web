@@ -1,6 +1,6 @@
 ---
 import type { Article } from "../lib/articles";
-import { articlePath, indexPath } from "../lib/articles";
+import { articlePath, categoryPath, indexPath } from "../lib/articles";
 import BaseLayout from "./BaseLayout.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import "../styles/article.css";
@@ -16,6 +16,25 @@ const canonicalPath = articlePath(article);
 const alternatePath = articlePath(alternate);
 const spanishPath = locale === "es" ? canonicalPath : alternatePath;
 const englishPath = locale === "en" ? canonicalPath : alternatePath;
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  inLanguage: locale,
+  headline: article.data.title,
+  description: article.data.description,
+  datePublished: article.data.publishedAt.toISOString(),
+  ...(article.data.updatedAt ? { dateModified: article.data.updatedAt.toISOString() } : {}),
+  mainEntityOfPage: new URL(canonicalPath, Astro.site).href,
+  author: { "@type": "Organization", name: article.data.author },
+  publisher: {
+    "@type": "Organization",
+    name: "FanaticOSOS",
+    logo: { "@type": "ImageObject", url: new URL("/logo.png", Astro.site).href },
+  },
+  ...(article.data.featuredImage
+    ? { image: [new URL(article.data.featuredImage.src, Astro.site).href] }
+    : {}),
+};
 ---
 
 <BaseLayout
@@ -26,6 +45,7 @@ const englishPath = locale === "en" ? canonicalPath : alternatePath;
   image={article.data.featuredImage?.src}
   bodyClass="article-page"
   alternatePaths={{ es: spanishPath, en: englishPath, "x-default": spanishPath }}
+  structuredData={structuredData}
 >
   <header class="article-header">
     <a class="brand-link" href={indexPath(locale)} aria-label={locale === "es" ? "Volver al blog" : "Back to the blog"}>
@@ -38,7 +58,7 @@ const englishPath = locale === "en" ? canonicalPath : alternatePath;
 
   <main class="article-shell">
     <article>
-      <p class="article-category">{article.data.category}</p>
+      <p class="article-category"><a href={categoryPath(locale, article.data.category)}>{article.data.category}</a></p>
       <h1>{article.data.title}</h1>
       <p class="article-description">{article.data.description}</p>
       <p class="article-byline">

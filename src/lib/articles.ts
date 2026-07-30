@@ -18,6 +18,20 @@ export function indexPath(locale: ArticleLocale): string {
   return locale === "es" ? "/blog/" : "/en/blog/";
 }
 
+export function categorySlug(label: string): string {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function categoryPath(locale: ArticleLocale, label: string): string {
+  const slug = categorySlug(label);
+  return locale === "es" ? `/blog/categoria/${slug}/` : `/en/blog/category/${slug}/`;
+}
+
 export function pairedArticle(article: Article, articles: Article[]): Article {
   const alternateLocale = article.data.locale === "es" ? "en" : "es";
   const pair = articles.find(

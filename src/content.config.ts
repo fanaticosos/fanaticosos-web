@@ -39,6 +39,7 @@ const articles = defineCollection({
     publishedAt: z.coerce.date(),
     updatedAt: z.coerce.date().optional(),
     status: z.enum(["draft", "review", "ready", "published", "archived"]),
+    categoryId: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
     category: z.string().min(1),
     tags: z.array(z.string().min(1)).default([]),
     featuredImage: imageMetadata.optional(),
