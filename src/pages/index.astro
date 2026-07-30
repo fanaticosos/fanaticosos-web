@@ -1,9 +1,11 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ContentCard from "../components/ContentCard.astro";
+import MusicCard from "../components/MusicCard.astro";
 import PodcastEmbed from "../components/PodcastEmbed.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SocialLinks from "../components/SocialLinks.astro";
+import { siteSettings } from "../lib/siteSettings";
 import "../styles/home.css";
 
 const title = "FanaticOSOS — BearDown Chicago Bears";
@@ -28,14 +30,7 @@ const description = "La comunidad en español de los Chicago Bears. Podcast, mú
     <PodcastEmbed />
 
     <div class="cards-grid">
-      <ContentCard
-        href="https://musica.fanaticosos.com/share/Z0fkSBCxiJ#/"
-        eyebrow="Música"
-        title="RuidoOSOS"
-        description="La playlist oficial. La música que suena en el estadio y en tu cabeza."
-        cta="Reproducir"
-        iconPath="M9 3v10.55A4 4 0 1 0 11 17V7h4V3H9zm-2 16a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"
-      />
+      <MusicCard playlistUrl={siteSettings.music.playlistUrl} weeklySongUrl={siteSettings.music.weeklySongUrl} />
       <ContentCard
         href="https://fanaticosos.substack.com"
         eyebrow="Leer"

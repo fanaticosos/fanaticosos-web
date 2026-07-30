@@ -12,7 +12,15 @@ const routes = [
     title: "FanaticOSOS — BearDown Chicago Bears",
     lang: "es",
     canonical: "https://fanaticosos.com/",
-    requiredLinks: ["/pages/contact", "/pages/terms"],
+    requiredLinks: [
+      "/pages/contact",
+      "/pages/terms",
+      "https://musica.fanaticosos.com/share/Z0fkSBCxiJ#/",
+      "https://musica.fanaticosos.com/share/SfOyZvz9ag",
+    ],
+    requiredScripts: [
+      "https://api.podcache.net/embedded-show-player/sh/5a9a1f60-f1a6-4463-8714-1de495d92428?theme=dark&bgColor=%231A3558",
+    ],
   },
   {
     route: "/pages/contact",
@@ -132,6 +140,7 @@ for (const page of routes) {
   const metaTags = tagsNamed(html, "meta");
   const linkTags = tagsNamed(html, "link");
   const anchorTags = tagsNamed(html, "a");
+  const scriptTags = tagsNamed(html, "script");
   const imageTags = tagsNamed(html, "img");
 
   record(/^<!doctype html>/i.test(html), `${page.route}: missing HTML5 doctype`);
@@ -182,6 +191,11 @@ for (const page of routes) {
   const hrefs = anchorTags.map((entry) => entry.attributes.get("href")).filter(Boolean);
   for (const requiredLink of page.requiredLinks) {
     record(hrefs.includes(requiredLink), `${page.route}: missing required link ${requiredLink}`);
+  }
+
+  const scriptSources = scriptTags.map((entry) => entry.attributes.get("src")).filter(Boolean);
+  for (const requiredScript of page.requiredScripts ?? []) {
+    record(scriptSources.includes(requiredScript), `${page.route}: missing required script ${requiredScript}`);
   }
 
   for (const href of hrefs) await validateLocalReference(page.route, href);

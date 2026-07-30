@@ -1,0 +1,28 @@
+---
+interface Props {
+  playlistUrl: string;
+  weeklySongUrl: string;
+}
+
+const { playlistUrl, weeklySongUrl } = Astro.props;
+const iconPath = "M9 3v10.55A4 4 0 1 0 11 17V7h4V3H9zm-2 16a2 2 0 1 1 0-4 2 2 0 0 1 0 4z";
+---
+
+<article class="card music-card">
+  <div class="card-icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d={iconPath}></path></svg>
+  </div>
+  <span class="card-eyebrow">Música</span>
+  <span class="card-title">RuidoOSOS</span>
+  <p class="card-desc">La playlist oficial. La música que suena en el estadio y en tu cabeza.</p>
+  <div class="card-actions">
+    <a class="card-cta" href={playlistUrl} target="_blank" rel="noopener">
+      Playlist completa
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.75.75 0 0 1 1.06-1.06l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0z"></path></svg>
+    </a>
+    <a class="card-cta card-cta-secondary" href={weeklySongUrl} target="_blank" rel="noopener">
+      Canción de la semana
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.75.75 0 0 1 1.06-1.06l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0z"></path></svg>
+    </a>
+  </div>
+</article>

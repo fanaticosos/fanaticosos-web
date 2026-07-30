@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "astro dev",
     "check": "astro check",
-    "build": "npm run validate:content && astro check && astro build && npm run validate:build",
+    "build": "npm run validate:content && npm run validate:settings && astro check && astro build && npm run validate:build",
     "validate:content": "node scripts/validate-content.mjs",
     "test:content-validation": "node scripts/test-content-validation.mjs",
     "test:article-routes": "node scripts/test-article-routes.mjs",
+    "validate:settings": "node scripts/validate-site-settings.mjs",
+    "test:site-settings": "node scripts/test-site-settings.mjs",
     "validate:build": "node scripts/validate-build.mjs",
     "preview": "astro preview"
   },

@@ -283,6 +283,7 @@ Let the owner create, preview, correct, and publish an article from a private br
 - Show Spanish page preview, generated English preview, and both audio previews.
 - Allow translation and pronunciation corrections without altering the Spanish source unnecessarily.
 - Provide explicit Save Draft, Regenerate, Preview, and Publish actions.
+- Provide simple homepage settings for the complete music-playlist URL and weekly-song URL.
 - Serialize content to the repository's Markdown contract.
 - Keep an auditable local job and publication history without storing secrets in articles.
 
