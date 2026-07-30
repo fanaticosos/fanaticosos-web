@@ -61,6 +61,19 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertIn("/no_think", prompt)
         self.assertNotIn('"id":"segment-id"', prompt)
         self.assertIn("Every `translation` value must be English", prompt)
+        self.assertIn(
+            '"id":"example-only","translation":"The defense forced a fumble in the red zone."',
+            prompt,
+        )
+        self.assertEqual(prompt.count('"id":"title"'), 1)
+
+    def test_prompt_demonstration_is_separate_from_article_payload(self):
+        prompt = build_prompt(self.request["segments"], self.glossary)
+        self.assertEqual(prompt.count('"id":"example-only"'), 2)
+        self.assertLess(
+            prompt.index('"id":"example-only","translation"'),
+            prompt.index('"id":"title"'),
+        )
 
     def test_prompt_includes_only_batch_relevant_glossary_terms(self):
         glossary = copy.deepcopy(self.glossary)

@@ -161,6 +161,14 @@ Return every input id exactly once and in its original order. Do not use Markdow
 <|im_end|>
 <|im_start|>user
 Translate these ordered segments:
+[{{"id":"example-only","kind":"paragraph","text":"La defensa forzó un balón suelto en la zona roja."}}]
+/no_think
+<|im_end|>
+<|im_start|>assistant
+[{{"id":"example-only","translation":"The defense forced a fumble in the red zone."}}]
+<|im_end|>
+<|im_start|>user
+Translate these ordered segments:
 {payload}
 /no_think
 <|im_end|>
