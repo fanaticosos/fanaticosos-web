@@ -239,7 +239,7 @@ command_install_kokoro_runtime() {
     --requirement "$kokoro_requirements"
   run_as_service env PYTHONDONTWRITEBYTECODE=1 \
     "$kokoro_venv/bin/python" -c \
-    'import importlib.metadata as m; import kokoro, soundfile, torch; print(f"kokoro={m.version(\"kokoro\")} soundfile={m.version(\"soundfile\")} torch={torch.__version__}")'
+    'import importlib.metadata as m; import kokoro, soundfile, torch; print("kokoro={} soundfile={} torch={}".format(m.version("kokoro"), m.version("soundfile"), torch.__version__))'
   trap - EXIT
   run_as_service "$kokoro_venv/bin/python" -m pip freeze \
     > /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
@@ -257,7 +257,7 @@ command_kokoro_runtime_status() {
   if [[ -d "$kokoro_venv" ]]; then
     stat -c 'owner=%U group=%G mode=%a size=%s path=%n' "$kokoro_venv"
     run_as_service "$kokoro_venv/bin/python" -c \
-      'import importlib.metadata as m; import torch; print(f"kokoro={m.version(\"kokoro\")} soundfile={m.version(\"soundfile\")} torch={torch.__version__} cuda={torch.cuda.is_available()}")'
+      'import importlib.metadata as m; import torch; print("kokoro={} soundfile={} torch={} cuda={}".format(m.version("kokoro"), m.version("soundfile"), torch.__version__, torch.cuda.is_available()))'
   else
     echo "Kokoro runtime: ABSENT"
   fi

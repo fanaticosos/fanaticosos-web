@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import shlex
 import unittest
 from pathlib import Path
 
@@ -78,6 +79,12 @@ class AdminHelperTests(unittest.TestCase):
             requirements,
         )
         self.assertIn("torch==2.13.0+cpu", requirements)
+
+    def test_inline_python_verification_commands_parse(self):
+        commands = re.findall(r"\n\s+'(import importlib\.metadata as m;[^']+)'", self.helper)
+        self.assertEqual(len(commands), 2)
+        for command in commands:
+            compile(shlex.split(shlex.quote(command))[0], "<admin-helper>", "exec")
 
     def test_helper_validates_commit_and_job_identifiers(self):
         self.assertIn("^[0-9a-f]{7,40}$", self.helper)
