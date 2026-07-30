@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""Run the Fanaticosos NFL translation benchmark with local Qwen GGUF."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import platform
+import resource
+import subprocess
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from benchmark_opus import (
+    atomic_write_json,
+    expected_protected_tokens,
+    glossary_failures,
+    preservation_failures,
+    read_json,
+    validate_inputs,
+)
+
+
+def build_prompt(benchmark: dict[str, Any], glossary: dict[str, Any]) -> str:
+    mappings = "\n".join(
+        f"- {term['source']} = {term['target']}" for term in glossary["terms"]
+    )
+    protected = ", ".join(glossary["protectedNames"])
+    cases = json.dumps(
+        [{"id": item["id"], "source": item["source"]} for item in benchmark["cases"]],
+        ensure_ascii=False,
+        indent=2,
+    )
+    return f"""<|im_start|>system
+You are the English copy editor for Fanaticosos, an NFL and Chicago Bears sports publication.
+Translate Spanish sports journalism into natural American English suitable for publication.
+Do not add, omit, summarize, explain, or alter facts.
+Preserve names, teams, scores, numbers, statistics, and quotations exactly.
+Use the terminology mappings as editorial guidance, inflecting grammar naturally when needed.
+Protected names: {protected}
+
+Terminology mappings:
+{mappings}
+
+Return only valid JSON with this exact shape:
+{{"translations":[{{"id":"case-id","translation":"English text"}}]}}
+Return one entry for every input id, in the original order. Do not use Markdown fences.
+<|im_end|>
+<|im_start|>user
+Translate these cases from Spanish to English:
+{cases}
+/no_think
+<|im_end|>
+<|im_start|>assistant
+"""
+
+
+def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, str]:
+    text = raw_output.strip()
+    if "<think>" in text and "</think>" in text:
+        text = text.split("</think>", 1)[1].strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError("model output does not contain a JSON object")
+    value = json.loads(text[start : end + 1])
+    entries = value.get("translations") if isinstance(value, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError("model output must contain a translations array")
+
+    translations: dict[str, str] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("each translation must be an object")
+        case_id = entry.get("id")
+        translation = entry.get("translation")
+        if not isinstance(case_id, str) or case_id in translations:
+            raise ValueError("translation ids must be unique strings")
+        if not isinstance(translation, str) or not translation.strip():
+            raise ValueError(f"{case_id}: translation must be nonempty text")
+        translations[case_id] = translation.strip()
+
+    if list(translations) != expected_ids:
+        raise ValueError(
+            f"translation ids/order mismatch: expected {expected_ids}, got {list(translations)}"
+        )
+    return translations
+
+
+def run_llama(
+    llama_cli: Path,
+    model_file: Path,
+    prompt: str,
+    threads: int,
+    context: int,
+    output_tokens: int,
+) -> tuple[str, str, float]:
+    with tempfile.TemporaryDirectory(prefix="fanaticosos-qwen-") as directory:
+        output_path = Path(directory) / "output.txt"
+        started = time.perf_counter()
+        completed = subprocess.run(
+            [
+                str(llama_cli),
+                "-m",
+                str(model_file),
+                "-t",
+                str(threads),
+                "-c",
+                str(context),
+                "-n",
+                str(output_tokens),
+                "--temp",
+                "0",
+                "--top-k",
+                "1",
+                "--seed",
+                "0",
+                "--no-display-prompt",
+                "--no-warmup",
+                "--no-conversation",
+                "--simple-io",
+                "--log-disable",
+                "--output",
+                str(output_path),
+                "-p",
+                prompt,
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env={
+                **os.environ,
+                "NO_COLOR": "1",
+                "OMP_NUM_THREADS": str(threads),
+            },
+            check=False,
+        )
+        elapsed = time.perf_counter() - started
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"llama-cli exited {completed.returncode}: {completed.stderr.strip()}"
+            )
+        if not output_path.is_file():
+            raise RuntimeError("llama-cli did not create its explicit output file")
+        output = output_path.read_text(encoding="utf-8")
+        if not output.strip():
+            raise RuntimeError("llama-cli explicit output file is empty")
+        return output, completed.stderr, elapsed
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--benchmark", required=True, type=Path)
+    parser.add_argument("--glossary", required=True, type=Path)
+    parser.add_argument("--llama-cli", required=True, type=Path)
+    parser.add_argument("--model-file", required=True, type=Path)
+    parser.add_argument("--model-revision", required=True)
+    parser.add_argument("--runtime-version", required=True)
+    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--threads", type=int, default=12)
+    parser.add_argument("--context", type=int, default=8192)
+    parser.add_argument("--output-tokens", type=int, default=2048)
+    return parser.parse_args()
+
+
+def main() -> None:
+    os.umask(0o077)
+    args = parse_args()
+    benchmark = read_json(args.benchmark)
+    glossary = read_json(args.glossary)
+    validate_inputs(benchmark, glossary)
+
+    if not args.llama_cli.is_file() or not os.access(args.llama_cli, os.X_OK):
+        raise ValueError("llama-cli must be an executable file")
+    if not args.model_file.is_file():
+        raise ValueError("model file does not exist")
+    if args.output.exists():
+        raise ValueError("output file already exists")
+
+    prompt = build_prompt(benchmark, glossary)
+    expected_ids = [item["id"] for item in benchmark["cases"]]
+
+    first_raw, first_stderr, first_seconds = run_llama(
+        args.llama_cli,
+        args.model_file,
+        prompt,
+        args.threads,
+        args.context,
+        args.output_tokens,
+    )
+    first = extract_translations(first_raw, expected_ids)
+
+    second_raw, second_stderr, second_seconds = run_llama(
+        args.llama_cli,
+        args.model_file,
+        prompt,
+        args.threads,
+        args.context,
+        args.output_tokens,
+    )
+    second = extract_translations(second_raw, expected_ids)
+
+    protected_names = glossary["protectedNames"]
+    terms = glossary["terms"]
+    results = []
+    for item in benchmark["cases"]:
+        case_id = item["id"]
+        translation = first[case_id]
+        expected = expected_protected_tokens(
+            item["source"], item["mustPreserve"], protected_names
+        )
+        results.append(
+            {
+                "id": case_id,
+                "category": item["category"],
+                "source": item["source"],
+                "translation": translation,
+                "deterministic": translation == second[case_id],
+                "expectedProtectedTokens": expected,
+                "missingProtectedTokens": preservation_failures(translation, expected),
+                "glossaryFailures": glossary_failures(item["source"], translation, terms),
+                "reviewNotes": item["notes"],
+            }
+        )
+
+    child_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+    output = {
+        "schemaVersion": 1,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "engine": "llama.cpp",
+        "runtimeVersion": args.runtime_version,
+        "model": "Qwen/Qwen3-8B-GGUF",
+        "modelFile": args.model_file.name,
+        "modelRevision": args.model_revision,
+        "benchmarkVersion": benchmark["version"],
+        "glossaryVersion": glossary["version"],
+        "runtime": {
+            "python": platform.python_version(),
+            "threads": args.threads,
+            "context": args.context,
+            "outputTokens": args.output_tokens,
+            "temperature": 0,
+        },
+        "measurements": {
+            "firstRunSeconds": round(first_seconds, 6),
+            "secondRunSeconds": round(second_seconds, 6),
+            "maximumChildResidentSetKiB": child_usage.ru_maxrss,
+        },
+        "summary": {
+            "caseCount": len(results),
+            "nondeterministicCases": sum(not item["deterministic"] for item in results),
+            "protectedTokenFailureCases": sum(
+                bool(item["missingProtectedTokens"]) for item in results
+            ),
+            "glossaryFailureCases": sum(bool(item["glossaryFailures"]) for item in results),
+        },
+        "raw": {
+            "firstOutput": first_raw,
+            "secondOutput": second_raw,
+            "firstStderr": first_stderr,
+            "secondStderr": second_stderr,
+        },
+        "cases": results,
+    }
+    atomic_write_json(args.output, output)
+    os.chmod(args.output, 0o600)
+
+    print(f"Cases: {output['summary']['caseCount']}")
+    print(f"First run: {output['measurements']['firstRunSeconds']:.3f}s")
+    print(f"Second run: {output['measurements']['secondRunSeconds']:.3f}s")
+    print(f"Peak child RSS: {output['measurements']['maximumChildResidentSetKiB']} KiB")
+    print(f"Nondeterministic cases: {output['summary']['nondeterministicCases']}")
+    print(
+        "Protected-token failure cases: "
+        f"{output['summary']['protectedTokenFailureCases']}"
+    )
+    print(f"Glossary failure cases: {output['summary']['glossaryFailureCases']}")
+    print(f"Results: {args.output}")
+
+
+if __name__ == "__main__":
+    main()
