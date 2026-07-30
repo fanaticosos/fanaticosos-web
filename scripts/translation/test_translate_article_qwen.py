@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from translate_article_qwen import (
+    build_correction_prompt,
     build_prompt,
     create_batches,
     glossary_term_occurs,
@@ -74,6 +75,17 @@ class TranslateArticleQwenTests(unittest.TestCase):
             prompt.index('"id":"example-only","translation"'),
             prompt.index('"id":"title"'),
         )
+
+    def test_correction_prompt_identifies_rejected_output_and_error(self):
+        prompt = build_correction_prompt(
+            self.request["segments"][0],
+            self.glossary,
+            "Los Bears ganan 27-24 en Chicago",
+            "title: translation appears to remain Spanish",
+        )
+        self.assertIn("The previous translation was rejected", prompt)
+        self.assertIn("Rejected translation:", prompt)
+        self.assertIn("translation appears to remain Spanish", prompt)
 
     def test_prompt_includes_only_batch_relevant_glossary_terms(self):
         glossary = copy.deepcopy(self.glossary)
@@ -171,6 +183,53 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertEqual(result["glossaryVersion"], 3)
         self.assertEqual([item["id"] for item in result["segments"]], ["title", "body-001"])
         self.assertEqual(len(result["sourceRevision"]), 64)
+
+    def test_retries_one_invalid_segment_with_focused_correction(self):
+        request = copy.deepcopy(self.request)
+        request["segments"] = [
+            {
+                "id": "turnover",
+                "kind": "paragraph",
+                "text": "Los Bears perdieron un balón suelto en la zona roja.",
+                "preserve": ["Bears"],
+            }
+        ]
+        glossary = {
+            "version": 4,
+            "protectedNames": ["Bears"],
+            "terms": [
+                {"source": "balón suelto", "target": "fumble"},
+                {"source": "zona roja", "target": "red zone"},
+            ],
+        }
+        responses = iter(
+            [
+                '[{"id":"turnover","translation":"The Bears turned the ball over in the red zone."}]',
+                '[{"id":"turnover","translation":"The Bears lost a fumble in the red zone."}]',
+            ]
+        )
+        prompts = []
+
+        def invoke(prompt: str) -> str:
+            prompts.append(prompt)
+            return next(responses)
+
+        result = translate_request(
+            request,
+            glossary,
+            invoke,
+            model_revision="model-revision",
+            runtime_version="runtime-version",
+            configuration_version="6",
+            max_batch_characters=700,
+        )
+
+        self.assertEqual(len(prompts), 2)
+        self.assertIn("balón suelto -> fumble", prompts[1])
+        self.assertEqual(
+            result["segments"][0]["translation"],
+            "The Bears lost a fumble in the red zone.",
+        )
 
     def test_rejects_missing_protected_name_or_score(self):
         segment = self.request["segments"][0]

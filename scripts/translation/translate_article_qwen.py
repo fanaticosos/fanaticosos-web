@@ -176,6 +176,24 @@ Translate these ordered segments:
 """
 
 
+def build_correction_prompt(
+    segment: dict[str, Any],
+    glossary: dict[str, Any],
+    rejected_translation: str,
+    validation_error: str,
+) -> str:
+    prompt = build_prompt([segment], glossary)
+    return prompt.replace(
+        "Translate these ordered segments:\n",
+        "The previous translation was rejected. Correct it using the required "
+        "terminology and return only the requested JSON.\n"
+        f"Rejected translation: {json.dumps(rejected_translation, ensure_ascii=False)}\n"
+        f"Validation error: {json.dumps(validation_error, ensure_ascii=False)}\n\n"
+        "Translate these ordered segments:\n",
+        1,
+    )
+
+
 def expected_preserved_values(
     segment: dict[str, Any], protected_names: list[str]
 ) -> list[str]:
@@ -267,7 +285,21 @@ def translate_request(
         values = extract_translations(raw_output, expected_ids)
         for segment in batch:
             translation = values[segment["id"]]
-            validate_segment_translation(segment, translation, glossary)
+            try:
+                validate_segment_translation(segment, translation, glossary)
+            except ValueError as error:
+                correction_output = invoke(
+                    build_correction_prompt(
+                        segment,
+                        glossary,
+                        translation,
+                        str(error),
+                    )
+                )
+                translation = extract_translations(
+                    correction_output, [segment["id"]]
+                )[segment["id"]]
+                validate_segment_translation(segment, translation, glossary)
             translated.append({"id": segment["id"], "translation": translation})
 
     result = {
