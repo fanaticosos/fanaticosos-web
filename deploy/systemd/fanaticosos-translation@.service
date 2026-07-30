@@ -24,13 +24,13 @@ ExecStart=/usr/bin/python3 /srv/fanaticosos-blog/repository/scripts/translation/
   --model-file /var/lib/fanaticosos-blog/models/qwen3-8b-gguf/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf \
   --model-revision 7c41481f57cb95916b40956ab2f0b139b296d974 \
   --runtime-version b10195-47f686f53 \
-  --configuration-version 2 \
+  --configuration-version 3 \
   --output /var/lib/fanaticosos-blog/jobs/%i/result.json \
   --failure-output /var/lib/fanaticosos-blog/jobs/%i/failed-output.json \
   --threads 12 \
   --context 8192 \
   --output-tokens 2048 \
-  --max-batch-characters 6000
+  --max-batch-characters 700
 
 Restart=no
 RuntimeMaxSec=5min

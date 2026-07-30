@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -22,6 +23,67 @@ from benchmark_qwen import extract_translations, run_llama
 ENGINE = "llama.cpp"
 MODEL = "Qwen/Qwen3-8B-GGUF"
 NUMBER_PATTERN = re.compile(r"(?<!\w)\d+(?:[.,]\d+)?(?:-\d+(?:[.,]\d+)?)?%?(?!\w)")
+WORD_PATTERN = re.compile(r"[^\W\d_]+", re.UNICODE)
+SPANISH_MARKERS = {
+    "a",
+    "al",
+    "con",
+    "de",
+    "del",
+    "después",
+    "el",
+    "en",
+    "esta",
+    "este",
+    "la",
+    "las",
+    "los",
+    "más",
+    "pero",
+    "por",
+    "para",
+    "que",
+    "se",
+    "sin",
+    "su",
+    "una",
+    "un",
+    "y",
+}
+
+
+def normalized_word_variants(value: str) -> set[str]:
+    normalized = "".join(
+        character
+        for character in unicodedata.normalize("NFKD", value.casefold())
+        if not unicodedata.combining(character)
+    )
+    variants = {normalized}
+    if len(normalized) > 3 and normalized.endswith("s"):
+        variants.add(normalized[:-1])
+    if len(normalized) > 4 and normalized.endswith("es"):
+        variants.add(normalized[:-2])
+    return variants
+
+
+def glossary_term_occurs(source_term: str, source_text: str) -> bool:
+    term_words = WORD_PATTERN.findall(source_term)
+    source_words = WORD_PATTERN.findall(source_text)
+    if not term_words or len(term_words) > len(source_words):
+        return False
+    term_variants = [normalized_word_variants(word) for word in term_words]
+    width = len(term_words)
+    for start in range(len(source_words) - width + 1):
+        source_variants = [
+            normalized_word_variants(word)
+            for word in source_words[start : start + width]
+        ]
+        if all(
+            expected & actual
+            for expected, actual in zip(term_variants, source_variants)
+        ):
+            return True
+    return False
 
 
 def create_batches(
@@ -53,10 +115,21 @@ def create_batches(
 def build_prompt(
     segments: list[dict[str, Any]], glossary: dict[str, Any]
 ) -> str:
+    combined_source = "\n".join(segment["text"] for segment in segments)
+    relevant_terms = [
+        term
+        for term in glossary["terms"]
+        if glossary_term_occurs(term["source"], combined_source)
+    ]
     mappings = "\n".join(
-        f"- {term['source']} = {term['target']}" for term in glossary["terms"]
-    )
-    protected = ", ".join(glossary["protectedNames"])
+        f"- {term['source']} = {term['target']}" for term in relevant_terms
+    ) or "- No exact glossary term occurs in this batch."
+    protected_values = [
+        name for name in glossary["protectedNames"] if name in combined_source
+    ]
+    for segment in segments:
+        protected_values.extend(segment.get("preserve", []))
+    protected = ", ".join(dict.fromkeys(protected_values)) or "None"
     payload = json.dumps(
         [
             {"id": segment["id"], "kind": segment["kind"], "text": segment["text"]}
@@ -68,6 +141,8 @@ def build_prompt(
     return f"""<|im_start|>system
 You are the English copy editor for Fanaticosos, an NFL and Chicago Bears publication.
 Translate every Spanish segment into natural, publication-quality American English.
+Translate the entire `text` value. Every `translation` value must be English.
+Never copy a Spanish sentence or clause into the translation.
 Do not add, omit, summarize, explain, or alter facts.
 Preserve names, teams, scores, numbers, statistics, and Markdown punctuation.
 Apply the NFL terminology mappings naturally, including grammatical inflection.
@@ -104,6 +179,22 @@ def validate_segment_translation(
     translation: str,
     glossary: dict[str, Any],
 ) -> None:
+    source_markers = [
+        word.casefold()
+        for word in WORD_PATTERN.findall(segment["text"])
+        if word.casefold() in SPANISH_MARKERS
+    ]
+    translation_markers = [
+        word.casefold()
+        for word in WORD_PATTERN.findall(translation)
+        if word.casefold() in SPANISH_MARKERS
+    ]
+    if len(source_markers) >= 2 and len(translation_markers) >= max(
+        2, (len(source_markers) + 1) // 2
+    ):
+        raise ValueError(
+            f"{segment['id']}: translation appears to remain Spanish"
+        )
     missing = [
         value
         for value in expected_preserved_values(segment, glossary["protectedNames"])

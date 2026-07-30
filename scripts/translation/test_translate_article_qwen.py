@@ -10,6 +10,7 @@ from pathlib import Path
 from translate_article_qwen import (
     build_prompt,
     create_batches,
+    glossary_term_occurs,
     translate_request,
     validate_segment_translation,
     write_failure_artifact,
@@ -59,6 +60,30 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertIn('"id":"title"', prompt)
         self.assertIn("/no_think", prompt)
         self.assertNotIn('"id":"segment-id"', prompt)
+        self.assertIn("Every `translation` value must be English", prompt)
+
+    def test_prompt_includes_only_batch_relevant_glossary_terms(self):
+        glossary = copy.deepcopy(self.glossary)
+        glossary["terms"].append(
+            {"source": "zona roja", "target": "red zone"}
+        )
+        prompt = build_prompt([self.request["segments"][1]], glossary)
+        self.assertIn("pase de anotación = touchdown pass", prompt)
+        self.assertNotIn("zona roja = red zone", prompt)
+
+    def test_glossary_relevance_handles_plural_and_accents(self):
+        self.assertTrue(
+            glossary_term_occurs(
+                "formación nickel",
+                "Chicago alternó formaciones nickel en defensa.",
+            )
+        )
+        self.assertFalse(
+            glossary_term_occurs(
+                "zona roja",
+                "Chicago alternó formaciones nickel en defensa.",
+            )
+        )
 
     def test_translates_batches_and_builds_provenance(self):
         responses = iter(
@@ -109,6 +134,15 @@ class TranslateArticleQwenTests(unittest.TestCase):
             validate_segment_translation(
                 segment,
                 "Caleb Williams threw two scoring throws.",
+                self.glossary,
+            )
+
+    def test_rejects_output_that_remains_spanish(self):
+        segment = self.request["segments"][0]
+        with self.assertRaisesRegex(ValueError, "appears to remain Spanish"):
+            validate_segment_translation(
+                segment,
+                "Los Bears ganan 27-24 en Chicago",
                 self.glossary,
             )
 
