@@ -179,6 +179,12 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('systemd-analyze verify "$tts_source_unit"', verifier)
         self.assertNotIn('"$2"', verifier)
 
+    def test_spanglish_diagnostic_has_private_temporary_directory(self):
+        diagnostic = self.helper.split(
+            "command_run_spanglish_diagnostic()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn('PrivateTmp=yes', diagnostic)
+
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)
         self.assertIn("visudo -cf", self.installer)

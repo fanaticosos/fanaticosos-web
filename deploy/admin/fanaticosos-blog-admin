@@ -585,6 +585,7 @@ command_run_spanglish_diagnostic() {
     --property="MemoryMax=4G" \
     --property="MemorySwapMax=512M" \
     --property="KillMode=control-group" \
+    --property="PrivateTmp=yes" \
     --property="PrivateNetwork=yes" \
     --property="ProtectSystem=strict" \
     --property="ReadWritePaths=$data_root/work" \
