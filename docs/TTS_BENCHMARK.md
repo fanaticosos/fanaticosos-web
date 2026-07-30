@@ -1,10 +1,10 @@
 # Fanaticosos TTS benchmark
 
-Status: candidate definition; no voice is approved yet
+Status: Kokoro rejected for production quality; replacement candidate pending
 
 ## Candidate
 
-The first benchmark uses `hexgrad/Kokoro-82M`, an Apache-2.0 model with 82 million parameters. The official inference library supports CPU execution, produces 24 kHz audio, and uses `espeak-ng` for Spanish and out-of-dictionary fallback.
+The first benchmark used `hexgrad/Kokoro-82M`, an Apache-2.0 model with 82 million parameters. The owner rejected it because NFL names were not acceptable in Spanish and its English voices did not provide meaningfully different character. It remains benchmark history, not the production selection.
 
 Primary sources:
 
@@ -14,12 +14,19 @@ Primary sources:
 
 The official voice inventory warns that non-English support can be thinner than English support. Spanish quality is therefore an acceptance question, not an assumption.
 
-## Version 1 voices
+## Version 1 voices — rejected
 
 - Spanish: `ef_dora`, `em_alex`, `em_santa`
 - American English: `af_heart`, `af_bella`
 
-The English candidates are the official inventory's two highest-rated American-English voices. All three available Spanish voices are retained because the inventory does not publish comparable grades for them.
+The English candidates were the official inventory's two highest-rated American-English voices. The generic Spanish candidate set was insufficient: Fanaticosos requires Latin-American Spanish, explicitly `es-419`, and must not use a Spain-Spanish voice such as `em_santa`.
+
+## Required locale variants
+
+- Spanish narration: `es-419` (Latin American Spanish)
+- English narration: `en-US` (American English)
+
+Generic `es` support is not an acceptance criterion. A future engine must demonstrate a Latin-American voice and natural American-English pronunciation for embedded NFL teams, cities, players, stadiums, abbreviations, and football terminology.
 
 ## Listening fixture
 

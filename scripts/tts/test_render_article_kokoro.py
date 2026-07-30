@@ -177,6 +177,7 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             "status": "approved",
             "model": manifest["repository"],
             "modelRevision": manifest["revision"],
+            "localeVariants": {"es": "es-419", "en": "en-US"},
             "voices": {"es": "ef_dora", "en": "af_heart"},
             "encoding": {
                 "codec": "mp3",
@@ -202,6 +203,7 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             "status": "approved",
             "model": manifest["repository"],
             "modelRevision": manifest["revision"],
+            "localeVariants": {"es": "es-419", "en": "en-US"},
             "voices": {"es": "af_heart", "en": "af_bella"},
             "encoding": {
                 "codec": "mp3",
@@ -212,6 +214,30 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             },
         }
         with self.assertRaisesRegex(ValueError, "not permitted"):
+            resolve_production_voice(configuration, "es", manifest)
+
+    def test_configuration_rejects_spain_spanish_variant(self):
+        manifest = {
+            "repository": "hexgrad/Kokoro-82M",
+            "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+        }
+        configuration = {
+            "schemaVersion": 1,
+            "configurationVersion": 2,
+            "status": "approved",
+            "model": manifest["repository"],
+            "modelRevision": manifest["revision"],
+            "localeVariants": {"es": "es-ES", "en": "en-US"},
+            "voices": {"es": "ef_dora", "en": "af_heart"},
+            "encoding": {
+                "codec": "mp3",
+                "sampleRateHz": 48000,
+                "channels": 1,
+                "bitRate": 128000,
+                "loudness": "EBU R128 I=-16 LUFS, TP=-1.5 dB, LRA=11 LU",
+            },
+        }
+        with self.assertRaisesRegex(ValueError, "Latin American Spanish"):
             resolve_production_voice(configuration, "es", manifest)
 
 

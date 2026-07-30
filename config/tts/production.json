@@ -4,6 +4,10 @@
   "status": "pending-owner-selection",
   "model": "hexgrad/Kokoro-82M",
   "modelRevision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+  "localeVariants": {
+    "es": "es-419",
+    "en": "en-US"
+  },
   "voices": {
     "es": null,
     "en": null

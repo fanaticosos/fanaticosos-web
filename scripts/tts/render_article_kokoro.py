@@ -59,6 +59,8 @@ def resolve_production_voice(
         "revision"
     ) != configuration["modelRevision"]:
         raise ValueError("TTS configuration does not match candidate manifest")
+    if configuration.get("localeVariants") != {"es": "es-419", "en": "en-US"}:
+        raise ValueError("TTS locale variants must be Latin American Spanish and US English")
     voices = configuration.get("voices")
     if not isinstance(voices, dict) or set(voices) != {"es", "en"}:
         raise ValueError("TTS configuration must contain Spanish and English voices")
