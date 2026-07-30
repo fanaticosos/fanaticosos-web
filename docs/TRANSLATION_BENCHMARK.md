@@ -27,7 +27,7 @@ Measure Spanish-to-English NFL and Chicago Bears journalism quality, CPU process
 - scores, yardage, passing statistics, and game situations;
 - paragraph-level journalistic flow.
 
-`config/translation/glossary.json` centralizes standard terminology and protected names. Routine publishing will apply this configuration automatically; the owner will not maintain glossary fields for every article.
+`config/translation/glossary.json` centralizes Spanish-to-English NFL terminology and protected names. The official NFL Football Operations glossary and current NFL rulebook are the primary terminology authorities. Wikipedia's American-football glossary is used only to discover vocabulary that must then be mapped and validated against NFL usage. Routine publishing will apply this configuration automatically; the owner will not maintain glossary fields for every article.
 
 ## Measurement protocol
 
