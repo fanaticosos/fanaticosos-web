@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "status": "pending-owner-review",
+  "source": "https://www.nfl.com/teams/",
+  "locale": "es-419",
+  "divisions": [
+    {
+      "id": "nfc-north",
+      "label": "NFC North",
+      "teams": [
+        {"written": "Chicago Bears", "spoken": "Chicágo Bers", "marketWritten": "Chicago", "marketSpoken": "Chicágo"},
+        {"written": "Detroit Lions", "spoken": "Ditróit Láions", "marketWritten": "Detroit", "marketSpoken": "Ditróit"},
+        {"written": "Green Bay Packers", "spoken": "Grin Béi Páquers", "marketWritten": "Green Bay", "marketSpoken": "Grin Béi"},
+        {"written": "Minnesota Vikings", "spoken": "Minesóta Váikings", "marketWritten": "Minneapolis", "marketSpoken": "Mineápolis"}
+      ]
+    },
+    {
+      "id": "nfc-east",
+      "label": "NFC East",
+      "teams": [
+        {"written": "Dallas Cowboys", "spoken": "Dálas Cóubois", "marketWritten": "Dallas", "marketSpoken": "Dálas"},
+        {"written": "New York Giants", "spoken": "Niu York Yáiants", "marketWritten": "New York", "marketSpoken": "Niu York"},
+        {"written": "Philadelphia Eagles", "spoken": "Filadélfia Ígols", "marketWritten": "Philadelphia", "marketSpoken": "Filadélfia"},
+        {"written": "Washington Commanders", "spoken": "Uáshington Cománders", "marketWritten": "Washington", "marketSpoken": "Uáshington"}
+      ]
+    },
+    {
+      "id": "nfc-south",
+      "label": "NFC South",
+      "teams": [
+        {"written": "Atlanta Falcons", "spoken": "Atlánta Fálcons", "marketWritten": "Atlanta", "marketSpoken": "Atlánta"},
+        {"written": "Carolina Panthers", "spoken": "Carolina Pánthers", "marketWritten": "Charlotte", "marketSpoken": "Shárlot"},
+        {"written": "New Orleans Saints", "spoken": "Niu Órlins Séints", "marketWritten": "New Orleans", "marketSpoken": "Niu Órlins"},
+        {"written": "Tampa Bay Buccaneers", "spoken": "Tampa Béi Bacanírs", "marketWritten": "Tampa", "marketSpoken": "Tampa"}
+      ]
+    },
+    {
+      "id": "nfc-west",
+      "label": "NFC West",
+      "teams": [
+        {"written": "Arizona Cardinals", "spoken": "Arizona Cárdinals", "marketWritten": "Phoenix", "marketSpoken": "Fínix"},
+        {"written": "Los Angeles Rams", "spoken": "Los Ángeles Rams", "marketWritten": "Los Angeles", "marketSpoken": "Los Ángeles"},
+        {"written": "San Francisco 49ers", "spoken": "San Francisco Forty Náiners", "marketWritten": "San Francisco", "marketSpoken": "San Francisco"},
+        {"written": "Seattle Seahawks", "spoken": "Siátol Síjoks", "marketWritten": "Seattle", "marketSpoken": "Siátol"}
+      ]
+    },
+    {
+      "id": "afc-north",
+      "label": "AFC North",
+      "teams": [
+        {"written": "Baltimore Ravens", "spoken": "Bóltimor Réivens", "marketWritten": "Baltimore", "marketSpoken": "Bóltimor"},
+        {"written": "Cincinnati Bengals", "spoken": "Cincináti Béngols", "marketWritten": "Cincinnati", "marketSpoken": "Cincináti"},
+        {"written": "Cleveland Browns", "spoken": "Clíveland Bráuns", "marketWritten": "Cleveland", "marketSpoken": "Clíveland"},
+        {"written": "Pittsburgh Steelers", "spoken": "Pítsburg Stílers", "marketWritten": "Pittsburgh", "marketSpoken": "Pítsburg"}
+      ]
+    },
+    {
+      "id": "afc-east",
+      "label": "AFC East",
+      "teams": [
+        {"written": "Buffalo Bills", "spoken": "Báfalo Bils", "marketWritten": "Buffalo", "marketSpoken": "Báfalo"},
+        {"written": "Miami Dolphins", "spoken": "Maiámi Dólfins", "marketWritten": "Miami", "marketSpoken": "Maiámi"},
+        {"written": "New England Patriots", "spoken": "Niu Íngland Péitriots", "marketWritten": "New England", "marketSpoken": "Niu Íngland"},
+        {"written": "New York Jets", "spoken": "Niu York Yets", "marketWritten": "New York", "marketSpoken": "Niu York"}
+      ]
+    },
+    {
+      "id": "afc-south",
+      "label": "AFC South",
+      "teams": [
+        {"written": "Houston Texans", "spoken": "Jiústón Téxans", "marketWritten": "Houston", "marketSpoken": "Jiústón"},
+        {"written": "Indianapolis Colts", "spoken": "Indianápolis Cólts", "marketWritten": "Indianapolis", "marketSpoken": "Indianápolis"},
+        {"written": "Jacksonville Jaguars", "spoken": "Yácksonvil Yáguars", "marketWritten": "Jacksonville", "marketSpoken": "Yácksonvil"},
+        {"written": "Tennessee Titans", "spoken": "Ténesi Táitans", "marketWritten": "Nashville", "marketSpoken": "Náshvil"}
+      ]
+    },
+    {
+      "id": "afc-west",
+      "label": "AFC West",
+      "teams": [
+        {"written": "Denver Broncos", "spoken": "Dénver Bróncos", "marketWritten": "Denver", "marketSpoken": "Dénver"},
+        {"written": "Kansas City Chiefs", "spoken": "Kansas Cíti Chífs", "marketWritten": "Kansas City", "marketSpoken": "Kansas Cíti"},
+        {"written": "Las Vegas Raiders", "spoken": "Las Végas Réiders", "marketWritten": "Las Vegas", "marketSpoken": "Las Végas"},
+        {"written": "Los Angeles Chargers", "spoken": "Los Ángeles Chárgers", "marketWritten": "Los Angeles", "marketSpoken": "Los Ángeles"}
+      ]
+    }
+  ]
+}

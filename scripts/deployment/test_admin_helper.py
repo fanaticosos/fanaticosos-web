@@ -68,6 +68,8 @@ class AdminHelperTests(unittest.TestCase):
                 "export-latino-diagnostic",
                 "run-tts-long-form-review",
                 "export-tts-long-form-review",
+                "run-nfl-name-review",
+                "export-nfl-name-review",
             ],
         )
 
@@ -233,6 +235,21 @@ class AdminHelperTests(unittest.TestCase):
         ):
             self.assertIn(value, review)
         self.assertIn("long-form-review.json", review)
+        self.assertNotIn('"$2"', review)
+
+    def test_nfl_name_review_has_fixed_automatic_limits(self):
+        review = self.helper.split(
+            "command_run_nfl_name_review()", 1
+        )[1].split("\n}\n", 1)[0]
+        for value in (
+            "RuntimeMaxSec=10min",
+            "MemoryMax=4G",
+            "MemorySwapMax=512M",
+            "PrivateTmp=yes",
+            "PrivateNetwork=yes",
+        ):
+            self.assertIn(value, review)
+        self.assertIn("nfl-name-review.json", review)
         self.assertNotIn('"$2"', review)
 
     def test_installer_refuses_overwrite(self):

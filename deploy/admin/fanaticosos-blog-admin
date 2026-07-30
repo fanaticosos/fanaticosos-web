@@ -30,6 +30,7 @@ readonly spanglish_diagnostic="$data_root/work/tts-spanglish-diagnostic-v1"
 readonly tts_tuning_output="$data_root/work/tts-selected-voice-tuning-v1"
 readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v4"
 readonly long_form_review="$data_root/work/tts-long-form-review-v2"
+readonly nfl_name_review="$data_root/work/tts-nfl-name-review-v1"
 
 usage() {
   cat <<'EOF'
@@ -65,6 +66,8 @@ Commands:
   export-latino-diagnostic EXPECTED_COMMIT
   run-tts-long-form-review EXPECTED_COMMIT
   export-tts-long-form-review EXPECTED_COMMIT
+  run-nfl-name-review EXPECTED_COMMIT
+  export-nfl-name-review EXPECTED_COMMIT
 EOF
 }
 
@@ -764,6 +767,53 @@ command_export_tts_long_form_review() {
   echo "PASS: Bilingual long-form TTS review exported."
 }
 
+command_run_nfl_name_review() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ ! -e "$nfl_name_review" ]] || stop "NFL name review already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-nfl-name-review.service \
+    --property="User=$service_account" \
+    --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="Environment=PYTHONDONTWRITEBYTECODE=1" \
+    --property="Environment=HF_HUB_OFFLINE=1" \
+    --property="RuntimeMaxSec=10min" \
+    --property="MemoryMax=4G" \
+    --property="MemorySwapMax=512M" \
+    --property="KillMode=control-group" \
+    --property="PrivateTmp=yes" \
+    --property="PrivateNetwork=yes" \
+    --property="ProtectSystem=strict" \
+    --property="ReadWritePaths=$data_root/work" \
+    "$kokoro_venv/bin/python" "$repository/scripts/tts/review_nfl_names.py" \
+      --inventory "$repository/config/tts/nfl-name-review.json" \
+      --model-root "$kokoro_model" \
+      --output "$nfl_name_review"
+  [[ -f "$nfl_name_review/summary.json" ]] || stop "NFL name review summary is missing."
+  [[ "$(find "$nfl_name_review" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "8" ]] || \
+    stop "NFL name review did not produce eight MP3 files."
+  echo "PASS: Bounded NFL name review completed."
+}
+
+command_export_nfl_name_review() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-nfl-name-review-v1"
+  require_repository_commit "$expected"
+  [[ -f "$nfl_name_review/summary.json" ]] || stop "NFL name review is missing."
+  [[ ! -e "$export_root" ]] || stop "NFL name review export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  while IFS= read -r -d '' artifact; do
+    install -o sysadmin -g sysadmin -m 0640 \
+      "$artifact" "$export_root/$(basename "$artifact")"
+  done < <(find "$nfl_name_review" -maxdepth 1 -type f \
+    \( -name '*.mp3' -o -name 'summary.json' \) -print0)
+  [[ "$(find "$export_root" -maxdepth 1 -type f | wc -l)" == "9" ]] || \
+    stop "NFL name review export did not contain nine files."
+  echo "PASS: Eight NFL name review files exported."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -889,6 +939,14 @@ case "$command" in
   export-tts-long-form-review)
     [[ $# == 1 ]] || stop "export-tts-long-form-review requires EXPECTED_COMMIT."
     command_export_tts_long_form_review "$1"
+    ;;
+  run-nfl-name-review)
+    [[ $# == 1 ]] || stop "run-nfl-name-review requires EXPECTED_COMMIT."
+    command_run_nfl_name_review "$1"
+    ;;
+  export-nfl-name-review)
+    [[ $# == 1 ]] || stop "export-nfl-name-review requires EXPECTED_COMMIT."
+    command_export_nfl_name_review "$1"
     ;;
   *)
     stop "Unsupported command: $command"
