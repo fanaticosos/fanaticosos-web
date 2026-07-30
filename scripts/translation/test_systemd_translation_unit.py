@@ -27,7 +27,11 @@ class TranslationSystemdUnitTests(unittest.TestCase):
 
     def test_unit_is_an_on_demand_template(self):
         self.assertIn("%i", self.parser["Unit"]["Description"])
-        self.assertIn("%i/request.json", self.parser["Unit"]["ConditionPathIsRegular"])
+        self.assertIn("%i/request.json", self.parser["Unit"]["ConditionPathExists"])
+        self.assertEqual(
+            self.parser["Service"]["ExecCondition"],
+            "/usr/bin/test -f /var/lib/fanaticosos-blog/jobs/%i/request.json",
+        )
         self.assertNotIn("WantedBy", self.parser["Install"])
 
     def test_runs_as_dedicated_account_with_private_output(self):

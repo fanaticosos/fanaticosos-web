@@ -2,7 +2,7 @@
 Description=Fanaticosos bounded article translation job %i
 Documentation=file:/srv/fanaticosos-blog/repository/docs/TRANSLATION_JOB_CONTRACT.md
 After=local-fs.target
-ConditionPathIsRegular=/var/lib/fanaticosos-blog/jobs/%i/request.json
+ConditionPathExists=/var/lib/fanaticosos-blog/jobs/%i/request.json
 
 [Service]
 Type=exec
@@ -16,6 +16,7 @@ Environment=NO_COLOR=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=OMP_NUM_THREADS=12
 
+ExecCondition=/usr/bin/test -f /var/lib/fanaticosos-blog/jobs/%i/request.json
 ExecStart=/usr/bin/python3 /srv/fanaticosos-blog/repository/scripts/translation/translate_article_qwen.py \
   --request /var/lib/fanaticosos-blog/jobs/%i/request.json \
   --glossary /srv/fanaticosos-blog/repository/config/translation/glossary.json \
