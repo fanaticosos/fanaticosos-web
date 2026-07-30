@@ -58,6 +58,7 @@ class AdminHelperTests(unittest.TestCase):
                 "run-kokoro-benchmark",
                 "kokoro-benchmark-status",
                 "install-kokoro-english-model",
+                "export-kokoro-samples",
             ],
         )
 
@@ -151,6 +152,22 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("cleanup_spacy_install", installer)
         self.assertIn("Legacy spaCy staging file has unexpected checksum", installer)
         self.assertNotIn('"$2"', installer)
+
+    def test_sample_export_has_fixed_scope(self):
+        exporter = self.helper.split("command_export_kokoro_samples()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('/home/sysadmin/fanaticosos-tts-samples', exporter)
+        for sample in (
+            "es-ef_dora.mp3",
+            "es-em_alex.mp3",
+            "es-em_santa.mp3",
+            "en-af_heart.mp3",
+            "en-af_bella.mp3",
+        ):
+            self.assertIn(sample, exporter)
+        self.assertIn('[[ ! -e "$export_root" ]]', exporter)
+        self.assertNotIn('"$2"', exporter)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)

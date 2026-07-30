@@ -49,6 +49,7 @@ Commands:
   run-kokoro-benchmark EXPECTED_COMMIT
   kokoro-benchmark-status
   install-kokoro-english-model EXPECTED_COMMIT
+  export-kokoro-samples EXPECTED_COMMIT
 EOF
 }
 
@@ -520,6 +521,37 @@ command_install_kokoro_english_model() {
   echo "PASS: Verified spaCy English model installed for offline Kokoro use."
 }
 
+command_export_kokoro_samples() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-tts-samples"
+  local sample
+
+  require_repository_commit "$expected"
+  [[ -f "$kokoro_output/metrics.json" ]] || stop "Kokoro metrics are missing."
+  [[ ! -e "$export_root" ]] || stop "Review export already exists."
+  for sample in \
+    es-ef_dora.mp3 \
+    es-em_alex.mp3 \
+    es-em_santa.mp3 \
+    en-af_heart.mp3 \
+    en-af_bella.mp3; do
+    [[ -f "$kokoro_output/$sample" ]] || stop "Kokoro sample is missing: $sample"
+  done
+
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  for sample in \
+    es-ef_dora.mp3 \
+    es-em_alex.mp3 \
+    es-em_santa.mp3 \
+    en-af_heart.mp3 \
+    en-af_bella.mp3 \
+    metrics.json; do
+    install -o sysadmin -g sysadmin -m 0640 \
+      "$kokoro_output/$sample" "$export_root/$sample"
+  done
+  echo "PASS: Six fixed Kokoro review artifacts exported to $export_root."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -605,6 +637,10 @@ case "$command" in
   install-kokoro-english-model)
     [[ $# == 1 ]] || stop "install-kokoro-english-model requires EXPECTED_COMMIT."
     command_install_kokoro_english_model "$1"
+    ;;
+  export-kokoro-samples)
+    [[ $# == 1 ]] || stop "export-kokoro-samples requires EXPECTED_COMMIT."
+    command_export_kokoro_samples "$1"
     ;;
   *)
     stop "Unsupported command: $command"
