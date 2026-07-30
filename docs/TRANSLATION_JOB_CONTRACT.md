@@ -70,6 +70,7 @@ The contract permits at most 512 segments, 12,000 characters per segment, and 25
 - Missing, duplicate, reordered, or empty result segments fail validation.
 - A mismatched article ID or source revision fails validation.
 - Model output remains temporary until all preservation, glossary, and structure checks pass.
+- A model-response parsing or validation failure preserves only the final bounded raw response in private mode-`0600` `failed-output.json` for diagnosis; it is never published.
 - Only a complete validated result may atomically replace a draft translation result.
 - A failure never changes the accepted English article or public site.
 - The editor receives a concise error; the owner does not inspect system resources or processes.

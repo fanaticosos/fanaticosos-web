@@ -76,8 +76,8 @@ Protected names: {protected}
 Terminology mappings:
 {mappings}
 
-Return only valid JSON with this exact shape:
-{{"translations":[{{"id":"segment-id","translation":"English text"}}]}}
+Return only one valid JSON object containing a `translations` array.
+Every array item must contain exactly two string fields named `id` and `translation`.
 Return every input id exactly once and in its original order. Do not use Markdown fences.
 <|im_end|>
 <|im_start|>user
@@ -120,6 +120,18 @@ def validate_segment_translation(
             for failure in failures
         )
         raise ValueError(f"{segment['id']}: glossary validation failed: {details}")
+
+
+def write_failure_artifact(path: Path, error: Exception, raw_output: str) -> None:
+    failure = {
+        "schemaVersion": 1,
+        "capturedAt": datetime.now(timezone.utc).isoformat(),
+        "errorType": type(error).__name__,
+        "error": str(error),
+        "lastRawOutput": raw_output[-1_000_000:],
+    }
+    atomic_write_json(path, failure)
+    os.chmod(path, 0o600)
 
 
 def translate_request(
@@ -176,6 +188,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runtime-version", required=True)
     parser.add_argument("--configuration-version", default="1")
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--failure-output", type=Path)
     parser.add_argument("--threads", type=int, default=12)
     parser.add_argument("--context", type=int, default=8192)
     parser.add_argument("--output-tokens", type=int, default=2048)
@@ -196,6 +209,8 @@ def main() -> None:
     request = read_json(args.request)
     glossary = read_json(args.glossary)
 
+    raw_outputs: list[str] = []
+
     def invoke(prompt: str) -> str:
         output, _, _ = run_llama(
             args.llama_cli,
@@ -205,17 +220,23 @@ def main() -> None:
             args.context,
             args.output_tokens,
         )
+        raw_outputs.append(output)
         return output
 
-    result = translate_request(
-        request,
-        glossary,
-        invoke,
-        model_revision=args.model_revision,
-        runtime_version=args.runtime_version,
-        configuration_version=args.configuration_version,
-        max_batch_characters=args.max_batch_characters,
-    )
+    try:
+        result = translate_request(
+            request,
+            glossary,
+            invoke,
+            model_revision=args.model_revision,
+            runtime_version=args.runtime_version,
+            configuration_version=args.configuration_version,
+            max_batch_characters=args.max_batch_characters,
+        )
+    except Exception as error:
+        if args.failure_output is not None and raw_outputs:
+            write_failure_artifact(args.failure_output, error, raw_outputs[-1])
+        raise
     atomic_write_json(args.output, result)
     os.chmod(args.output, 0o600)
     print(f"Article: {result['articleId']}")

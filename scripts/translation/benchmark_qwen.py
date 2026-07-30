@@ -46,8 +46,8 @@ Protected names: {protected}
 Terminology mappings:
 {mappings}
 
-Return only valid JSON with this exact shape:
-{{"translations":[{{"id":"case-id","translation":"English text"}}]}}
+Return only one valid JSON object containing a `translations` array.
+Every array item must contain exactly two string fields named `id` and `translation`.
 Return one entry for every input id, in the original order. Do not use Markdown fences.
 <|im_end|>
 <|im_start|>user
@@ -71,6 +71,9 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
             lines = lines[:-1]
         text = "\n".join(lines).strip()
 
+    if "Assistant:" in text:
+        text = text.rsplit("Assistant:", 1)[1].strip()
+
     decoder = json.JSONDecoder()
     candidates: list[dict[str, Any]] = []
     position = 0
@@ -90,6 +93,16 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
     if not candidates:
         raise ValueError("model output does not contain a translations JSON object")
     value = candidates[-1]
+    for candidate in reversed(candidates):
+        candidate_entries = candidate.get("translations")
+        candidate_ids = [
+            entry.get("id")
+            for entry in candidate_entries
+            if isinstance(entry, dict)
+        ]
+        if candidate_ids == expected_ids:
+            value = candidate
+            break
     entries = value.get("translations") if isinstance(value, dict) else None
     if not isinstance(entries, list):
         raise ValueError("model output must contain a translations array")

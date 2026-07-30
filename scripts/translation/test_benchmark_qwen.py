@@ -26,6 +26,7 @@ class QwenBenchmarkTests(unittest.TestCase):
         self.assertIn("balón suelto = fumble", prompt)
         self.assertIn("Protected names: Bears", prompt)
         self.assertIn("/no_think", prompt)
+        self.assertNotIn('"id":"case-id"', prompt)
 
     def test_extracts_exact_json(self):
         actual = extract_translations(
@@ -49,6 +50,13 @@ class QwenBenchmarkTests(unittest.TestCase):
             'Input: [{"id":"one","text":"Uno"}]\n'
             'Assistant:\n'
             '{"translations":[{"id":"one","translation":"One"}]}\n'
+        )
+        self.assertEqual(extract_translations(raw, ["one"]), {"one": "One"})
+
+    def test_uses_matching_ids_when_output_contains_multiple_objects(self):
+        raw = (
+            '{"translations":[{"id":"wrong","translation":"Wrong"}]}\n'
+            '{"translations":[{"id":"one","translation":"One"}]}'
         )
         self.assertEqual(extract_translations(raw, ["one"]), {"one": "One"})
 

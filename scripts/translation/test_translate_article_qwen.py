@@ -2,13 +2,17 @@
 
 import copy
 import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
 
 from translate_article_qwen import (
     build_prompt,
     create_batches,
     translate_request,
     validate_segment_translation,
+    write_failure_artifact,
 )
 
 
@@ -54,6 +58,7 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertIn("pase de anotación = touchdown pass", prompt)
         self.assertIn('"id":"title"', prompt)
         self.assertIn("/no_think", prompt)
+        self.assertNotIn('"id":"segment-id"', prompt)
 
     def test_translates_batches_and_builds_provenance(self):
         responses = iter(
@@ -146,6 +151,17 @@ class TranslateArticleQwenTests(unittest.TestCase):
                 configuration_version="1",
                 max_batch_characters=60,
             )
+
+    def test_failure_artifact_is_private_and_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "failed-output.json"
+            write_failure_artifact(path, ValueError("invalid response"), "x" * 1_000_010)
+            with path.open(encoding="utf-8") as handle:
+                artifact = json.load(handle)
+            self.assertEqual(artifact["errorType"], "ValueError")
+            self.assertEqual(artifact["error"], "invalid response")
+            self.assertEqual(len(artifact["lastRawOutput"]), 1_000_000)
+            self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":
