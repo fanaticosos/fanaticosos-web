@@ -1,0 +1,75 @@
+# Translation Job Contract
+
+Status: Phase 4 production-worker contract
+Version: 1
+
+## Purpose
+
+The private editor submits Spanish article content as ordered, typed segments. The translation worker returns the same identifiers in the same order with English draft text and complete provenance. Qwen never edits repository article files directly.
+
+## Request
+
+```json
+{
+  "schemaVersion": 1,
+  "articleId": "00000000-0000-4000-8000-000000000001",
+  "sourceLocale": "es",
+  "targetLocale": "en",
+  "segments": [
+    {
+      "id": "title",
+      "kind": "title",
+      "text": "Los Bears ganan en Chicago",
+      "preserve": ["Bears", "Chicago"]
+    },
+    {
+      "id": "body-001",
+      "kind": "paragraph",
+      "text": "Caleb Williams lanzó dos pases de anotación."
+    }
+  ]
+}
+```
+
+Supported segment kinds are `title`, `description`, `heading`, `paragraph`, `quote`, `list-item`, and `caption`. The editor creates stable identifiers and automatically supplies exceptional protected values; routine NFL terminology comes from the centralized glossary.
+
+The contract permits at most 512 segments, 12,000 characters per segment, and 250,000 characters per article. These are input-safety limits, not single-model-invocation sizes. The worker will create smaller bounded inference batches.
+
+## Successful result
+
+```json
+{
+  "schemaVersion": 1,
+  "articleId": "00000000-0000-4000-8000-000000000001",
+  "sourceRevision": "<canonical-request-sha256>",
+  "engine": "llama.cpp",
+  "model": "Qwen/Qwen3-8B-GGUF",
+  "modelRevision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+  "runtimeVersion": "b10195-47f686f53",
+  "configurationVersion": "1",
+  "glossaryVersion": 3,
+  "generatedAt": "<UTC ISO-8601 timestamp>",
+  "segments": [
+    {
+      "id": "title",
+      "translation": "The Bears win in Chicago"
+    },
+    {
+      "id": "body-001",
+      "translation": "Caleb Williams threw two touchdown passes."
+    }
+  ]
+}
+```
+
+`sourceRevision` is the SHA-256 of the normalized canonical request. It makes stale English output detectable after any Spanish content change.
+
+## Failure behavior
+
+- Invalid or oversized input is rejected before model execution.
+- Missing, duplicate, reordered, or empty result segments fail validation.
+- A mismatched article ID or source revision fails validation.
+- Model output remains temporary until all preservation, glossary, and structure checks pass.
+- Only a complete validated result may atomically replace a draft translation result.
+- A failure never changes the accepted English article or public site.
+- The editor receives a concise error; the owner does not inspect system resources or processes.
