@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "purpose": "Bilingual NFL and Chicago Bears long-form TTS voice comparison",
+  "sampleRateHz": 24000,
+  "candidates": {
+    "es": ["ef_dora", "em_alex", "em_santa"],
+    "en": ["af_heart", "af_bella"]
+  },
+  "samples": [
+    {
+      "locale": "es",
+      "languageCode": "e",
+      "text": "Remontada en Chicago. Los Bears vencieron 27-24 a Green Bay con un gol de campo de último segundo. Caleb Williams completó 24 de 35 pases para 278 yardas, dos touchdowns y una intercepción. En tercera y largo, el mariscal de campo escapó de la presión y encontró al ala cerrada más allá de la línea por ganar. La defensa alternó cobertura dos y formaciones nickel, forzó un balón suelto en la zona roja y consiguió dos capturas. El viento en Soldier Field hizo más difíciles los despejes. Con este resultado, Chicago mantiene el paso frente a Green Bay Packers, Detroit Lions y Minnesota Vikings en la NFC North.",
+      "pronunciationTargets": [
+        "Bears",
+        "27-24",
+        "Green Bay",
+        "Caleb Williams",
+        "24 de 35",
+        "278 yardas",
+        "touchdowns",
+        "formaciones nickel",
+        "Soldier Field",
+        "NFC North"
+      ]
+    },
+    {
+      "locale": "en",
+      "languageCode": "a",
+      "text": "Comeback in Chicago. The Bears beat Green Bay 27-24 with a last-second field goal. Caleb Williams completed 24 of 35 passes for 278 yards, two touchdowns, and an interception. On third-and-long, the quarterback escaped the pressure and found the tight end beyond the line to gain. The defense switched between Cover 2 and nickel packages, forced a fumble in the red zone, and recorded two sacks. The wind at Soldier Field made punting difficult. With the result, Chicago kept pace with the Green Bay Packers, Detroit Lions, and Minnesota Vikings in the NFC North.",
+      "pronunciationTargets": [
+        "Bears",
+        "27-24",
+        "Green Bay",
+        "Caleb Williams",
+        "24 of 35",
+        "278 yards",
+        "touchdowns",
+        "nickel packages",
+        "Soldier Field",
+        "NFC North"
+      ]
+    }
+  ]
+}
