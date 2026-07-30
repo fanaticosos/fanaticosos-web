@@ -28,6 +28,7 @@ readonly kokoro_pronunciations="$repository/config/tts/pronunciations.json"
 readonly spacy_model_manifest="$repository/config/tts/spacy-english-model.json"
 readonly spanglish_diagnostic="$data_root/work/tts-spanglish-diagnostic-v1"
 readonly tts_tuning_output="$data_root/work/tts-selected-voice-tuning-v1"
+readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v1"
 
 usage() {
   cat <<'EOF'
@@ -59,6 +60,8 @@ Commands:
   export-spanglish-diagnostic EXPECTED_COMMIT
   run-tts-tuning-matrix EXPECTED_COMMIT
   export-tts-tuning-matrix EXPECTED_COMMIT
+  run-latino-diagnostic EXPECTED_COMMIT
+  export-latino-diagnostic EXPECTED_COMMIT
 EOF
 }
 
@@ -661,6 +664,53 @@ command_export_tts_tuning_matrix() {
   echo "PASS: Fixed TTS tuning artifacts exported."
 }
 
+command_run_latino_diagnostic() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ ! -e "$latino_diagnostic" ]] || stop "Latino diagnostic already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-latino-diagnostic.service \
+    --property="User=$service_account" \
+    --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="Environment=PYTHONDONTWRITEBYTECODE=1" \
+    --property="Environment=HF_HUB_OFFLINE=1" \
+    --property="RuntimeMaxSec=5min" \
+    --property="MemoryMax=4G" \
+    --property="MemorySwapMax=512M" \
+    --property="KillMode=control-group" \
+    --property="PrivateTmp=yes" \
+    --property="PrivateNetwork=yes" \
+    --property="ProtectSystem=strict" \
+    --property="ReadWritePaths=$data_root/work" \
+    "$kokoro_venv/bin/python" "$repository/scripts/tts/diagnose_latino_delivery.py" \
+      --pronunciations "$kokoro_pronunciations" \
+      --model-root "$kokoro_model" \
+      --output "$latino_diagnostic"
+  [[ -f "$latino_diagnostic/latino-em_alex-broadcast.mp3" ]] || \
+    stop "Latino diagnostic MP3 is missing."
+  [[ -f "$latino_diagnostic/metadata.json" ]] || \
+    stop "Latino diagnostic metadata is missing."
+  echo "PASS: Bounded Latino broadcast diagnostic completed."
+}
+
+command_export_latino_diagnostic() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-latino-diagnostic-v1"
+  require_repository_commit "$expected"
+  [[ -f "$latino_diagnostic/latino-em_alex-broadcast.mp3" ]] || \
+    stop "Latino diagnostic is missing."
+  [[ ! -e "$export_root" ]] || stop "Latino diagnostic export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  install -o sysadmin -g sysadmin -m 0640 \
+    "$latino_diagnostic/latino-em_alex-broadcast.mp3" \
+    "$export_root/latino-em_alex-broadcast.mp3"
+  install -o sysadmin -g sysadmin -m 0640 \
+    "$latino_diagnostic/metadata.json" "$export_root/metadata.json"
+  echo "PASS: Latino broadcast diagnostic exported."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -770,6 +820,14 @@ case "$command" in
   export-tts-tuning-matrix)
     [[ $# == 1 ]] || stop "export-tts-tuning-matrix requires EXPECTED_COMMIT."
     command_export_tts_tuning_matrix "$1"
+    ;;
+  run-latino-diagnostic)
+    [[ $# == 1 ]] || stop "run-latino-diagnostic requires EXPECTED_COMMIT."
+    command_run_latino_diagnostic "$1"
+    ;;
+  export-latino-diagnostic)
+    [[ $# == 1 ]] || stop "export-latino-diagnostic requires EXPECTED_COMMIT."
+    command_export_latino_diagnostic "$1"
     ;;
   *)
     stop "Unsupported command: $command"

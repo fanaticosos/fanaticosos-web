@@ -1,12 +1,32 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "overrides": {
     "es": [
       {
-        "written": "Green Bay",
-        "spoken": "Grin Bei",
-        "reason": "Spanish phonemizer otherwise pronounces the team/place name as gre-em bye"
+        "written": "Chicago Bears",
+        "spoken": "Chicágo Bers",
+        "reason": "Latin-American sports-broadcast pronunciation"
+      },
+      {
+        "written": "Caleb Williams",
+        "spoken": "Kéileb Uíliams",
+        "reason": "Latin-American sports-broadcast pronunciation"
+      },
+      {
+        "written": "Green Bay Packers",
+        "spoken": "Grin Béi Páquers",
+        "reason": "Latin-American sports-broadcast pronunciation"
+      },
+      {
+        "written": "Soldier Field",
+        "spoken": "Sóldier Fíld",
+        "reason": "Latin-American sports-broadcast pronunciation"
+      },
+      {
+        "written": "NFC North",
+        "spoken": "ene efe ce Nort",
+        "reason": "Latin-American sports-broadcast pronunciation"
       }
     ],
     "en": []

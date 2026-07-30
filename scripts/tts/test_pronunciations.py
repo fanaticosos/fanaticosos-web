@@ -22,11 +22,14 @@ class PronunciationTests(unittest.TestCase):
             validate_pronunciations(self.configuration), self.configuration
         )
 
-    def test_spanish_green_bay_is_changed_for_narration(self):
-        written = "Los Bears vencieron a Green Bay en Chicago."
+    def test_spanish_names_are_changed_for_latino_narration(self):
+        written = "Los Chicago Bears y Caleb Williams enfrentan a Green Bay Packers."
         spoken = apply_pronunciations(written, "es", self.configuration)
-        self.assertEqual(spoken, "Los Bears vencieron a Grin Bei en Chicago.")
-        self.assertIn("Green Bay", written)
+        self.assertEqual(
+            spoken,
+            "Los Chicágo Bers y Kéileb Uíliams enfrentan a Grin Béi Páquers.",
+        )
+        self.assertIn("Caleb Williams", written)
 
     def test_english_text_is_unchanged(self):
         text = "The Bears beat Green Bay."
