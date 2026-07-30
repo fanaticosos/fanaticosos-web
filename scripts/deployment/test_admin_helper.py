@@ -53,6 +53,7 @@ class AdminHelperTests(unittest.TestCase):
                 "kokoro-runtime-status",
                 "download-kokoro-candidates",
                 "migrate-to-opt",
+                "release-layout-status",
             ],
         )
 
@@ -92,6 +93,16 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("^[0-9a-f]{7,40}$", self.helper)
         self.assertIn("^[a-z0-9]+(-[a-z0-9]+)*$", self.helper)
         self.assertNotIn("eval ", self.helper)
+
+    def test_release_inventory_has_fixed_read_only_scope(self):
+        self.assertIn("command_release_layout_status()", self.helper)
+        self.assertIn("/srv/fanaticosos-blog/releases", self.helper)
+        self.assertIn("/opt/fanaticosos-blog/releases", self.helper)
+        inventory = self.helper.split("command_release_layout_status()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertNotIn("rm ", inventory)
+        self.assertNotIn("mv ", inventory)
 
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)

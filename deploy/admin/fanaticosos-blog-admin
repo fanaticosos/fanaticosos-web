@@ -40,6 +40,7 @@ Commands:
   kokoro-runtime-status
   download-kokoro-candidates EXPECTED_COMMIT
   migrate-to-opt EXPECTED_COMMIT
+  release-layout-status
 EOF
 }
 
@@ -332,6 +333,31 @@ command_migrate_to_opt() {
   echo "PASS: Fanaticosos Blog migrated to $project_root."
 }
 
+command_release_layout_status() {
+  local release_root
+  local file_count
+  local total_bytes
+
+  for release_root in \
+    /srv/fanaticosos-blog/releases \
+    /opt/fanaticosos-blog/releases; do
+    echo "=== $release_root ==="
+    if [[ ! -e "$release_root" ]]; then
+      echo "ABSENT"
+      continue
+    fi
+    [[ -d "$release_root" ]] || stop "Release path is not a directory: $release_root"
+    stat -c 'owner=%U group=%G mode=%a path=%n' "$release_root"
+    file_count="$(find "$release_root" -xdev -type f -printf '.' | wc -c)"
+    total_bytes="$(find "$release_root" -xdev -type f -printf '%s\n' | awk '{ total += $1 } END { print total + 0 }')"
+    echo "files=$file_count bytes=$total_bytes"
+    while IFS= read -r -d '' file; do
+      relative_path="${file#"$release_root"/}"
+      printf '%s  %s\n' "$(sha256sum "$file" | cut -d' ' -f1)" "$relative_path"
+    done < <(find "$release_root" -xdev -type f -print0 | sort -z)
+  done
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -397,6 +423,10 @@ case "$command" in
   migrate-to-opt)
     [[ $# == 1 ]] || stop "migrate-to-opt requires EXPECTED_COMMIT."
     command_migrate_to_opt "$1"
+    ;;
+  release-layout-status)
+    [[ $# == 0 ]] || stop "release-layout-status accepts no arguments."
+    command_release_layout_status
     ;;
   *)
     stop "Unsupported command: $command"
