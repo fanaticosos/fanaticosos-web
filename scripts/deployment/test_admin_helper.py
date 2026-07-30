@@ -48,8 +48,25 @@ class AdminHelperTests(unittest.TestCase):
                 "translation-failure",
                 "host-health",
                 "update-admin",
+                "install-kokoro-runtime",
             ],
         )
+
+    def test_kokoro_installer_has_fixed_scope(self):
+        self.assertIn(
+            'readonly kokoro_venv="/var/lib/fanaticosos-blog/venvs/tts-benchmark-kokoro-v1"',
+            self.helper,
+        )
+        self.assertIn(
+            'DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends espeak-ng',
+            self.helper,
+        )
+        self.assertIn('[[ ! -e "$kokoro_venv" ]]', self.helper)
+        self.assertIn("cleanup_incomplete_kokoro_runtime", self.helper)
+        self.assertIn('rm -rf -- "$kokoro_venv"', self.helper)
+        self.assertIn("trap cleanup_incomplete_kokoro_runtime EXIT", self.helper)
+        self.assertIn("trap - EXIT", self.helper)
+        self.assertNotIn("pip install kokoro", self.helper)
 
     def test_helper_validates_commit_and_job_identifiers(self):
         self.assertIn("^[0-9a-f]{7,40}$", self.helper)

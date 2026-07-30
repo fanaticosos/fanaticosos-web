@@ -8,6 +8,8 @@ readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.servic
 readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="/var/lib/fanaticosos-blog/jobs"
+readonly kokoro_venv="/var/lib/fanaticosos-blog/venvs/tts-benchmark-kokoro-v1"
+readonly kokoro_requirements="$repository/config/tts/kokoro-benchmark-requirements.txt"
 
 usage() {
   cat <<'EOF'
@@ -24,6 +26,7 @@ Commands:
   translation-failure JOB_ID
   host-health
   update-admin EXPECTED_COMMIT
+  install-kokoro-runtime EXPECTED_COMMIT
 EOF
 }
 
@@ -214,6 +217,39 @@ command_update_admin() {
   echo "PASS: Restricted administration helper updated from commit $expected."
 }
 
+command_install_kokoro_runtime() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ -f "$kokoro_requirements" ]] || stop "Pinned Kokoro requirements are missing."
+  [[ ! -e "$kokoro_venv" ]] || stop "Kokoro benchmark runtime already exists."
+
+  cleanup_incomplete_kokoro_runtime() {
+    rm -rf -- "$kokoro_venv"
+  }
+  trap cleanup_incomplete_kokoro_runtime EXIT
+
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends espeak-ng
+
+  run_as_service python3 -m venv "$kokoro_venv"
+  run_as_service "$kokoro_venv/bin/python" -m pip install \
+    --disable-pip-version-check \
+    --no-cache-dir \
+    --requirement "$kokoro_requirements"
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 \
+    "$kokoro_venv/bin/python" -c \
+    'import importlib.metadata as m; import kokoro, soundfile, torch; print(f"kokoro={m.version(\"kokoro\")} soundfile={m.version(\"soundfile\")} torch={torch.__version__}")'
+  trap - EXIT
+  run_as_service "$kokoro_venv/bin/python" -m pip freeze \
+    > /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+  chown "$service_account:$service_account" \
+    /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+  chmod 0600 /var/lib/fanaticosos-blog/work/kokoro-benchmark-runtime.freeze
+
+  echo "PASS: Isolated Kokoro benchmark runtime installed."
+  echo "PASS: No model, voice, service, listener, or audio was created."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -263,6 +299,10 @@ case "$command" in
   update-admin)
     [[ $# == 1 ]] || stop "update-admin requires EXPECTED_COMMIT."
     command_update_admin "$1"
+    ;;
+  install-kokoro-runtime)
+    [[ $# == 1 ]] || stop "install-kokoro-runtime requires EXPECTED_COMMIT."
+    command_install_kokoro_runtime "$1"
     ;;
   *)
     stop "Unsupported command: $command"
