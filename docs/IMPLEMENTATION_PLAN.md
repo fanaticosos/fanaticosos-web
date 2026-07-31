@@ -314,7 +314,7 @@ Stop the private editor service. Source Markdown remains readable and editable w
 
 ## Phase 7 — End-to-end release pipeline
 
-Status: private release assembly verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a release manifest from commit `5974440`. The bounded release unit exited successfully, the manifest retained `deployment: "disabled"`, and the public Cloudflare deployment remained unchanged. Repository tests now prevent simultaneous release admission and prove atomic local selection and restoration of validated releases. Papabear installation verification and a separately approved retention limit remain before this phase is complete.
+Status: private release assembly verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a release manifest from commit `5974440`. The bounded release unit exited successfully, the manifest retained `deployment: "disabled"`, and the public Cloudflare deployment remained unchanged. Release admission locking and atomic local selection/rollback are installed and verified on Papabear. The owner approved retaining 10 validated releases and 30 days of failed diagnostics; installation and live verification of that maintenance policy remain before this phase is complete.
 
 ### Objective
 
@@ -344,6 +344,8 @@ Build a complete, validated, recoverable release while production deployment rem
 Select the retained last known-good release locally. No Cloudflare state changes during this phase.
 
 The local selection mechanism validates the immutable release manifest, both localized routes, and the complete `dist/` directory before atomically changing the `publisher/releases/current` link. An invalid candidate cannot replace the previously selected release. This local pointer does not deploy or modify Cloudflare.
+
+The approved retention job runs daily with no network access. It retains the 10 newest validated releases, failed-job diagnostics for 30 days, and the currently selected release regardless of age. It removes nothing if any release directory is active, incomplete, or structurally unknown. Candidate directories are renamed to a fixed private staging name before removal, and the complete JSON decision record is written to the system journal.
 
 ## Phase 8 — Cloudflare deployment transition
 

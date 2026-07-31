@@ -1,0 +1,20 @@
+[Unit]
+Description=Fanaticosos private release retention
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=fanaticosos-blog
+Group=fanaticosos-blog
+WorkingDirectory=/opt/fanaticosos-blog/repository
+Environment=HOME=/opt/fanaticosos-blog
+Environment=PATH=/opt/nodejs/current/bin:/usr/bin:/bin
+ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/prune_releases.mjs --releases-root /opt/fanaticosos-blog/publisher/releases --keep-successful 10 --failed-days 30 --apply
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/fanaticosos-blog/publisher/releases
+UMask=0077

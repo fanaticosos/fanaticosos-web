@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Fanaticosos private release retention
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30min
+Unit=fanaticosos-release-retention.service
+
+[Install]
+WantedBy=timers.target

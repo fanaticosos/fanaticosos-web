@@ -162,6 +162,9 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('if ! diagnostics="$(systemd-analyze verify', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_dispatcher_service_source"', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_release_source"', installer)
+        self.assertIn('install -o root -g root -m 0644 "$publisher_retention_source"', installer)
+        self.assertIn('install -o root -g root -m 0644 "$publisher_retention_timer_source"', installer)
+        self.assertIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
 
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(

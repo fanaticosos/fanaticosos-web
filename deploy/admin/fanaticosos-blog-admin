@@ -29,6 +29,10 @@ readonly publisher_dispatcher_path_source="$repository/deploy/systemd/fanaticoso
 readonly publisher_dispatcher_path_installed="/etc/systemd/system/fanaticosos-publisher-dispatcher.path"
 readonly publisher_release_source="$repository/deploy/systemd/fanaticosos-release@.service"
 readonly publisher_release_installed="/etc/systemd/system/fanaticosos-release@.service"
+readonly publisher_retention_source="$repository/deploy/systemd/fanaticosos-release-retention.service"
+readonly publisher_retention_installed="/etc/systemd/system/fanaticosos-release-retention.service"
+readonly publisher_retention_timer_source="$repository/deploy/systemd/fanaticosos-release-retention.timer"
+readonly publisher_retention_timer_installed="/etc/systemd/system/fanaticosos-release-retention.timer"
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly publisher_data="$data_root/publisher"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
@@ -889,8 +893,10 @@ command_install_publisher() {
   [[ -f "$publisher_dispatcher_service_source" ]] || stop "Dispatcher service unit is missing."
   [[ -f "$publisher_dispatcher_path_source" ]] || stop "Dispatcher path unit is missing."
   [[ -f "$publisher_release_source" ]] || stop "Release build template is missing."
+  [[ -f "$publisher_retention_source" ]] || stop "Release retention service is missing."
+  [[ -f "$publisher_retention_timer_source" ]] || stop "Release retention timer is missing."
   install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
-  if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" "$publisher_release_source" 2>&1)"; then
+  if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" "$publisher_release_source" "$publisher_retention_source" "$publisher_retention_timer_source" 2>&1)"; then
     stop "Publisher service units failed verification: $diagnostics"
   fi
   [[ -z "$diagnostics" ]] || stop "Publisher service units produced diagnostics: $diagnostics"
@@ -901,6 +907,8 @@ command_install_publisher() {
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"
   install -o root -g root -m 0644 "$publisher_release_source" "$publisher_release_installed"
+  install -o root -g root -m 0644 "$publisher_retention_source" "$publisher_retention_installed"
+  install -o root -g root -m 0644 "$publisher_retention_timer_source" "$publisher_retention_timer_installed"
   systemctl daemon-reload
   if ! diagnostics="$(systemd-analyze verify "$publisher_dispatcher_path_source" 2>&1)"; then
     stop "Publisher dispatcher path failed verification: $diagnostics"
@@ -909,6 +917,7 @@ command_install_publisher() {
   install -o root -g root -m 0644 "$publisher_dispatcher_path_source" "$publisher_dispatcher_path_installed"
   systemctl daemon-reload
   systemctl enable --now fanaticosos-publisher-dispatcher.path
+  systemctl enable --now fanaticosos-release-retention.timer
   systemctl enable fanaticosos-publisher.service
   systemctl restart fanaticosos-publisher.service
   [[ "$(systemctl is-active fanaticosos-publisher.service)" == "active" ]] || \
@@ -919,8 +928,14 @@ command_install_publisher() {
     stop "Installed publisher dispatcher differs from Git."
   cmp -s "$publisher_release_source" "$publisher_release_installed" || \
     stop "Installed release template differs from Git."
+  cmp -s "$publisher_retention_source" "$publisher_retention_installed" || \
+    stop "Installed retention service differs from Git."
+  cmp -s "$publisher_retention_timer_source" "$publisher_retention_timer_installed" || \
+    stop "Installed retention timer differs from Git."
   [[ "$(systemctl is-active fanaticosos-publisher-dispatcher.path)" == "active" ]] || \
     stop "Publisher dispatcher path is not active."
+  [[ "$(systemctl is-active fanaticosos-release-retention.timer)" == "active" ]] || \
+    stop "Release retention timer is not active."
   echo "PASS: Private publisher installed and active on the NetBird address."
 }
 

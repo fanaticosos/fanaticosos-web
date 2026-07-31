@@ -36,3 +36,14 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(dispatcher, /fanaticosos-release@\$job_id\.service/);
   assert.doesNotMatch(dispatcher, /eval /);
 });
+
+test("release retention is fixed, private, and bounded by the approved policy", async () => {
+  const service = await readFile(new URL("../../deploy/systemd/fanaticosos-release-retention.service", import.meta.url), "utf8");
+  const timer = await readFile(new URL("../../deploy/systemd/fanaticosos-release-retention.timer", import.meta.url), "utf8");
+  assert.match(service, /--keep-successful 10 --failed-days 30 --apply/);
+  assert.match(service, /PrivateNetwork=yes/);
+  assert.match(service, /ProtectSystem=strict/);
+  assert.match(service, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases/);
+  assert.match(timer, /OnCalendar=daily/);
+  assert.match(timer, /Persistent=true/);
+});
