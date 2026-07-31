@@ -10,6 +10,7 @@ from typing import Any
 ALLOWED_CATEGORIES = {"city", "division", "player", "stadium", "team", "term"}
 ALLOWED_SOURCE_TYPES = {"official", "mexican-broadcast", "owner-review"}
 ALLOWED_STATUSES = {"approved", "pending"}
+SYNTHESIS_PROFILES = {"es": "latino-em_alex", "en": "american-af-heart"}
 
 
 def validate_pronunciations(value: Any) -> dict[str, Any]:
@@ -41,7 +42,7 @@ def validate_pronunciations(value: Any) -> dict[str, Any]:
                 raise ValueError("canonical pronunciation term is invalid")
             if (
                 not isinstance(synthesis, dict)
-                or synthesis.get("profile") != "latino-em_alex"
+                or synthesis.get("profile") != SYNTHESIS_PROFILES[locale]
                 or synthesis.get("type") != "text-substitution"
                 or not isinstance(synthesis.get("text"), str)
                 or not synthesis["text"].strip()

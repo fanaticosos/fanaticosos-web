@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "configurationVersion": 4,
+  "configurationVersion": 5,
   "status": "approved",
   "model": "hexgrad/Kokoro-82M",
   "modelRevision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
@@ -24,7 +24,7 @@
       "pauseSeconds": 0.16
     }
   },
-  "pronunciationVersion": 7,
+  "pronunciationVersion": 8,
   "encoding": {
     "codec": "mp3",
     "sampleRateHz": 48000,

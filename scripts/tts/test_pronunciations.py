@@ -44,6 +44,12 @@ class PronunciationTests(unittest.TestCase):
         text = "The Bears beat Green Bay."
         self.assertEqual(apply_pronunciations(text, "en", self.configuration), text)
 
+    def test_spanish_brand_name_is_preserved_in_english_narration(self):
+        written = "Thanks for listening to Fanaticosos."
+        spoken = apply_pronunciations(written, "en", self.configuration)
+        self.assertEqual(spoken, "Thanks for listening to Fah-nah-tee-KOH-sohs.")
+        self.assertIn("Fanaticosos", written)
+
     def test_spanish_touchdown_terms_use_one_broadcast_word(self):
         written = "Anotó dos touchdowns y el segundo touchdown decidió el partido."
         spoken = apply_pronunciations(written, "es", self.configuration)

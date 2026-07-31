@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "version": 7,
+  "version": 8,
   "overrides": {
     "es": [
       {
@@ -94,6 +94,17 @@
         "status": "approved"
       }
     ],
-    "en": []
+    "en": [
+      {
+        "category": "term",
+        "canonical": "Fanaticosos",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Fah-nah-tee-KOH-sohs"},
+        "reason": "Preserve the Spanish compound brand name inside English narration",
+        "source": "Fanaticosos owner listening review, 2026-07-31",
+        "sourceType": "owner-review",
+        "status": "approved"
+      }
+    ]
   }
 }
