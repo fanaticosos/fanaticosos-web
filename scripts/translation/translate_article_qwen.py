@@ -23,7 +23,7 @@ from benchmark_qwen import extract_translations, run_llama
 ENGINE = "llama.cpp"
 MODEL = "Qwen/Qwen3-8B-GGUF"
 NUMBER_PATTERN = re.compile(r"(?<!\w)\d+(?:[.,]\d+)?(?:-\d+(?:[.,]\d+)?)?%?(?!\w)")
-WORD_PATTERN = re.compile(r"[^\W\d_]+", re.UNICODE)
+WORD_PATTERN = re.compile(r"[^\W_]+", re.UNICODE)
 SPANISH_MARKERS = {
     "a",
     "al",

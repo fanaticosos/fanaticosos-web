@@ -110,6 +110,19 @@ class TranslateArticleQwenTests(unittest.TestCase):
             )
         )
 
+    def test_numbered_coverage_terms_do_not_match_generic_coverage(self):
+        source = (
+            "Cobertura secundaria inconsistente que dejó escapar jugadas largas."
+        )
+        self.assertFalse(glossary_term_occurs("cobertura 0", source))
+        self.assertFalse(glossary_term_occurs("cobertura 4", source))
+        self.assertTrue(
+            glossary_term_occurs(
+                "cobertura 2",
+                "Chicago utilizó cobertura 2 durante el último cuarto.",
+            )
+        )
+
     def test_glossary_validation_accepts_natural_inflection(self):
         segment = {
             "id": "turnover",
