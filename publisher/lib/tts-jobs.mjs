@@ -15,6 +15,10 @@ function digest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+export function ttsPolicyRevision(production, pronunciations) {
+  return digest({ production, pronunciations });
+}
+
 function narrationSegments(description, body) {
   const segments = [{ id: "description", text: description }];
   let sequence = 0;
@@ -49,7 +53,8 @@ export function ttsRequestsForDraft(draft, translation) {
   };
 }
 
-export async function queueTts({ draft, translation, queueRoot, statesRoot, now = new Date() }) {
+export async function queueTts({ draft, translation, queueRoot, statesRoot, policyRevision, now = new Date() }) {
+  if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
@@ -58,7 +63,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, now 
   try {
     const existing = JSON.parse(await readFile(statePath, "utf8"));
     if (["queued", "running"].includes(existing.status)) throw new Error("audio generation is already running");
-    if (existing.status === "completed" && existing.draftRevision === draft.revision && JSON.stringify(existing.sourceRevisions) === JSON.stringify(sourceRevisions)) throw new Error("this draft revision already has audio");
+    if (existing.status === "completed" && existing.draftRevision === draft.revision && existing.policyRevision === policyRevision && JSON.stringify(existing.sourceRevisions) === JSON.stringify(sourceRevisions)) throw new Error("this draft revision already has audio for the current TTS policy");
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -74,7 +79,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, now 
   }
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
-    status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions, jobs,
+    status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions, policyRevision, jobs,
   };
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });

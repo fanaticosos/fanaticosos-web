@@ -9,12 +9,14 @@ import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
-import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
+import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { previewPage } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
+const DEFAULT_TTS_PRODUCTION = join(HERE, "..", "config", "tts", "production.json");
+const DEFAULT_TTS_PRONUNCIATIONS = join(HERE, "..", "config", "tts", "pronunciations.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
@@ -72,7 +74,16 @@ export function createPublisherServer({
   statesRoot = join(dirname(draftsRoot), "states"),
   jobsRoot = join(dirname(dirname(draftsRoot)), "jobs"),
   releasesRoot = join(dirname(draftsRoot), "releases"),
+  ttsProductionPath = DEFAULT_TTS_PRODUCTION,
+  ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
 }) {
+  async function currentTtsPolicyRevision() {
+    const [production, pronunciations] = await Promise.all([
+      readFile(ttsProductionPath, "utf8").then(JSON.parse),
+      readFile(ttsPronunciationsPath, "utf8").then(JSON.parse),
+    ]);
+    return ttsPolicyRevision(production, pronunciations);
+  }
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://publisher.local");
@@ -114,7 +125,7 @@ export function createPublisherServer({
           readFile(settingsPath, "utf8").then(JSON.parse),
         ]);
         const requests = ttsRequestsForDraft(draft, translation);
-        if (audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
+        if (audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
         const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
         response.writeHead(200, {
           "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
@@ -185,7 +196,7 @@ export function createPublisherServer({
         const draft = await readDraft(draftsRoot, audioMatch[1]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
         const translation = await readTranslationState(statesRoot, draft.articleId);
-        const audio = await queueTts({ draft, translation, queueRoot, statesRoot });
+        const audio = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
         await createNotification(notificationsRoot, {
           level: "info", event: "audio-started", articleId: draft.articleId,
           message: `Audios en español e inglés iniciados: ${draft.title}`,
@@ -223,7 +234,7 @@ export function createPublisherServer({
         ]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before preparing publication");
         const requests = ttsRequestsForDraft(draft, translation);
-        if (audio.status !== "completed" || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("current bilingual audio is required before preparing publication");
+        if (audio.status !== "completed" || audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("current bilingual audio is required before preparing publication");
         const release = await queueRelease({ draft, queueRoot, statesRoot });
         await createNotification(notificationsRoot, { level: "info", event: "release-started", articleId: draft.articleId, message: `Preparación privada iniciada: ${draft.title}` });
         return json(response, 202, { release });

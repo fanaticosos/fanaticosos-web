@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -15,6 +15,15 @@ const translation = {
   status: "completed", draftRevision: 4, sourceRevision: "a".repeat(64),
   result: { title: "The Bears win", description: "Game summary.", body: "## First quarter\n\nCaleb Williams threw a touchdown." },
 };
+const policyRevision = "f".repeat(64);
+
+test("TTS policy revision changes when pronunciation policy changes", () => {
+  const production = { configurationVersion: 5 };
+  const first = ttsPolicyRevision(production, { version: 7 });
+  const second = ttsPolicyRevision(production, { version: 8 });
+  assert.match(first, /^[0-9a-f]{64}$/);
+  assert.notEqual(first, second);
+});
 
 test("TTS requests bind approved Spanish and English text to one revision", () => {
   const requests = ttsRequestsForDraft(draft, translation);
@@ -34,8 +43,9 @@ test("two private TTS jobs reconcile only after both MP3 files validate", async 
   const queueRoot = join(root, "queue");
   const statesRoot = join(root, "states");
   const jobsRoot = join(root, "jobs");
-  const state = await queueTts({ draft, translation, queueRoot, statesRoot });
+  const state = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision });
   assert.equal(state.status, "queued");
+  assert.equal(state.policyRevision, policyRevision);
   for (const locale of ["es", "en"]) {
     const job = state.jobs[locale];
     assert.equal((await stat(join(queueRoot, job.jobId, "request.json"))).mode & 0o777, 0o600);
@@ -52,4 +62,13 @@ test("two private TTS jobs reconcile only after both MP3 files validate", async 
   assert.equal(audioFileForState(result, "es", jobsRoot).endsWith(`es-${draft.articleId}.mp3`), true);
   await reconcileTts({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
   assert.equal(completed, 1);
+  const regenerated = await queueTts({
+    draft,
+    translation,
+    queueRoot,
+    statesRoot,
+    policyRevision: "e".repeat(64),
+  });
+  assert.equal(regenerated.status, "queued");
+  assert.equal(regenerated.policyRevision, "e".repeat(64));
 });
