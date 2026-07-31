@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const TIMEOUT_MS = 12 * 60 * 1000;
+let releaseQueueBusy = false;
 
 async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.saving`;
@@ -11,18 +12,30 @@ async function atomicJson(path, value) {
 }
 
 export async function queueRelease({ draft, queueRoot, statesRoot, now = new Date() }) {
-  await mkdir(queueRoot, { recursive: true, mode: 0o700 });
-  await mkdir(statesRoot, { recursive: true, mode: 0o700 });
-  const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
-  const request = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: zonedIso(now, "America/Chicago") };
-  const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
-  await mkdir(temporary, { mode: 0o700 });
-  await atomicJson(join(temporary, "request.json"), request);
-  await rename(temporary, join(queueRoot, jobId));
-  const state = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, jobId, status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString() };
-  await atomicJson(join(statesRoot, `release-${draft.articleId}.json`), state);
-  await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
-  return state;
+  if (releaseQueueBusy) throw new Error("Ya hay una preparación de publicación en curso.");
+  releaseQueueBusy = true;
+  try {
+    await mkdir(queueRoot, { recursive: true, mode: 0o700 });
+    await mkdir(statesRoot, { recursive: true, mode: 0o700 });
+    const active = [];
+    for (const name of (await readdir(statesRoot)).filter((name) => /^release-[0-9a-f-]{36}\.json$/.test(name))) {
+      const state = JSON.parse(await readFile(join(statesRoot, name), "utf8"));
+      if (["queued", "running"].includes(state.status)) active.push(state);
+    }
+    if (active.length) throw new Error("Ya hay una preparación de publicación en curso.");
+    const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
+    const request = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: zonedIso(now, "America/Chicago") };
+    const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
+    await mkdir(temporary, { mode: 0o700 });
+    await atomicJson(join(temporary, "request.json"), request);
+    await rename(temporary, join(queueRoot, jobId));
+    const state = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, jobId, status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString() };
+    await atomicJson(join(statesRoot, `release-${draft.articleId}.json`), state);
+    await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
+    return state;
+  } finally {
+    releaseQueueBusy = false;
+  }
 }
 
 export function zonedIso(date, timeZone) {

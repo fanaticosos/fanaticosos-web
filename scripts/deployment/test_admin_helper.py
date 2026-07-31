@@ -88,6 +88,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-publisher",
                 "publisher-status",
                 "latest-private-release",
+                "select-private-release",
                 "prepare-tts-demo",
                 "start-tts",
                 "tts-status",

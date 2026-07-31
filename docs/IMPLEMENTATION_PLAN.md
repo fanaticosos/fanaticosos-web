@@ -314,7 +314,7 @@ Stop the private editor service. Source Markdown remains readable and editable w
 
 ## Phase 7 — End-to-end release pipeline
 
-Status: private release assembly verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a release manifest from commit `5974440`. The bounded release unit exited successfully, the manifest retained `deployment: "disabled"`, and the public Cloudflare deployment remained unchanged. Retention, overlapping-publication locking, and restore testing remain before this phase is complete.
+Status: private release assembly verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a release manifest from commit `5974440`. The bounded release unit exited successfully, the manifest retained `deployment: "disabled"`, and the public Cloudflare deployment remained unchanged. Repository tests now prevent simultaneous release admission and prove atomic local selection and restoration of validated releases. Papabear installation verification and a separately approved retention limit remain before this phase is complete.
 
 ### Objective
 
@@ -342,6 +342,8 @@ Build a complete, validated, recoverable release while production deployment rem
 ### Rollback
 
 Select the retained last known-good release locally. No Cloudflare state changes during this phase.
+
+The local selection mechanism validates the immutable release manifest, both localized routes, and the complete `dist/` directory before atomically changing the `publisher/releases/current` link. An invalid candidate cannot replace the previously selected release. This local pointer does not deploy or modify Cloudflare.
 
 ## Phase 8 — Cloudflare deployment transition
 

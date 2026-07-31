@@ -111,6 +111,7 @@ Commands:
   install-publisher EXPECTED_COMMIT
   publisher-status
   latest-private-release
+  select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -950,6 +951,19 @@ print(f"English route: {manifest.get('routes', {}).get('en', '')}")
 PY
 }
 
+command_select_private_release() {
+  local expected="$1"
+  local job_id="$2"
+  require_repository_commit "$expected"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+    "$repository/scripts/publisher/select_release.mjs" \
+    --releases-root "$publisher_data/releases" --job-id "$job_id"
+  [[ -L "$publisher_data/releases/current" ]] || stop "Current release link was not created."
+  echo "PASS: Local last-known-good release selected without changing Cloudflare."
+}
+
 command_publisher_status() {
   systemctl show fanaticosos-publisher.service \
     --property=LoadState --property=ActiveState --property=SubState \
@@ -1624,6 +1638,10 @@ case "$command" in
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
     command_latest_private_release
+    ;;
+  select-private-release)
+    [[ $# == 2 ]] || stop "select-private-release requires EXPECTED_COMMIT RELEASE_JOB_ID."
+    command_select_private_release "$1" "$2"
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."

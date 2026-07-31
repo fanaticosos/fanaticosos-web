@@ -25,3 +25,27 @@ test("private release request is mode 600 and reconciles a manifest once", async
   await reconcileReleases({ statesRoot, releasesRoot, onComplete: () => { completed += 1; } });
   assert.equal(completed, 1);
 });
+
+test("a second release cannot overlap an active release", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-release-lock-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  await queueRelease({ draft, queueRoot, statesRoot });
+  await assert.rejects(
+    queueRelease({ draft: { ...draft, articleId: "00000000-0000-4000-8000-000000000002" }, queueRoot, statesRoot }),
+    /Ya hay una preparación de publicación en curso/,
+  );
+  await assert.doesNotReject(stat(join(queueRoot, ".wake")));
+});
+
+test("simultaneous release requests admit exactly one build", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-release-race-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  const results = await Promise.allSettled([
+    queueRelease({ draft, queueRoot, statesRoot }),
+    queueRelease({ draft: { ...draft, articleId: "00000000-0000-4000-8000-000000000003" }, queueRoot, statesRoot }),
+  ]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  assert.equal(results.filter(({ status }) => status === "rejected").length, 1);
+});
