@@ -15,6 +15,8 @@ readonly branch="feature/multilingual-audio-blog"
 readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.service"
 readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
 readonly tts_source_unit="$repository/deploy/systemd/fanaticosos-tts@.service"
+readonly tts_installed_unit="/etc/systemd/system/fanaticosos-tts@.service"
+readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="$data_root/jobs"
 readonly kokoro_venv="$data_root/runtimes/tts-benchmark-kokoro-v1"
@@ -74,6 +76,11 @@ Commands:
   install-piper-claude EXPECTED_COMMIT
   run-claude-nfl-review EXPECTED_COMMIT
   export-claude-nfl-review EXPECTED_COMMIT
+  install-tts-template EXPECTED_COMMIT
+  prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
+  start-tts JOB_ID
+  tts-status JOB_ID
+  export-tts-result JOB_ID
 EOF
 }
 
@@ -115,6 +122,10 @@ require_repository_commit() {
 
 job_unit() {
   printf 'fanaticosos-translation@%s.service' "$1"
+}
+
+tts_job_unit() {
+  printf 'fanaticosos-tts@%s.service' "$1"
 }
 
 command_sync() {
@@ -587,6 +598,105 @@ command_verify_tts_template() {
   echo "PASS: Versioned TTS template has no native systemd diagnostics."
 }
 
+command_install_tts_template() {
+  local expected="$1"
+  local diagnostics
+  require_repository_commit "$expected"
+  [[ -f "$tts_source_unit" ]] || stop "Versioned TTS unit is missing."
+  diagnostics="$(systemd-analyze verify "$tts_source_unit" 2>&1)"
+  [[ -z "$diagnostics" ]] || stop "Versioned TTS unit produced diagnostics: $diagnostics"
+  install -o root -g root -m 0644 "$tts_source_unit" "$tts_installed_unit"
+  systemctl daemon-reload
+  cmp -s "$tts_source_unit" "$tts_installed_unit" || stop "Installed TTS unit differs from Git."
+  echo "PASS: TTS template installed from commit $expected."
+}
+
+command_prepare_tts_demo() {
+  local expected="$1"
+  local job_id="$2"
+  local locale="$3"
+  local job_dir
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  [[ "$locale" == "es" || "$locale" == "en" ]] || stop "Locale must be es or en."
+  job_dir="$jobs_root/$job_id"
+  [[ ! -e "$job_dir" ]] || stop "Job already exists: $job_id"
+  install -d -o "$service_account" -g "$service_account" -m 0700 "$job_dir"
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 - \
+    "$tts_demo_fixture" "$locale" "$job_dir/request.json" <<'PY'
+import json
+import os
+import sys
+
+source, locale, target = sys.argv[1:]
+with open(source, encoding="utf-8") as handle:
+    review = json.load(handle)
+matches = [request for request in review["requests"] if request["locale"] == locale]
+if len(matches) != 1:
+    raise SystemExit("fixture locale is missing or ambiguous")
+with open(target, "x", encoding="utf-8") as handle:
+    json.dump(matches[0], handle, ensure_ascii=False, indent=2)
+    handle.write("\n")
+os.chmod(target, 0o600)
+PY
+  echo "PASS: Real $locale article TTS job prepared: $job_id"
+}
+
+command_start_tts() {
+  local job_id="$1"
+  local job_dir
+  local unit
+  validate_job_id "$job_id"
+  job_dir="$jobs_root/$job_id"
+  unit="$(tts_job_unit "$job_id")"
+  [[ -f "$job_dir/request.json" ]] || stop "TTS request is missing for $job_id."
+  [[ ! -e "$job_dir/audio" ]] || stop "TTS output already exists for $job_id."
+  systemctl reset-failed "$unit" 2>/dev/null || true
+  systemctl start --wait "$unit"
+  [[ "$(systemctl show "$unit" --property=Result --value)" == "success" ]] || \
+    stop "TTS unit did not report success."
+  [[ -f "$job_dir/audio/result.json" ]] || stop "TTS result metadata is missing."
+  [[ "$(find "$job_dir/audio" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "1" ]] || \
+    stop "TTS job did not produce exactly one MP3."
+  echo "PASS: Real article TTS job completed: $job_id"
+}
+
+command_tts_status() {
+  local job_id="$1"
+  local job_dir
+  local unit
+  validate_job_id "$job_id"
+  job_dir="$jobs_root/$job_id"
+  unit="$(tts_job_unit "$job_id")"
+  systemctl show "$unit" \
+    --property=LoadState --property=ActiveState --property=SubState \
+    --property=Result --property=ExecMainCode --property=ExecMainStatus \
+    --property=RuntimeMaxUSec --property=MemoryMax --property=MemorySwapMax \
+    --property=KillMode --no-pager
+  if [[ -d "$job_dir" ]]; then
+    find "$job_dir" -maxdepth 2 -type f -printf '%m %u:%g %s bytes %P\n' | sort
+  fi
+}
+
+command_export_tts_result() {
+  local job_id="$1"
+  local job_dir
+  local export_root
+  local mp3
+  validate_job_id "$job_id"
+  job_dir="$jobs_root/$job_id/audio"
+  export_root="/home/sysadmin/fanaticosos-tts-result-$job_id"
+  [[ -f "$job_dir/result.json" ]] || stop "TTS result is missing for $job_id."
+  mapfile -t mp3_files < <(find "$job_dir" -maxdepth 1 -type f -name '*.mp3')
+  [[ "${#mp3_files[@]}" == "1" ]] || stop "Expected exactly one TTS MP3."
+  mp3="${mp3_files[0]}"
+  [[ ! -e "$export_root" ]] || stop "TTS export already exists: $export_root"
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  install -o sysadmin -g sysadmin -m 0640 "$mp3" "$export_root/$(basename "$mp3")"
+  install -o sysadmin -g sysadmin -m 0640 "$job_dir/result.json" "$export_root/result.json"
+  echo "PASS: TTS result exported to $export_root."
+}
+
 command_run_spanglish_diagnostic() {
   local expected="$1"
   require_repository_commit "$expected"
@@ -1023,6 +1133,26 @@ case "$command" in
   export-claude-nfl-review)
     [[ $# == 1 ]] || stop "export-claude-nfl-review requires EXPECTED_COMMIT."
     command_export_claude_nfl_review "$1"
+    ;;
+  install-tts-template)
+    [[ $# == 1 ]] || stop "install-tts-template requires EXPECTED_COMMIT."
+    command_install_tts_template "$1"
+    ;;
+  prepare-tts-demo)
+    [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."
+    command_prepare_tts_demo "$1" "$2" "$3"
+    ;;
+  start-tts)
+    [[ $# == 1 ]] || stop "start-tts requires JOB_ID."
+    command_start_tts "$1"
+    ;;
+  tts-status)
+    [[ $# == 1 ]] || stop "tts-status requires JOB_ID."
+    command_tts_status "$1"
+    ;;
+  export-tts-result)
+    [[ $# == 1 ]] || stop "export-tts-result requires JOB_ID."
+    command_export_tts_result "$1"
     ;;
   *)
     stop "Unsupported command: $command"

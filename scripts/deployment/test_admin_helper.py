@@ -73,8 +73,32 @@ class AdminHelperTests(unittest.TestCase):
                 "install-piper-claude",
                 "run-claude-nfl-review",
                 "export-claude-nfl-review",
+                "install-tts-template",
+                "prepare-tts-demo",
+                "start-tts",
+                "tts-status",
+                "export-tts-result",
             ],
         )
+
+    def test_real_tts_commands_are_fixed_scoped(self):
+        installer = self.helper.split("command_install_tts_template()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('systemd-analyze verify "$tts_source_unit"', installer)
+        self.assertIn('install -o root -g root -m 0644', installer)
+
+        starter = self.helper.split("command_start_tts()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('systemctl start --wait "$unit"', starter)
+        self.assertIn('exactly one MP3', starter)
+
+        exporter = self.helper.split("command_export_tts_result()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('/home/sysadmin/fanaticosos-tts-result-', exporter)
+        self.assertNotIn('"$2"', exporter)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(
