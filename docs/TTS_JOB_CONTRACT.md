@@ -1,6 +1,6 @@
 # TTS Article Job Contract
 
-Status: validated contract; voices and broadcast delivery selected, production approval pending
+Status: validated contract; initial production voices and broadcast delivery approved
 
 ## Boundary
 
@@ -22,8 +22,8 @@ The initial web format is normalized MP3 at 48 kHz, mono, and 128 kbps. The dete
 
 The worker writes to a private staging directory. It may publish a result only after FFprobe and contract validation pass. Failure publishes neither new metadata nor a replacement public MP3, preserving the last accepted audio and production release.
 
-## Pending owner decision
+## Owner decision
 
 The Spanish and English production voice IDs are intentionally not selected by this contract. The owner will choose them after listening to the fixed Kokoro samples. Recording that choice changes versioned voice configuration, not this request/result boundary.
 
-The owner selected the `latino-em_alex` profile (the tuned Latin-American delivery profile around Kokoro's `em_alex` voice asset) for Spanish and `af_heart` for American English, with the broadcast profile for both. Spanish narration applies the centralized pronunciation dictionary before synthesis; canonical article text and its hash remain unchanged. Canonical NFL names remain authoritative and separate from engine-specific synthesis instructions. Aliases carry their own synthesis instruction so a short name such as `Bears` cannot expand into `Chicago Bears`. Dictionary entries also carry documented sources, source types, and approval state. Only approved entries affect narration. `config/tts/production.json` remains `selected-for-tuning`, so the worker rejects production execution before loading Kokoro. The systemd template accepts neither a voice nor pronunciation overrides from a caller; only versioned repository configuration controls them, and only an explicit later owner approval may change the status to `approved`.
+The owner approved the `latino-em_alex` profile (the tuned Latin-American delivery profile around Kokoro's `em_alex` voice asset) for initial Spanish production and `af_heart` for American English, with the broadcast profile for both. Spanish narration applies the centralized pronunciation dictionary before synthesis; canonical article text and its hash remain unchanged. Canonical NFL names remain authoritative and separate from engine-specific synthesis instructions. Aliases carry their own synthesis instruction so a short name such as `Bears` cannot expand into `Chicago Bears`. Dictionary entries also carry documented sources, source types, and approval state. Only approved entries affect narration. Future pronunciation corrections are versioned improvements and do not block the initial publishing workflow. The systemd template accepts neither a voice nor pronunciation overrides from a caller; only versioned repository configuration controls them.

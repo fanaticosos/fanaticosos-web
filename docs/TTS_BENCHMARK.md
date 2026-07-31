@@ -1,10 +1,10 @@
 # Fanaticosos TTS benchmark
 
-Status: Kokoro voices and broadcast delivery selected; long-form production approval pending
+Status: Initial Kokoro production voices and broadcast delivery approved
 
 ## Candidate
 
-The first benchmark used `hexgrad/Kokoro-82M`, an Apache-2.0 model with 82 million parameters. Its untuned output was not acceptable: NFL names were incorrect in Spanish and its English voices had limited character. The owner selected one voice per language as a tuning baseline, not as final production acceptance.
+The first benchmark used `hexgrad/Kokoro-82M`, an Apache-2.0 model with 82 million parameters. Its untuned output was not acceptable: NFL names were incorrect in Spanish and its English voices had limited character. The selected profiles now form the initial production baseline; pronunciation improvements remain versioned configuration changes rather than a publication blocker.
 
 Primary sources:
 
@@ -14,17 +14,17 @@ Primary sources:
 
 The official voice inventory warns that non-English support can be thinner than English support. Spanish quality is therefore an acceptance question, not an assumption.
 
-## Owner-selected tuning baseline
+## Owner-approved initial production baseline
 
 - Latin-American Spanish target: `em_alex`
 - American English target: `af_heart`
 - Delivery profile: `broadcast` for both languages (`1.02` speed, 0.16-second pause)
 - Spanish narration applies centralized Latino sports-broadcast pronunciations without changing visible article text.
-- Configuration status: `selected-for-tuning`
+- Configuration status: `approved`
 
-The owner accepted the short Latino name-delivery diagnostic as the integration baseline. Production remains blocked until long-form phrasing and listening comfort are accepted; a short diagnostic does not by itself approve the engine for published articles.
+The owner accepted the Latino delivery profile as the initial production baseline after comparing the available Spanish voices. The system may improve recurring NFL pronunciations centrally without requiring article-by-article work.
 
-The owner accepted the English `af_heart` long-form review on 2026-07-30. The owner also accepted Spanish pronunciation corrections for NFL names and loanwords through pronunciation dictionary version 4, including `Detroit Lions`, `touchdown`, and `touchdowns`. Dictionary version 5 introduces required categories for teams, cities, players, stadiums, divisions, and football terms, and adds a pending owner review for `Minnesota Vikings`. This centralized dictionary is the single narration source; articles do not carry routine pronunciation instructions. A revised Spanish long-form review remains the final TTS quality gate; production status remains unchanged until that review is accepted.
+The owner accepted the English `af_heart` long-form review on 2026-07-30 and selected `latino-em_alex` for initial Spanish production. The centralized dictionary is the single narration source; articles do not carry routine pronunciation instructions. Canonical NFL names remain separate from engine-specific synthesis instructions, and future corrections increment the pronunciation version without reopening voice selection.
 
 ## Version 1 comparison voices
 

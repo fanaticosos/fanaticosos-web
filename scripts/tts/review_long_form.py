@@ -42,8 +42,8 @@ def generate_review(
     renderer: Callable[..., dict[str, Any]] = render_article,
 ) -> dict[str, Any]:
     validate_review(review)
-    if configuration.get("configurationVersion") != 3:
-        raise ValueError("review requires TTS configuration version 3")
+    if configuration.get("configurationVersion") != 4:
+        raise ValueError("review requires TTS configuration version 4")
     if configuration.get("status") not in {"selected-for-tuning", "approved"}:
         raise ValueError("TTS configuration is not eligible for review")
     if configuration.get("voices") != EXPECTED_VOICES:
