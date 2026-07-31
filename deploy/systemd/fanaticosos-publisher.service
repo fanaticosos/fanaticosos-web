@@ -16,6 +16,9 @@ Environment=PUBLISHER_PORT=4310
 Environment=PUBLISHER_DRAFTS_ROOT=/opt/fanaticosos-blog/publisher/drafts
 Environment=PUBLISHER_UPLOADS_ROOT=/opt/fanaticosos-blog/publisher/uploads
 Environment=PUBLISHER_NOTIFICATIONS_ROOT=/opt/fanaticosos-blog/publisher/notifications
+Environment=PUBLISHER_QUEUE_ROOT=/opt/fanaticosos-blog/publisher/queue
+Environment=PUBLISHER_STATES_ROOT=/opt/fanaticosos-blog/publisher/states
+Environment=PUBLISHER_JOBS_ROOT=/opt/fanaticosos-blog/jobs
 ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/publisher/server.mjs
 Restart=on-failure
 RestartSec=3s

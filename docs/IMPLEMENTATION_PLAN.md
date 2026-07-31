@@ -279,6 +279,8 @@ Remove the unaccepted voice/model integration and retain text-only bilingual pag
 
 ## Phase 6 — Private publishing interface
 
+Status: in progress. Private drafts, uploads, owner defaults, persistent dashboard notifications, and the bounded Spanish-to-English job bridge are implemented. Audio, preview, and publication actions remain disabled until their validation gates are connected.
+
 ### Objective
 
 Let the owner create, preview, correct, and publish an article from a private browser page without terminal commands.
@@ -295,6 +297,8 @@ Let the owner create, preview, correct, and publish an article from a private br
 - Provide simple homepage settings for the complete music-playlist URL and weekly-song URL.
 - Serialize content to the repository's Markdown contract.
 - Keep an auditable local job and publication history without storing secrets in articles.
+
+The translation button never grants the web process administrative privileges. The publisher writes a mode-`0600` contract request to its private queue. A root-owned systemd path dispatcher validates the fixed request, moves it into the established jobs boundary, and starts the bounded translation template. The publisher reconciles the validated result in the background, including while the browser is closed, and preserves completion or failure in the dashboard notification inbox.
 
 ### Acceptance gate
 

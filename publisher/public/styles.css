@@ -48,4 +48,7 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .future p { color: #9bb0c1; }
 .future-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .future-actions button { padding: 10px 13px; border: 1px solid #32495f; border-radius: 7px; color: #8799a8; background: #152434; }
+.future-actions button:not(:disabled) { color: #fff; border-color: #ff6a13; cursor: pointer; }
+.english-result { margin-top: 18px; padding-top: 16px; border-top: 1px solid #32495f; }
+.english-result h3 { margin: 0 0 14px; color: #a9e7bd; }
 @media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid #24364a; } main { padding: 26px 18px 60px; } .editor-header, .actions { align-items: flex-start; flex-direction: column; } .two-columns { grid-template-columns: 1fr; } }

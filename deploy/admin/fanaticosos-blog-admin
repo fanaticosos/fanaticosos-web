@@ -20,6 +20,12 @@ readonly azure_credential_dir="/etc/fanaticosos-blog"
 readonly azure_credential_file="$azure_credential_dir/azure-speech.env"
 readonly publisher_source_unit="$repository/deploy/systemd/fanaticosos-publisher.service"
 readonly publisher_installed_unit="/etc/systemd/system/fanaticosos-publisher.service"
+readonly publisher_dispatcher_source="$repository/deploy/publisher/fanaticosos-publisher-dispatcher"
+readonly publisher_dispatcher_installed="/usr/local/sbin/fanaticosos-publisher-dispatcher"
+readonly publisher_dispatcher_service_source="$repository/deploy/systemd/fanaticosos-publisher-dispatcher.service"
+readonly publisher_dispatcher_service_installed="/etc/systemd/system/fanaticosos-publisher-dispatcher.service"
+readonly publisher_dispatcher_path_source="$repository/deploy/systemd/fanaticosos-publisher-dispatcher.path"
+readonly publisher_dispatcher_path_installed="/etc/systemd/system/fanaticosos-publisher-dispatcher.path"
 readonly publisher_data="$data_root/publisher"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
@@ -721,18 +727,31 @@ command_install_publisher() {
   local diagnostics
   require_repository_commit "$expected"
   [[ -f "$publisher_source_unit" ]] || stop "Versioned publisher unit is missing."
-  diagnostics="$(systemd-analyze verify "$publisher_source_unit" 2>&1)"
+  [[ -x "$publisher_dispatcher_source" ]] || stop "Versioned publisher dispatcher is missing."
+  [[ -f "$publisher_dispatcher_service_source" ]] || stop "Dispatcher service unit is missing."
+  [[ -f "$publisher_dispatcher_path_source" ]] || stop "Dispatcher path unit is missing."
+  diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" "$publisher_dispatcher_path_source" 2>&1)"
   [[ -z "$diagnostics" ]] || stop "Publisher unit produced diagnostics: $diagnostics"
   install -d -o "$service_account" -g "$service_account" -m 0700 \
-    "$publisher_data" "$publisher_data/drafts"
+    "$publisher_data" "$publisher_data/drafts" "$publisher_data/uploads" \
+    "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
+    "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
+  install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
+  install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"
+  install -o root -g root -m 0644 "$publisher_dispatcher_path_source" "$publisher_dispatcher_path_installed"
   systemctl daemon-reload
+  systemctl enable --now fanaticosos-publisher-dispatcher.path
   systemctl enable fanaticosos-publisher.service
   systemctl restart fanaticosos-publisher.service
   [[ "$(systemctl is-active fanaticosos-publisher.service)" == "active" ]] || \
     stop "Publisher service is not active."
   cmp -s "$publisher_source_unit" "$publisher_installed_unit" || \
     stop "Installed publisher unit differs from Git."
+  cmp -s "$publisher_dispatcher_source" "$publisher_dispatcher_installed" || \
+    stop "Installed publisher dispatcher differs from Git."
+  [[ "$(systemctl is-active fanaticosos-publisher-dispatcher.path)" == "active" ]] || \
+    stop "Publisher dispatcher path is not active."
   echo "PASS: Private publisher installed and active on the NetBird address."
 }
 

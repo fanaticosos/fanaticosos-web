@@ -146,6 +146,9 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("systemctl enable fanaticosos-publisher.service", installer)
         self.assertIn("systemctl restart fanaticosos-publisher.service", installer)
         self.assertIn('cmp -s "$publisher_source_unit"', installer)
+        self.assertIn("fanaticosos-publisher-dispatcher.path", self.helper)
+        self.assertIn('systemctl enable --now fanaticosos-publisher-dispatcher.path', installer)
+        self.assertIn('install -o root -g root -m 0755 "$publisher_dispatcher_source"', installer)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(

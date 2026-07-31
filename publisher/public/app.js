@@ -8,6 +8,10 @@ let publisherSettings = null;
 const dropZone = document.querySelector("#drop-zone");
 const imageFile = document.querySelector("#image-file");
 const imagePreview = document.querySelector("#image-preview");
+const generateEnglish = document.querySelector("#generate-english");
+const workflowState = document.querySelector("#workflow-state");
+const englishResult = document.querySelector("#english-result");
+let translationTimer = null;
 
 function fields() {
   const data = new FormData(form);
@@ -29,6 +33,8 @@ function fields() {
 }
 
 function setFields(draft) {
+  if (translationTimer) clearInterval(translationTimer);
+  translationTimer = null;
   form.elements.title.value = draft?.title ?? "";
   form.elements.description.value = draft?.description ?? "";
   form.elements.body.value = draft?.body ?? "";
@@ -43,6 +49,9 @@ function setFields(draft) {
   imagePreview.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
+  generateEnglish.disabled = !draft;
+  workflowState.textContent = draft ? "Listo para generar la versión en inglés." : "Guarda un borrador válido para comenzar.";
+  englishResult.hidden = true;
 }
 
 function applySettings(settings) {
@@ -134,6 +143,8 @@ async function refreshList() {
       setFields(current);
       message.hidden = true;
       await refreshList();
+      const status = await pollTranslation();
+      if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
     });
     return button;
   }));
@@ -142,6 +153,7 @@ async function refreshList() {
 
 form.addEventListener("input", () => {
   saveState.textContent = "Cambios sin guardar";
+  generateEnglish.disabled = true;
   message.hidden = true;
 });
 
@@ -167,6 +179,55 @@ form.addEventListener("submit", async (event) => {
     await refreshList();
   } catch (error) {
     saveState.textContent = "No guardado";
+    showError(error.message);
+  }
+});
+
+async function pollTranslation() {
+  if (!current) return null;
+  try {
+    const { translation } = await request(`/api/drafts/${current.articleId}/translation`);
+    workflowState.textContent = translation.status === "queued" ? "Traducción en cola…" : translation.status === "running" ? "Generando inglés…" : translation.status === "completed" ? "Versión en inglés lista." : "La traducción se detuvo.";
+    if (translation.status === "completed") {
+      clearInterval(translationTimer);
+      translationTimer = null;
+      document.querySelector("#english-title").value = translation.result.title;
+      document.querySelector("#english-description").value = translation.result.description;
+      document.querySelector("#english-body").value = translation.result.body;
+      englishResult.hidden = false;
+      generateEnglish.disabled = false;
+      await refreshNotifications();
+    } else if (translation.status === "failed") {
+      clearInterval(translationTimer);
+      translationTimer = null;
+      generateEnglish.disabled = false;
+      showError(translation.error || "La traducción no pasó la validación.");
+      await refreshNotifications();
+    }
+    return translation.status;
+  } catch (error) {
+    if (!/not found/i.test(error.message)) showError(error.message);
+    return null;
+  }
+}
+
+generateEnglish.addEventListener("click", async () => {
+  if (!current) return;
+  message.hidden = true;
+  generateEnglish.disabled = true;
+  workflowState.textContent = "Enviando traducción…";
+  try {
+    await request(`/api/drafts/${current.articleId}/translation`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedRevision: current.revision }),
+    });
+    workflowState.textContent = "Traducción en cola…";
+    await refreshNotifications();
+    const status = await pollTranslation();
+    if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
+  } catch (error) {
+    generateEnglish.disabled = false;
+    workflowState.textContent = "No se inició la traducción.";
     showError(error.message);
   }
 });

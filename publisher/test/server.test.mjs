@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -21,10 +21,13 @@ async function fixture() {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
   const uploadsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-uploads-"));
   const notificationsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-notifications-"));
-  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot });
+  const queueRoot = await mkdtemp(join(tmpdir(), "fanaticosos-queue-"));
+  const statesRoot = await mkdtemp(join(tmpdir(), "fanaticosos-states-"));
+  const jobsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-jobs-"));
+  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
-  return { server, base: `http://127.0.0.1:${port}` };
+  return { server, base: `http://127.0.0.1:${port}`, queueRoot };
 }
 
 test("health endpoint is available without touching drafts", async (context) => {
@@ -118,4 +121,20 @@ test("stale browser revision returns a conflict", async (context) => {
   });
   assert.equal((await update()).status, 200);
   assert.equal((await update()).status, 409);
+});
+
+test("saved draft can queue one private translation job", async (context) => {
+  const { server, base, queueRoot } = await fixture();
+  context.after(() => server.close());
+  const draft = (await (await fetch(`${base}/api/drafts`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields),
+  })).json()).draft;
+  const response = await fetch(`${base}/api/drafts/${draft.articleId}/translation`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: draft.revision }),
+  });
+  assert.equal(response.status, 202);
+  const translation = (await response.json()).translation;
+  assert.equal(translation.status, "queued");
+  assert.equal((await readFile(join(queueRoot, translation.jobId, "request.json"), "utf8")).includes(draft.title), true);
 });

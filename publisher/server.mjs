@@ -7,11 +7,13 @@ import { dirname, join } from "node:path";
 
 import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
-import { acknowledgeNotification, listNotifications } from "./lib/notifications.mjs";
+import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
+import { queueTranslation, readTranslationState, reconcileTranslations } from "./lib/translation-jobs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
+const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
@@ -60,6 +62,9 @@ export function createPublisherServer({
   uploadsRoot = join(dirname(draftsRoot), "uploads"),
   settingsPath = DEFAULT_SETTINGS,
   notificationsRoot = join(dirname(draftsRoot), "notifications"),
+  queueRoot = join(dirname(draftsRoot), "queue"),
+  statesRoot = join(dirname(draftsRoot), "states"),
+  jobsRoot = join(dirname(dirname(draftsRoot)), "jobs"),
 }) {
   return createServer(async (request, response) => {
     try {
@@ -110,6 +115,34 @@ export function createPublisherServer({
         );
         return json(response, 201, { upload });
       }
+      const translationMatch = TRANSLATION_PATH.exec(url.pathname);
+      if (translationMatch && request.method === "POST") {
+        const value = await requestJson(request);
+        const draft = await readDraft(draftsRoot, translationMatch[1]);
+        if (value.expectedRevision !== draft.revision) {
+          throw new Error("save the current draft revision before translation");
+        }
+        const translation = await queueTranslation({ draft, queueRoot, statesRoot });
+        await createNotification(notificationsRoot, {
+          level: "info", event: "translation-started", articleId: draft.articleId,
+          message: `Traducción iniciada: ${draft.title}`,
+        });
+        return json(response, 202, { translation });
+      }
+      if (translationMatch && request.method === "GET") {
+        await reconcileTranslations({
+          statesRoot, jobsRoot,
+          onComplete: (state) => createNotification(notificationsRoot, {
+            level: "success", event: "translation-completed", articleId: state.articleId,
+            message: "La versión en inglés está lista para revisión.",
+          }),
+          onFailure: (state) => createNotification(notificationsRoot, {
+            level: "error", event: "translation-failed", articleId: state.articleId,
+            message: `La traducción se detuvo: ${state.error}`,
+          }),
+        });
+        return json(response, 200, { translation: await readTranslationState(statesRoot, translationMatch[1]) });
+      }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
       if (uploadMatch && request.method === "GET") {
         const contentType = contentTypeForName(uploadMatch[1]);
@@ -152,7 +185,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const draftsRoot = process.env.PUBLISHER_DRAFTS_ROOT ?? join(HERE, ".local-drafts");
   const uploadsRoot = process.env.PUBLISHER_UPLOADS_ROOT ?? join(HERE, ".local-uploads");
   const notificationsRoot = process.env.PUBLISHER_NOTIFICATIONS_ROOT ?? join(HERE, ".local-notifications");
-  createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot }).listen(port, host, () => {
+  const queueRoot = process.env.PUBLISHER_QUEUE_ROOT ?? join(HERE, ".local-queue");
+  const statesRoot = process.env.PUBLISHER_STATES_ROOT ?? join(HERE, ".local-states");
+  const jobsRoot = process.env.PUBLISHER_JOBS_ROOT ?? join(HERE, ".local-jobs");
+  const options = { draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot };
+  const reconcile = () => reconcileTranslations({
+    statesRoot, jobsRoot,
+    onComplete: (state) => createNotification(notificationsRoot, {
+      level: "success", event: "translation-completed", articleId: state.articleId,
+      message: "La versión en inglés está lista para revisión.",
+    }),
+    onFailure: (state) => createNotification(notificationsRoot, {
+      level: "error", event: "translation-failed", articleId: state.articleId,
+      message: `La traducción se detuvo: ${state.error}`,
+    }),
+  }).catch((error) => console.error("translation reconciliation failed", error));
+  setInterval(reconcile, 10_000).unref();
+  reconcile();
+  createPublisherServer(options).listen(port, host, () => {
     console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
   });
 }

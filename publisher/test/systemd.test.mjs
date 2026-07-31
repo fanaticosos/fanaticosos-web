@@ -21,3 +21,15 @@ test("publisher has a single private write boundary", () => {
   assert.match(unit, /User=fanaticosos-blog/);
   assert.match(unit, /UMask=0077/);
 });
+
+test("publisher dispatches jobs through a separate fixed systemd path", async () => {
+  const pathUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-publisher-dispatcher.path", import.meta.url), "utf8");
+  const serviceUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-publisher-dispatcher.service", import.meta.url), "utf8");
+  const dispatcher = await readFile(new URL("../../deploy/publisher/fanaticosos-publisher-dispatcher", import.meta.url), "utf8");
+  assert.match(unit, /NoNewPrivileges=yes/);
+  assert.match(pathUnit, /PathExists=\/opt\/fanaticosos-blog\/publisher\/queue\/\.wake/);
+  assert.match(serviceUnit, /ExecStart=\/usr\/local\/sbin\/fanaticosos-publisher-dispatcher/);
+  assert.match(dispatcher, /validate_translation_request/);
+  assert.match(dispatcher, /systemctl start --no-block/);
+  assert.doesNotMatch(dispatcher, /eval /);
+});

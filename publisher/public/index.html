@@ -70,13 +70,19 @@
           </section>
           <section class="panel future">
             <h2>Traducción, audio y publicación</h2>
-            <p>Estas acciones se habilitarán cuando el borrador tenga contenido válido y los trabajos privados estén conectados.</p>
+            <p id="workflow-state">Guarda un borrador válido para comenzar.</p>
             <div class="future-actions">
-              <button disabled type="button">Generar inglés</button>
+              <button id="generate-english" disabled type="button">Generar inglés</button>
               <button disabled type="button">Generar audios</button>
               <button disabled type="button">Vista previa</button>
               <button disabled type="button">Publicar</button>
             </div>
+            <section id="english-result" class="english-result" hidden>
+              <h3>Versión en inglés · revisar antes del audio</h3>
+              <label>Título<input id="english-title" readonly></label>
+              <label>Descripción<textarea id="english-description" rows="2" readonly></textarea></label>
+              <label>Artículo<textarea id="english-body" rows="14" readonly></textarea></label>
+            </section>
           </section>
         </form>
       </main>

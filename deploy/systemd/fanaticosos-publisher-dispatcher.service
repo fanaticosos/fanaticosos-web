@@ -1,0 +1,13 @@
+[Unit]
+Description=Dispatch validated Fanaticosos publisher jobs
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fanaticosos-publisher-dispatcher
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/fanaticosos-blog/publisher/queue /opt/fanaticosos-blog/jobs

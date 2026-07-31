@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch the private Fanaticosos publisher job queue
+
+[Path]
+PathExists=/opt/fanaticosos-blog/publisher/queue/.wake
+Unit=fanaticosos-publisher-dispatcher.service
+
+[Install]
+WantedBy=multi-user.target
