@@ -105,6 +105,7 @@ Commands:
   install-pages-deployment-runtime EXPECTED_COMMIT
   verify-cloudflare-pages-token EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
+  cloudflare-preview-failure RELEASE_JOB_ID
   install-publisher EXPECTED_COMMIT
   publisher-status
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
@@ -809,6 +810,20 @@ command_deploy_cloudflare_preview() {
   exec "$cloudflare_preview_script" "$repository" "$data_root" "$job_id"
 }
 
+command_cloudflare_preview_failure() {
+  local job_id="$1"
+  local log_file
+  validate_job_id "$job_id"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  log_file="$publisher_data/releases/$job_id/cloudflare-preview.log"
+  [[ -f "$log_file" && ! -L "$log_file" ]] || stop "Cloudflare preview failure log is missing."
+  echo "=== Sanitized Cloudflare preview diagnostics ==="
+  tail -n 80 "$log_file" | sed -E \
+    -e 's/(Bearer )[A-Za-z0-9_-]+/\1[REDACTED]/g' \
+    -e 's/(CLOUDFLARE_API_TOKEN=)[A-Za-z0-9_-]+/\1[REDACTED]/g'
+}
+
 command_install_publisher() {
   local expected="$1"
   local diagnostics
@@ -1503,6 +1518,10 @@ case "$command" in
   deploy-cloudflare-preview)
     [[ $# == 2 ]] || stop "deploy-cloudflare-preview requires EXPECTED_COMMIT RELEASE_JOB_ID."
     command_deploy_cloudflare_preview "$1" "$2"
+    ;;
+  cloudflare-preview-failure)
+    [[ $# == 1 ]] || stop "cloudflare-preview-failure requires RELEASE_JOB_ID."
+    command_cloudflare_preview_failure "$1"
     ;;
   install-publisher)
     [[ $# == 1 ]] || stop "install-publisher requires EXPECTED_COMMIT."

@@ -82,6 +82,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-pages-deployment-runtime",
                 "verify-cloudflare-pages-token",
                 "deploy-cloudflare-preview",
+                "cloudflare-preview-failure",
                 "install-publisher",
                 "publisher-status",
                 "prepare-tts-demo",
@@ -192,6 +193,12 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("npm ci", runtime)
         self.assertIn('--prefix "$repository"', runtime)
         self.assertIn("--ignore-scripts", runtime)
+
+        diagnostics = self.helper.split(
+            "command_cloudflare_preview_failure()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn("tail -n 80", diagnostics)
+        self.assertIn("[REDACTED]", diagnostics)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(
