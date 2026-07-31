@@ -77,6 +77,8 @@ class AdminHelperTests(unittest.TestCase):
                 "install-tts-template",
                 "install-azure-speech-credential",
                 "azure-speech-credential-status",
+                "install-cloudflare-pages-credential",
+                "cloudflare-pages-credential-status",
                 "install-publisher",
                 "publisher-status",
                 "prepare-tts-demo",
@@ -152,6 +154,17 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('if ! diagnostics="$(systemd-analyze verify', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_dispatcher_service_source"', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_release_source"', installer)
+
+    def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
+        installer = self.helper.split(
+            "command_install_cloudflare_pages_credential()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn("IFS= read -r api_token", installer)
+        self.assertIn('install -d -o root -g root -m 0700', installer)
+        self.assertIn('chmod 0600 "$temporary"', installer)
+        self.assertIn('CLOUDFLARE_ACCOUNT_ID=500cc7e82e34b5837b06a22ffee9f162', installer)
+        self.assertIn('CLOUDFLARE_PAGES_PROJECT=fanaticosos-web', installer)
+        self.assertNotIn('echo "$api_token"', installer)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(
