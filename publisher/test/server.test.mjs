@@ -32,6 +32,16 @@ test("health endpoint is available without touching drafts", async (context) => 
   assert.deepEqual(await response.json(), { status: "ok" });
 });
 
+test("editor shell is served with private security headers", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const response = await fetch(base);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  assert.match(await response.text(), /Publicador privado/);
+});
+
 test("draft can be created, listed, reopened, and updated", async (context) => {
   const { server, base } = await fixture();
   context.after(() => server.close());

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fanaticosos — Publicador privado</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="mark">F</span><span>FANATICOSOS</span></div>
+      <div class="private-badge">Privado · NetBird</div>
+    </header>
+    <div class="shell">
+      <aside class="sidebar">
+        <button id="new-draft" class="primary wide" type="button">+ Nuevo artículo</button>
+        <div class="sidebar-heading">Borradores</div>
+        <div id="draft-list" class="draft-list" aria-live="polite"></div>
+      </aside>
+      <main>
+        <div class="editor-header">
+          <div>
+            <p class="eyebrow">PUBLICADOR</p>
+            <h1 id="page-title">Nuevo artículo</h1>
+          </div>
+          <div class="actions">
+            <span id="save-state" role="status">Sin guardar</span>
+            <button id="save-draft" class="primary" type="submit" form="article-form">Guardar borrador</button>
+          </div>
+        </div>
+        <div id="message" class="message" role="alert" hidden></div>
+        <form id="article-form">
+          <section class="panel">
+            <h2>Artículo en español</h2>
+            <label>Título<input name="title" maxlength="300" required></label>
+            <label>Resumen para buscadores y redes<textarea name="description" rows="3" maxlength="500" required></textarea></label>
+            <div class="two-columns">
+              <label>Categoría<input name="category" maxlength="100" placeholder="Chicago Bears" required></label>
+              <label>Etiquetas<input name="tags" placeholder="NFL, Bears, Semana 3"></label>
+            </div>
+            <label>Texto del artículo<textarea name="body" rows="22" maxlength="100000" required></textarea></label>
+          </section>
+          <section class="panel">
+            <h2>Imagen destacada <span>opcional</span></h2>
+            <label>Ruta o nombre del archivo<input name="imagePath" maxlength="500"></label>
+            <div class="two-columns">
+              <label>Descripción accesible<input name="imageAlt" maxlength="500"></label>
+              <label>Crédito de la imagen<input name="imageCredit" maxlength="500"></label>
+            </div>
+            <label>Pie de foto<input name="imageCaption" maxlength="500"></label>
+          </section>
+          <section class="panel future">
+            <h2>Traducción, audio y publicación</h2>
+            <p>Estas acciones se habilitarán cuando el borrador tenga contenido válido y los trabajos privados estén conectados.</p>
+            <div class="future-actions">
+              <button disabled type="button">Generar inglés</button>
+              <button disabled type="button">Generar audios</button>
+              <button disabled type="button">Vista previa</button>
+              <button disabled type="button">Publicar</button>
+            </div>
+          </section>
+        </form>
+      </main>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

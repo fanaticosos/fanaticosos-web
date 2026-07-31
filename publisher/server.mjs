@@ -2,12 +2,18 @@
 
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
+const STATIC_FILES = new Map([
+  ["/", ["index.html", "text/html; charset=utf-8"]],
+  ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
+]);
 
 function json(response, status, value) {
   const body = `${JSON.stringify(value)}\n`;
@@ -41,6 +47,19 @@ export function createPublisherServer({ draftsRoot }) {
       const url = new URL(request.url, "http://publisher.local");
       if (request.method === "GET" && url.pathname === "/health") {
         return json(response, 200, { status: "ok" });
+      }
+      if (request.method === "GET" && STATIC_FILES.has(url.pathname)) {
+        const [name, contentType] = STATIC_FILES.get(url.pathname);
+        const body = await readFile(join(HERE, "public", name));
+        response.writeHead(200, {
+          "Content-Type": contentType,
+          "Content-Length": body.length,
+          "Cache-Control": "no-store",
+          "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'",
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "DENY",
+        });
+        return response.end(body);
       }
       if (url.pathname === "/api/drafts" && request.method === "GET") {
         return json(response, 200, { drafts: await listDrafts(draftsRoot) });
