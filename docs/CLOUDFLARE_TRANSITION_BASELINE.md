@@ -12,7 +12,8 @@ This document contains no API token, secret, or credential.
 - Project type: Cloudflare Pages with GitHub integration.
 - Repository: `fanaticosos/fanaticosos-web`.
 - Production branch: `main`.
-- Automatic production and preview deployments: enabled.
+- Automatic production deployments: enabled.
+- Automatic preview deployments: disabled with owner authorization on 2026-07-31.
 - Current production commit: `13bd722929a16e794cfe73e2f542b29b2bb07ef8`.
 - Current production deployment: `https://1e519caa.fanaticosos-web.pages.dev`.
 - Production domains: `fanaticosos.com`, `www.fanaticosos.com`, and `fanaticosos-web.pages.dev`.
@@ -37,6 +38,24 @@ Until an explicitly authorized production deployment succeeds, the rollback refe
 
 Cloudflare's retained deployment remains the authoritative production rollback. No local operation should delete or replace it.
 
+## Verified Papabear preview
+
+The first stable release preview was uploaded after automatic preview builds were disabled:
+
+- private release job: `release-11d4e27593be48e1920a5e6884672c52-r1-73b220f9`;
+- release commit: `6212b6e91a813762fc14f9c68de44f23ec7f19d4`;
+- Cloudflare preview branch: `papabear-preview-73b220f9`;
+- immutable deployment: `4aa0209e-4fd6-474d-bf06-2d2719bf83ce`;
+- immutable URL: `https://4aa0209e.fanaticosos-web.pages.dev`;
+- Spanish and English article routes returned HTTP 200;
+- both deployed MP3 files returned HTTP 200 and matched the private release checksums;
+- the private article remained absent from both production custom domains.
+
+A prior manual preview was overwritten by an automatic Git preview of the same source
+commit. This proved that automatic preview builds must remain disabled while Papabear is
+the controlled preview uploader. A later feature-branch push was marked `Skipped` by
+Cloudflare, verifying the new setting.
+
 ## Cloudflare constraint
 
 Cloudflare documents that a Git-integrated Pages project cannot be converted into a Direct Upload project. It can, however, receive manual Wrangler deployments. Cloudflare also documents disabling automatic production and preview branch deployments when Wrangler becomes the controlled deployment path.
@@ -54,15 +73,14 @@ Sources:
 3. Store the token outside Git on `papabear` with root-only permissions.
 4. Upload the already validated private release to a non-production Wrangler branch.
 5. Validate both languages, MP3s, metadata, feeds, sitemap, and asset checksums on that preview URL.
-6. Only after preview acceptance, disable automatic production and preview builds.
+6. After preview acceptance, request owner authorization to disable automatic production builds.
 7. Require a separate owner authorization before the first Wrangler production deployment.
 
 This order keeps `fanaticosos.com` unchanged throughout preview validation and preserves the recorded rollback deployment.
 
-## Unknown until the preview step
+## Remaining production unknowns
 
-- The exact preview deployment URL assigned by Cloudflare.
-- Whether the selected token is accepted with the intended minimal scope.
-- Upload duration for the first complete bilingual release.
+- First controlled production upload duration.
+- Final production health-check and rollback timing.
 
-These unknowns must be measured without changing production.
+These unknowns must be measured only after separate production authorization.
