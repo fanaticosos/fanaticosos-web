@@ -1,6 +1,6 @@
 # TTS Article Job Contract
 
-Status: validated contract; initial production voices and broadcast delivery approved
+Status: validated contract; Azure Spanish and Kokoro English delivery approved
 
 ## Boundary
 
@@ -26,4 +26,4 @@ The worker writes to a private staging directory. It may publish a result only a
 
 The Spanish and English production voice IDs are intentionally not selected by this contract. The owner will choose them after listening to the fixed Kokoro samples. Recording that choice changes versioned voice configuration, not this request/result boundary.
 
-The owner approved the `latino-em_alex` profile (the tuned Latin-American delivery profile around Kokoro's `em_alex` voice asset) for initial Spanish production and `af_heart` for American English, with the broadcast profile for both. Spanish narration applies the centralized pronunciation dictionary before synthesis; canonical article text and its hash remain unchanged. Canonical NFL names remain authoritative and separate from engine-specific synthesis instructions. Aliases carry their own synthesis instruction so a short name such as `Bears` cannot expand into `Chicago Bears`. Dictionary entries also carry documented sources, source types, and approval state. Only approved entries affect narration. Future pronunciation corrections are versioned improvements and do not block the initial publishing workflow. The systemd template accepts neither a voice nor pronunciation overrides from a caller; only versioned repository configuration controls them.
+The owner approved Azure `es-MX-JorgeMultilingualNeural` at 1.08× for Spanish and retained Kokoro `af_heart` for American English. Spanish uses the versioned NFL entity configuration and controlled English-language spans for names and untranslated game terminology. Canonical article text and its hash remain unchanged. The Azure worker accepts only Spanish requests, reads its credential from the server environment, normalizes output to the same web format as English, and publishes atomically only after contract validation. Future pronunciation corrections are versioned centrally and do not require article edits.
