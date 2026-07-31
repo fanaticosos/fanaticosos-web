@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { queueTranslation, readTranslationState, reconcileTranslations, translationRequestForDraft } from "../lib/translation-jobs.mjs";
+import { queueTranslation, readTranslationState, reconcileTranslations, translationRequestForDraft, updateTranslationResult } from "../lib/translation-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 3,
@@ -44,4 +44,10 @@ test("translation queue and completed result remain private and reconstruct Mark
   assert.equal(result.result.body, "## EN:Primer cuarto\n\nEN:Caleb Williams lanzó un touchdown.\n\n- EN:La defensa respondió.");
   await reconcileTranslations({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
   assert.equal(completed, 1);
+  const corrected = await updateTranslationResult(statesRoot, draft.articleId, draft.revision, {
+    title: "Owner title", description: "Owner description", body: "Owner body",
+  });
+  assert.equal(corrected.result.title, "Owner title");
+  assert.equal(corrected.ownerRevision, 1);
+  assert.ok(corrected.ownerReviewedAt);
 });

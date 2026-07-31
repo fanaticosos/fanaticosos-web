@@ -35,13 +35,14 @@ export function ttsRequestsForDraft(draft, translation) {
     throw new Error("the current draft revision needs an accepted English translation");
   }
   const source = { articleId: draft.articleId, revision: draft.revision, title: draft.title, description: draft.description, body: draft.body };
+  const englishSource = { articleId: draft.articleId, revision: draft.revision, ...translation.result };
   return {
     es: {
       schemaVersion: 1, articleId: draft.articleId, locale: "es", sourceRevision: digest(source),
       title: draft.title, segments: narrationSegments(draft.description, draft.body),
     },
     en: {
-      schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: translation.sourceRevision,
+      schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: digest(englishSource),
       title: translation.result.title,
       segments: narrationSegments(translation.result.description, translation.result.body),
     },
@@ -52,14 +53,15 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, now 
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
+  const requests = ttsRequestsForDraft(draft, translation);
+  const sourceRevisions = { es: requests.es.sourceRevision, en: requests.en.sourceRevision };
   try {
     const existing = JSON.parse(await readFile(statePath, "utf8"));
     if (["queued", "running"].includes(existing.status)) throw new Error("audio generation is already running");
-    if (existing.status === "completed" && existing.draftRevision === draft.revision) throw new Error("this draft revision already has audio");
+    if (existing.status === "completed" && existing.draftRevision === draft.revision && JSON.stringify(existing.sourceRevisions) === JSON.stringify(sourceRevisions)) throw new Error("this draft revision already has audio");
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  const requests = ttsRequestsForDraft(draft, translation);
   const jobs = {};
   for (const locale of ["es", "en"]) {
     const jobId = `tts-${locale}-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
@@ -72,7 +74,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, now 
   }
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
-    status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString(), jobs,
+    status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions, jobs,
   };
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });

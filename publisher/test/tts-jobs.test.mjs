@@ -20,9 +20,13 @@ test("TTS requests bind approved Spanish and English text to one revision", () =
   const requests = ttsRequestsForDraft(draft, translation);
   assert.equal(requests.es.locale, "es");
   assert.equal(requests.en.locale, "en");
-  assert.equal(requests.en.sourceRevision, translation.sourceRevision);
+  assert.match(requests.en.sourceRevision, /^[0-9a-f]{64}$/);
+  assert.notEqual(requests.en.sourceRevision, translation.sourceRevision);
   assert.equal(requests.es.segments[1].text, "Primer cuarto");
   assert.equal(requests.en.segments[2].text, "Caleb Williams threw a touchdown.");
+  const corrected = structuredClone(translation);
+  corrected.result.body += " Correction.";
+  assert.notEqual(ttsRequestsForDraft(draft, corrected).en.sourceRevision, requests.en.sourceRevision);
 });
 
 test("two private TTS jobs reconcile only after both MP3 files validate", async () => {

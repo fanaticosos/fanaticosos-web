@@ -79,9 +79,10 @@
             </div>
             <section id="english-result" class="english-result" hidden>
               <h3>Versión en inglés · revisar antes del audio</h3>
-              <label>Título<input id="english-title" readonly></label>
-              <label>Descripción<textarea id="english-description" rows="2" readonly></textarea></label>
-              <label>Artículo<textarea id="english-body" rows="14" readonly></textarea></label>
+              <label>Título<input id="english-title" maxlength="300"></label>
+              <label>Descripción<textarea id="english-description" rows="2" maxlength="500"></textarea></label>
+              <label>Artículo<textarea id="english-body" rows="14" maxlength="100000"></textarea></label>
+              <button id="save-english" type="button">Guardar corrección en inglés</button>
             </section>
             <section id="audio-result" class="english-result" hidden>
               <h3>Audios listos · escuchar antes de publicar</h3>

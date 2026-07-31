@@ -91,6 +91,30 @@ export async function readTranslationState(statesRoot, articleId) {
   return JSON.parse(await readFile(join(statesRoot, `${articleId}.json`), "utf8"));
 }
 
+function correctedText(value, field, maximum) {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${field} is required`);
+  const selected = value.trim();
+  if (selected.length > maximum) throw new Error(`${field} is too long`);
+  return selected;
+}
+
+export async function updateTranslationResult(statesRoot, articleId, draftRevision, result, now = new Date()) {
+  const path = join(statesRoot, `${articleId}.json`);
+  const state = JSON.parse(await readFile(path, "utf8"));
+  if (state.articleId !== articleId || state.status !== "completed") throw new Error("accepted English translation is required");
+  if (state.draftRevision !== draftRevision) throw new Error("English translation is stale for this draft");
+  state.result = {
+    title: correctedText(result?.title, "English title", 300),
+    description: correctedText(result?.description, "English description", 500),
+    body: correctedText(result?.body, "English body", 100_000),
+  };
+  state.ownerRevision = (state.ownerRevision ?? 0) + 1;
+  state.ownerReviewedAt = now.toISOString();
+  state.updatedAt = now.toISOString();
+  await atomicJson(path, state);
+  return state;
+}
+
 export function renderEnglish(result, state) {
   const values = new Map(result.segments.map((segment) => [segment.id, segment.translation]));
   if (!values.has("title") || !values.has("description")) throw new Error("translation result is incomplete");

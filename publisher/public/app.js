@@ -14,6 +14,7 @@ const englishResult = document.querySelector("#english-result");
 const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
 const openPreview = document.querySelector("#open-preview");
+const saveEnglish = document.querySelector("#save-english");
 let translationTimer = null;
 let audioTimer = null;
 
@@ -160,7 +161,14 @@ async function refreshList() {
   if (!drafts.length) list.textContent = "Todavía no hay borradores.";
 }
 
-form.addEventListener("input", () => {
+form.addEventListener("input", (event) => {
+  if (event.target.closest("#english-result")) {
+    workflowState.textContent = "Corrección en inglés sin guardar.";
+    generateAudio.disabled = true;
+    openPreview.disabled = true;
+    audioResult.hidden = true;
+    return;
+  }
   saveState.textContent = "Cambios sin guardar";
   generateEnglish.disabled = true;
   generateAudio.disabled = true;
@@ -296,6 +304,30 @@ generateAudio.addEventListener("click", async () => {
 
 openPreview.addEventListener("click", () => {
   if (current) window.open(`/preview/${current.articleId}/es`, "_blank", "noopener,noreferrer");
+});
+
+saveEnglish.addEventListener("click", async () => {
+  if (!current) return;
+  saveEnglish.disabled = true;
+  try {
+    await request(`/api/drafts/${current.articleId}/translation`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedRevision: current.revision, result: {
+        title: document.querySelector("#english-title").value,
+        description: document.querySelector("#english-description").value,
+        body: document.querySelector("#english-body").value,
+      } }),
+    });
+    workflowState.textContent = "Corrección en inglés guardada · regenera los audios.";
+    generateAudio.disabled = false;
+    openPreview.disabled = true;
+    audioResult.hidden = true;
+    await refreshNotifications();
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    saveEnglish.disabled = false;
+  }
 });
 
 document.querySelector("#new-draft").addEventListener("click", () => {

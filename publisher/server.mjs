@@ -8,8 +8,8 @@ import { dirname, join } from "node:path";
 import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
-import { queueTranslation, readTranslationState, reconcileTranslations } from "./lib/translation-jobs.mjs";
-import { audioFileForState, queueTts, readTtsState, reconcileTts } from "./lib/tts-jobs.mjs";
+import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
+import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { previewPage } from "./lib/preview.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -110,6 +110,8 @@ export function createPublisherServer({
           readTtsState(statesRoot, previewMatch[1]),
           readFile(settingsPath, "utf8").then(JSON.parse),
         ]);
+        const requests = ttsRequestsForDraft(draft, translation);
+        if (audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
         const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
         response.writeHead(200, {
           "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
@@ -162,6 +164,17 @@ export function createPublisherServer({
           }),
         });
         return json(response, 200, { translation: await readTranslationState(statesRoot, translationMatch[1]) });
+      }
+      if (translationMatch && request.method === "PUT") {
+        const value = await requestJson(request);
+        const draft = await readDraft(draftsRoot, translationMatch[1]);
+        if (value.expectedRevision !== draft.revision) throw new Error("save the current Spanish draft before correcting English");
+        const translation = await updateTranslationResult(statesRoot, draft.articleId, draft.revision, value.result);
+        await createNotification(notificationsRoot, {
+          level: "success", event: "translation-corrected", articleId: draft.articleId,
+          message: "La corrección en inglés fue guardada; el audio en inglés debe regenerarse.",
+        });
+        return json(response, 200, { translation });
       }
       const audioMatch = AUDIO_PATH.exec(url.pathname);
       if (audioMatch && request.method === "POST" && !audioMatch[2]) {
