@@ -2,7 +2,7 @@
 
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, lstat, mkdir, readFile, rename, symlink, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, rename, symlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -48,7 +48,13 @@ async function main() {
     recursive: true,
     filter: (source) => ![".git", ".astro", "node_modules", "dist"].includes(basename(source)),
   });
-  await symlink(join(repository, "node_modules"), join(temporary, "node_modules"));
+  const stageModules = join(temporary, "node_modules");
+  const repositoryModules = join(repository, "node_modules");
+  await mkdir(stageModules, { mode: 0o700 });
+  for (const entry of await readdir(repositoryModules)) {
+    if ([".astro", ".vite"].includes(entry)) continue;
+    await symlink(join(repositoryModules, entry), join(stageModules, entry));
+  }
   for (const [relative, contents] of Object.entries(release.files)) {
     const target = join(temporary, relative);
     await mkdir(dirname(target), { recursive: true });
