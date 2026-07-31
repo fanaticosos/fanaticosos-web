@@ -10,6 +10,7 @@ import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mj
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, readTtsState, reconcileTts } from "./lib/tts-jobs.mjs";
+import { previewPage } from "./lib/preview.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
@@ -20,6 +21,7 @@ const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
+  ["/preview.css", ["preview.css", "text/css; charset=utf-8"]],
 ]);
 
 function json(response, status, value) {
@@ -97,6 +99,22 @@ export function createPublisherServer({
           "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'",
           "X-Content-Type-Options": "nosniff",
           "X-Frame-Options": "DENY",
+        });
+        return response.end(body);
+      }
+      const previewMatch = /^\/preview\/([0-9a-f-]{36})\/(es|en)$/.exec(url.pathname);
+      if (previewMatch && request.method === "GET") {
+        const [draft, translation, audio, settings] = await Promise.all([
+          readDraft(draftsRoot, previewMatch[1]),
+          readTranslationState(statesRoot, previewMatch[1]),
+          readTtsState(statesRoot, previewMatch[1]),
+          readFile(settingsPath, "utf8").then(JSON.parse),
+        ]);
+        const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
+        response.writeHead(200, {
+          "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
+          "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self'; script-src 'none'",
+          "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
         });
         return response.end(body);
       }

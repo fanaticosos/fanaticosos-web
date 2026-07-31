@@ -25,7 +25,9 @@
     "enabled": true,
     "appendAtPublication": true,
     "heading": "¡Gracias por acompañarnos!",
+    "headingEn": "Thank you for joining us!",
     "label": "Nuestras plataformas:",
+    "labelEn": "Our platforms:",
     "platforms": [
       {"name": "Twitter", "url": "https://twitter.com/fanaticososcom"},
       {"name": "Facebook", "url": "https://facebook.com/fanaticosos"},

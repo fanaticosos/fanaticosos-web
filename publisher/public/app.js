@@ -13,6 +13,7 @@ const workflowState = document.querySelector("#workflow-state");
 const englishResult = document.querySelector("#english-result");
 const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
+const openPreview = document.querySelector("#open-preview");
 let translationTimer = null;
 let audioTimer = null;
 
@@ -59,6 +60,7 @@ function setFields(draft) {
   englishResult.hidden = true;
   audioResult.hidden = true;
   generateAudio.disabled = true;
+  openPreview.disabled = true;
 }
 
 function applySettings(settings) {
@@ -255,6 +257,7 @@ async function pollAudio() {
       document.querySelector("#audio-en").src = `/api/drafts/${current.articleId}/audio/en`;
       audioResult.hidden = false;
       generateAudio.disabled = false;
+      openPreview.disabled = false;
       await refreshNotifications();
     } else if (audio.status === "failed") {
       if (audioTimer) clearInterval(audioTimer);
@@ -289,6 +292,10 @@ generateAudio.addEventListener("click", async () => {
     workflowState.textContent = "No se inició la generación de audio.";
     showError(error.message);
   }
+});
+
+openPreview.addEventListener("click", () => {
+  if (current) window.open(`/preview/${current.articleId}/es`, "_blank", "noopener,noreferrer");
 });
 
 document.querySelector("#new-draft").addEventListener("click", () => {
