@@ -1,0 +1,72 @@
+import { extname } from "node:path";
+import yaml from "js-yaml";
+
+export function slugify(value) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function promotion(settings, locale) {
+  const english = locale === "en";
+  const heading = english ? settings.promotion.headingEn : settings.promotion.heading;
+  const label = english ? settings.promotion.labelEn : settings.promotion.label;
+  const links = settings.promotion.platforms.map((item) => `[${item.name}](${item.url})`).join(" · ");
+  return `\n\n---\n\n**${heading}**\n\n${label}\n\n${links}\n`;
+}
+
+function frontmatter(data) {
+  return `---\n${yaml.dump(data, { lineWidth: -1, noRefs: true, sortKeys: false }).trimEnd()}\n---\n`;
+}
+
+export function serializeArticlePair({ draft, translation, audio, settings, publishedAt }) {
+  if (translation.status !== "completed" || audio.status !== "completed") throw new Error("release requires accepted translation and audio");
+  if (translation.draftRevision !== draft.revision || audio.draftRevision !== draft.revision) throw new Error("release outputs are stale");
+  if (!translation.provenance || !translation.sourceRevision) throw new Error("translation provenance is incomplete");
+  const categoryId = slugify(draft.category);
+  const imageExtension = draft.featuredImage.path ? extname(draft.featuredImage.path).toLowerCase() : "";
+  const imagePath = draft.featuredImage.path ? `/images/articles/${draft.articleId}${imageExtension}` : null;
+  const shared = {
+    articleId: draft.articleId,
+    author: settings.author.name,
+    publishedAt,
+    status: "published",
+    categoryId,
+    tags: draft.tags,
+    sourceRevision: translation.sourceRevision,
+    ...(imagePath ? { featuredImage: {
+      src: imagePath, alt: draft.featuredImage.alt,
+      ...(draft.featuredImage.caption ? { caption: draft.featuredImage.caption } : {}),
+      ...(draft.featuredImage.credit ? { credit: draft.featuredImage.credit } : {}),
+    } } : {}),
+  };
+  const esAudio = audio.jobs.es.result;
+  const enAudio = audio.jobs.en.result;
+  const es = {
+    ...shared, locale: "es", slug: slugify(draft.title), title: draft.title,
+    description: draft.description, category: draft.category,
+    audio: { path: `/audio/${esAudio.file}`, durationSeconds: esAudio.durationSeconds, voice: esAudio.voice, engine: esAudio.engine, textHash: esAudio.textHash, generatedAt: esAudio.generatedAt },
+  };
+  const en = {
+    ...shared, locale: "en", slug: slugify(translation.result.title), title: translation.result.title,
+    description: translation.result.description, category: draft.category,
+    translation: {
+      sourceRevision: translation.sourceRevision,
+      engine: translation.provenance.engine,
+      model: translation.provenance.model,
+      configurationVersion: String(translation.provenance.configurationVersion),
+      glossaryVersion: String(translation.provenance.glossaryVersion),
+      generatedAt: translation.provenance.generatedAt,
+    },
+    audio: { path: `/audio/${enAudio.file}`, durationSeconds: enAudio.durationSeconds, voice: enAudio.voice, engine: enAudio.engine, textHash: enAudio.textHash, generatedAt: enAudio.generatedAt },
+  };
+  return {
+    files: {
+      [`src/content/articles/es/${draft.articleId}.md`]: `${frontmatter(es)}\n${draft.body.trim()}${promotion(settings, "es")}`,
+      [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${translation.result.body.trim()}${promotion(settings, "en")}`,
+    },
+    assets: {
+      esAudio: { sourceJobId: audio.jobs.es.jobId, file: esAudio.file, publicPath: `public/audio/${esAudio.file}` },
+      enAudio: { sourceJobId: audio.jobs.en.jobId, file: enAudio.file, publicPath: `public/audio/${enAudio.file}` },
+      ...(imagePath ? { image: { sourcePath: draft.featuredImage.path, publicPath: `public${imagePath}` } } : {}),
+    },
+  };
+}

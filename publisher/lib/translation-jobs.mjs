@@ -64,9 +64,6 @@ export async function queueTranslation({ draft, queueRoot, statesRoot, now = new
   try {
     const existing = JSON.parse(await readFile(statePath, "utf8"));
     if (["queued", "running"].includes(existing.status)) throw new Error("translation is already running");
-    if (existing.draftRevision === draft.revision && existing.status === "completed") {
-      throw new Error("this draft revision is already translated");
-    }
   } catch (error) {
     if (error.code !== "ENOENT" && !/already/.test(error.message)) throw error;
     if (/already/.test(error.message)) throw error;
@@ -135,6 +132,15 @@ export async function reconcileTranslations({ statesRoot, jobsRoot, onComplete, 
       state.status = "completed";
       state.result = renderEnglish(result, state);
       state.sourceRevision = result.sourceRevision;
+      state.provenance = {
+        engine: result.engine,
+        model: result.model,
+        modelRevision: result.modelRevision,
+        runtimeVersion: result.runtimeVersion,
+        configurationVersion: result.configurationVersion,
+        glossaryVersion: result.glossaryVersion,
+        generatedAt: result.generatedAt,
+      };
       state.updatedAt = now.toISOString();
       await atomicJson(path, state);
       await onComplete?.(state);

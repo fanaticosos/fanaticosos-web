@@ -11,12 +11,14 @@ import { acknowledgeNotification, createNotification, listNotifications } from "
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { previewPage } from "./lib/preview.mjs";
+import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
+const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
@@ -69,6 +71,7 @@ export function createPublisherServer({
   queueRoot = join(dirname(draftsRoot), "queue"),
   statesRoot = join(dirname(draftsRoot), "states"),
   jobsRoot = join(dirname(dirname(draftsRoot)), "jobs"),
+  releasesRoot = join(dirname(draftsRoot), "releases"),
 }) {
   return createServer(async (request, response) => {
     try {
@@ -212,6 +215,27 @@ export function createPublisherServer({
         });
         return response.end(body);
       }
+      const releaseMatch = RELEASE_PATH.exec(url.pathname);
+      if (releaseMatch && request.method === "POST") {
+        const value = await requestJson(request);
+        const [draft, translation, audio] = await Promise.all([
+          readDraft(draftsRoot, releaseMatch[1]), readTranslationState(statesRoot, releaseMatch[1]), readTtsState(statesRoot, releaseMatch[1]),
+        ]);
+        if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before preparing publication");
+        const requests = ttsRequestsForDraft(draft, translation);
+        if (audio.status !== "completed" || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("current bilingual audio is required before preparing publication");
+        const release = await queueRelease({ draft, queueRoot, statesRoot });
+        await createNotification(notificationsRoot, { level: "info", event: "release-started", articleId: draft.articleId, message: `Preparación privada iniciada: ${draft.title}` });
+        return json(response, 202, { release });
+      }
+      if (releaseMatch && request.method === "GET") {
+        await reconcileReleases({
+          statesRoot, releasesRoot,
+          onComplete: (state) => createNotification(notificationsRoot, { level: "success", event: "release-completed", articleId: state.articleId, message: "La compilación privada pasó todas las validaciones; todavía no está publicada." }),
+          onFailure: (state) => createNotification(notificationsRoot, { level: "error", event: "release-failed", articleId: state.articleId, message: `La preparación privada se detuvo: ${state.error}` }),
+        });
+        return json(response, 200, { release: await readReleaseState(statesRoot, releaseMatch[1]) });
+      }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
       if (uploadMatch && request.method === "GET") {
         const contentType = contentTypeForName(uploadMatch[1]);
@@ -257,7 +281,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const queueRoot = process.env.PUBLISHER_QUEUE_ROOT ?? join(HERE, ".local-queue");
   const statesRoot = process.env.PUBLISHER_STATES_ROOT ?? join(HERE, ".local-states");
   const jobsRoot = process.env.PUBLISHER_JOBS_ROOT ?? join(HERE, ".local-jobs");
-  const options = { draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot };
+  const releasesRoot = process.env.PUBLISHER_RELEASES_ROOT ?? join(HERE, ".local-releases");
+  const options = { draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, releasesRoot };
   const reconcile = () => reconcileTranslations({
     statesRoot, jobsRoot,
     onComplete: (state) => createNotification(notificationsRoot, {
@@ -280,10 +305,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       message: `La generación de audio se detuvo: ${state.error}`,
     }),
   }).catch((error) => console.error("audio reconciliation failed", error));
+  const reconcileRelease = () => reconcileReleases({
+    statesRoot, releasesRoot,
+    onComplete: (state) => createNotification(notificationsRoot, { level: "success", event: "release-completed", articleId: state.articleId, message: "La compilación privada pasó todas las validaciones; todavía no está publicada." }),
+    onFailure: (state) => createNotification(notificationsRoot, { level: "error", event: "release-failed", articleId: state.articleId, message: `La preparación privada se detuvo: ${state.error}` }),
+  }).catch((error) => console.error("release reconciliation failed", error));
   setInterval(reconcile, 10_000).unref();
   setInterval(reconcileAudio, 10_000).unref();
+  setInterval(reconcileRelease, 10_000).unref();
   reconcile();
   reconcileAudio();
+  reconcileRelease();
   createPublisherServer(options).listen(port, host, () => {
     console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
   });

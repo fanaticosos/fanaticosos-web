@@ -33,5 +33,6 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(dispatcher, /from article_contract import validate_request/);
   assert.match(dispatcher, /systemctl start --no-block/);
   assert.match(dispatcher, /fanaticosos-tts@\$job_id\.service/);
+  assert.match(dispatcher, /fanaticosos-release@\$job_id\.service/);
   assert.doesNotMatch(dispatcher, /eval /);
 });

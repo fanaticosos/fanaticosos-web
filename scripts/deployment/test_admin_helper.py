@@ -151,6 +151,7 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('install -o root -g root -m 0755 "$publisher_dispatcher_source"', installer)
         self.assertIn('if ! diagnostics="$(systemd-analyze verify', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_dispatcher_service_source"', installer)
+        self.assertIn('install -o root -g root -m 0644 "$publisher_release_source"', installer)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(

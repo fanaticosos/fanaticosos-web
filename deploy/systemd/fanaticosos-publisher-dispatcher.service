@@ -10,4 +10,4 @@ PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/opt/fanaticosos-blog/publisher/queue /opt/fanaticosos-blog/jobs
+ReadWritePaths=/opt/fanaticosos-blog/publisher/queue /opt/fanaticosos-blog/publisher/releases /opt/fanaticosos-blog/jobs

@@ -15,8 +15,10 @@ const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
+const prepareRelease = document.querySelector("#prepare-release");
 let translationTimer = null;
 let audioTimer = null;
+let releaseTimer = null;
 
 function fields() {
   const data = new FormData(form);
@@ -42,6 +44,8 @@ function setFields(draft) {
   translationTimer = null;
   if (audioTimer) clearInterval(audioTimer);
   audioTimer = null;
+  if (releaseTimer) clearInterval(releaseTimer);
+  releaseTimer = null;
   form.elements.title.value = draft?.title ?? "";
   form.elements.description.value = draft?.description ?? "";
   form.elements.body.value = draft?.body ?? "";
@@ -62,6 +66,7 @@ function setFields(draft) {
   audioResult.hidden = true;
   generateAudio.disabled = true;
   openPreview.disabled = true;
+  prepareRelease.disabled = true;
 }
 
 function applySettings(settings) {
@@ -166,12 +171,14 @@ form.addEventListener("input", (event) => {
     workflowState.textContent = "Corrección en inglés sin guardar.";
     generateAudio.disabled = true;
     openPreview.disabled = true;
+    prepareRelease.disabled = true;
     audioResult.hidden = true;
     return;
   }
   saveState.textContent = "Cambios sin guardar";
   generateEnglish.disabled = true;
   generateAudio.disabled = true;
+  prepareRelease.disabled = true;
   message.hidden = true;
 });
 
@@ -266,7 +273,10 @@ async function pollAudio() {
       audioResult.hidden = false;
       generateAudio.disabled = false;
       openPreview.disabled = false;
+      prepareRelease.disabled = false;
       await refreshNotifications();
+      const releaseStatus = await pollRelease();
+      if (["queued", "running"].includes(releaseStatus) && !releaseTimer) releaseTimer = setInterval(pollRelease, 5000);
     } else if (audio.status === "failed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
@@ -321,12 +331,56 @@ saveEnglish.addEventListener("click", async () => {
     workflowState.textContent = "Corrección en inglés guardada · regenera los audios.";
     generateAudio.disabled = false;
     openPreview.disabled = true;
+    prepareRelease.disabled = true;
     audioResult.hidden = true;
     await refreshNotifications();
   } catch (error) {
     showError(error.message);
   } finally {
     saveEnglish.disabled = false;
+  }
+});
+
+async function pollRelease() {
+  if (!current) return null;
+  try {
+    const { release } = await request(`/api/drafts/${current.articleId}/release`);
+    if (release.status === "completed") {
+      if (releaseTimer) clearInterval(releaseTimer);
+      releaseTimer = null;
+      workflowState.textContent = "Compilación privada validada · publicación pública deshabilitada.";
+      prepareRelease.disabled = false;
+      await refreshNotifications();
+    } else if (release.status === "failed") {
+      if (releaseTimer) clearInterval(releaseTimer);
+      releaseTimer = null;
+      prepareRelease.disabled = false;
+      showError(release.error || "La compilación privada no pasó la validación.");
+      await refreshNotifications();
+    } else {
+      workflowState.textContent = release.status === "queued" ? "Compilación privada en cola…" : "Validando compilación privada…";
+    }
+    return release.status;
+  } catch (error) {
+    if (!/not found/i.test(error.message)) showError(error.message);
+    return null;
+  }
+}
+
+prepareRelease.addEventListener("click", async () => {
+  if (!current) return;
+  prepareRelease.disabled = true;
+  try {
+    await request(`/api/drafts/${current.articleId}/release`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedRevision: current.revision }),
+    });
+    await refreshNotifications();
+    const releaseStatus = await pollRelease();
+    if (["queued", "running"].includes(releaseStatus)) releaseTimer = setInterval(pollRelease, 5000);
+  } catch (error) {
+    prepareRelease.disabled = false;
+    showError(error.message);
   }
 });
 

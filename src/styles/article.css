@@ -80,6 +80,18 @@
   margin: 20px 0 36px;
 }
 
+.article-audio {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1.5rem 0 2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
+  background: rgba(5, 18, 31, 0.72);
+}
+
+.article-audio audio { width: 100%; }
+
 .article-shell figure {
   margin: 36px 0;
 }

@@ -3,12 +3,14 @@ set -euo pipefail
 
 readonly queue_root="/opt/fanaticosos-blog/publisher/queue"
 readonly jobs_root="/opt/fanaticosos-blog/jobs"
+readonly releases_root="/opt/fanaticosos-blog/publisher/releases"
 readonly repository="/opt/fanaticosos-blog/repository"
 readonly service_account="fanaticosos-blog"
 
 [[ "$(id -u)" == "0" ]] || { echo "Must run as root." >&2; exit 1; }
 [[ "$(hostname)" == "papabear" ]] || { echo "Wrong host." >&2; exit 1; }
 install -d -o "$service_account" -g "$service_account" -m 0700 "$queue_root" "$jobs_root"
+install -d -o "$service_account" -g "$service_account" -m 0700 "$releases_root"
 
 shopt -s nullglob
 for queued in "$queue_root"/translation-*-r*-*; do
@@ -56,5 +58,24 @@ PY
   chmod 0600 "$jobs_root/$job_id/request.json"
   systemctl reset-failed "fanaticosos-tts@$job_id.service" 2>/dev/null || true
   systemctl start --no-block "fanaticosos-tts@$job_id.service"
+done
+for queued in "$queue_root"/release-*-r*-*; do
+  [[ -d "$queued" && ! -L "$queued" ]] || continue
+  job_id="$(basename "$queued")"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || continue
+  [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
+  [[ -f "$queued/request.json" && ! -L "$queued/request.json" ]] || continue
+  [[ ! -e "$releases_root/$job_id" ]] || continue
+  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+    "$repository/scripts/publisher/build_release.mjs" \
+    --request "$queued/request.json" --repository "$repository" \
+    --publisher-root /opt/fanaticosos-blog/publisher --jobs-root "$jobs_root" \
+    --output "$releases_root/$job_id/release" --validate-only
+  mv "$queued" "$releases_root/$job_id"
+  chown -R "$service_account:$service_account" "$releases_root/$job_id"
+  chmod 0700 "$releases_root/$job_id"
+  chmod 0600 "$releases_root/$job_id/request.json"
+  systemctl reset-failed "fanaticosos-release@$job_id.service" 2>/dev/null || true
+  systemctl start --no-block "fanaticosos-release@$job_id.service"
 done
 rm -f -- "$queue_root/.wake"

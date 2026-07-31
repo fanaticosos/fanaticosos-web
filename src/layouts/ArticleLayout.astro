@@ -65,6 +65,16 @@ const structuredData = {
         {locale === "es" ? "Por" : "By"} {article.data.author}
       </p>
       {
+        article.data.audio && (
+          <div class="article-audio">
+            <strong>{locale === "es" ? "Escuchar artículo" : "Listen to article"}</strong>
+            <audio controls preload="metadata" src={article.data.audio.path}>
+              {locale === "es" ? "Tu navegador no puede reproducir este audio." : "Your browser cannot play this audio."}
+            </audio>
+          </div>
+        )
+      }
+      {
         article.data.featuredImage && (
           <figure>
             <img src={article.data.featuredImage.src} alt={article.data.featuredImage.alt} />

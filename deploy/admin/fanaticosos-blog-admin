@@ -26,6 +26,8 @@ readonly publisher_dispatcher_service_source="$repository/deploy/systemd/fanatic
 readonly publisher_dispatcher_service_installed="/etc/systemd/system/fanaticosos-publisher-dispatcher.service"
 readonly publisher_dispatcher_path_source="$repository/deploy/systemd/fanaticosos-publisher-dispatcher.path"
 readonly publisher_dispatcher_path_installed="/etc/systemd/system/fanaticosos-publisher-dispatcher.path"
+readonly publisher_release_source="$repository/deploy/systemd/fanaticosos-release@.service"
+readonly publisher_release_installed="/etc/systemd/system/fanaticosos-release@.service"
 readonly publisher_data="$data_root/publisher"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
@@ -730,17 +732,19 @@ command_install_publisher() {
   [[ -x "$publisher_dispatcher_source" ]] || stop "Versioned publisher dispatcher is missing."
   [[ -f "$publisher_dispatcher_service_source" ]] || stop "Dispatcher service unit is missing."
   [[ -f "$publisher_dispatcher_path_source" ]] || stop "Dispatcher path unit is missing."
+  [[ -f "$publisher_release_source" ]] || stop "Release build template is missing."
   install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
-  if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" 2>&1)"; then
+  if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" "$publisher_release_source" 2>&1)"; then
     stop "Publisher service units failed verification: $diagnostics"
   fi
   [[ -z "$diagnostics" ]] || stop "Publisher service units produced diagnostics: $diagnostics"
   install -d -o "$service_account" -g "$service_account" -m 0700 \
     "$publisher_data" "$publisher_data/drafts" "$publisher_data/uploads" \
     "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
-    "$jobs_root"
+    "$publisher_data/releases" "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"
+  install -o root -g root -m 0644 "$publisher_release_source" "$publisher_release_installed"
   systemctl daemon-reload
   if ! diagnostics="$(systemd-analyze verify "$publisher_dispatcher_path_source" 2>&1)"; then
     stop "Publisher dispatcher path failed verification: $diagnostics"
@@ -757,6 +761,8 @@ command_install_publisher() {
     stop "Installed publisher unit differs from Git."
   cmp -s "$publisher_dispatcher_source" "$publisher_dispatcher_installed" || \
     stop "Installed publisher dispatcher differs from Git."
+  cmp -s "$publisher_release_source" "$publisher_release_installed" || \
+    stop "Installed release template differs from Git."
   [[ "$(systemctl is-active fanaticosos-publisher-dispatcher.path)" == "active" ]] || \
     stop "Publisher dispatcher path is not active."
   echo "PASS: Private publisher installed and active on the NetBird address."
