@@ -182,6 +182,13 @@ class AdminHelperTests(unittest.TestCase):
         self.assertNotIn('--branch "$production_branch"', script)
         self.assertNotIn("eval ", script)
 
+        runtime = self.helper.split(
+            "command_install_pages_deployment_runtime()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn('PATH="/opt/nodejs/current/bin:/usr/bin:/bin"', runtime)
+        self.assertIn("npm ci", runtime)
+        self.assertIn("--ignore-scripts", runtime)
+
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(
             'readonly kokoro_venv="$data_root/runtimes/tts-benchmark-kokoro-v1"',

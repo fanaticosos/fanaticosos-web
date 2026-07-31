@@ -771,9 +771,11 @@ command_cloudflare_pages_credential_status() {
 command_install_pages_deployment_runtime() {
   local expected="$1"
   require_repository_commit "$expected"
-  run_as_service env HOME="$data_root" /opt/nodejs/current/bin/npm ci \
+  run_as_service env HOME="$data_root" PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
+    /opt/nodejs/current/bin/npm ci \
     --ignore-scripts --no-audit --no-fund
-  [[ "$(run_as_service "$repository/node_modules/.bin/wrangler" --version)" == "4.118.0" ]] || \
+  [[ "$(run_as_service env PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
+    "$repository/node_modules/.bin/wrangler" --version)" == "4.118.0" ]] || \
     stop "Pinned Wrangler version verification failed."
   echo "PASS: Pinned Wrangler 4.118.0 deployment runtime installed."
 }
