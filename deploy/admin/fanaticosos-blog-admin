@@ -116,6 +116,8 @@ Commands:
   publisher-status
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
+  release-retention-preview EXPECTED_COMMIT
+  run-release-retention EXPECTED_COMMIT
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -917,7 +919,7 @@ command_install_publisher() {
   install -o root -g root -m 0644 "$publisher_dispatcher_path_source" "$publisher_dispatcher_path_installed"
   systemctl daemon-reload
   systemctl enable --now fanaticosos-publisher-dispatcher.path
-  systemctl enable --now fanaticosos-release-retention.timer
+  systemctl enable fanaticosos-release-retention.timer
   systemctl enable fanaticosos-publisher.service
   systemctl restart fanaticosos-publisher.service
   [[ "$(systemctl is-active fanaticosos-publisher.service)" == "active" ]] || \
@@ -934,8 +936,6 @@ command_install_publisher() {
     stop "Installed retention timer differs from Git."
   [[ "$(systemctl is-active fanaticosos-publisher-dispatcher.path)" == "active" ]] || \
     stop "Publisher dispatcher path is not active."
-  [[ "$(systemctl is-active fanaticosos-release-retention.timer)" == "active" ]] || \
-    stop "Release retention timer is not active."
   echo "PASS: Private publisher installed and active on the NetBird address."
 }
 
@@ -977,6 +977,26 @@ command_select_private_release() {
     --releases-root "$publisher_data/releases" --job-id "$job_id"
   [[ -L "$publisher_data/releases/current" ]] || stop "Current release link was not created."
   echo "PASS: Local last-known-good release selected without changing Cloudflare."
+}
+
+command_release_retention_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+    "$repository/scripts/publisher/prune_releases.mjs" \
+    --releases-root "$publisher_data/releases" --keep-successful 10 --failed-days 30
+}
+
+command_run_release_retention() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  systemctl start fanaticosos-release-retention.service
+  [[ "$(systemctl show fanaticosos-release-retention.service --property=Result --value)" == "success" ]] || \
+    stop "Release retention service failed."
+  systemctl start fanaticosos-release-retention.timer
+  [[ "$(systemctl is-active fanaticosos-release-retention.timer)" == "active" ]] || \
+    stop "Release retention timer is not active."
+  echo "PASS: Approved release retention ran successfully and the daily timer is active."
 }
 
 command_publisher_status() {
@@ -1657,6 +1677,14 @@ case "$command" in
   select-private-release)
     [[ $# == 2 ]] || stop "select-private-release requires EXPECTED_COMMIT RELEASE_JOB_ID."
     command_select_private_release "$1" "$2"
+    ;;
+  release-retention-preview)
+    [[ $# == 1 ]] || stop "release-retention-preview requires EXPECTED_COMMIT."
+    command_release_retention_preview "$1"
+    ;;
+  run-release-retention)
+    [[ $# == 1 ]] || stop "run-release-retention requires EXPECTED_COMMIT."
+    command_run_release_retention "$1"
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."

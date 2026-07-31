@@ -89,6 +89,8 @@ class AdminHelperTests(unittest.TestCase):
                 "publisher-status",
                 "latest-private-release",
                 "select-private-release",
+                "release-retention-preview",
+                "run-release-retention",
                 "prepare-tts-demo",
                 "start-tts",
                 "tts-status",
@@ -164,7 +166,8 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('install -o root -g root -m 0644 "$publisher_release_source"', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_retention_source"', installer)
         self.assertIn('install -o root -g root -m 0644 "$publisher_retention_timer_source"', installer)
-        self.assertIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
+        self.assertIn("systemctl enable fanaticosos-release-retention.timer", installer)
+        self.assertNotIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
 
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(
