@@ -279,7 +279,7 @@ Remove the unaccepted voice/model integration and retain text-only bilingual pag
 
 ## Phase 6 — Private publishing interface
 
-Status: in progress. Private drafts, uploads, owner defaults, persistent dashboard notifications, and the bounded Spanish-to-English job bridge are implemented. Audio, preview, and publication actions remain disabled until their validation gates are connected.
+Status: in progress. Private drafts, uploads, owner defaults, persistent dashboard notifications, bounded Spanish-to-English translation, bilingual TTS, complete-language preview, owner correction, and private release preparation are implemented. Public publication remains deliberately disabled until the Phase 8 authorization and deployment controls are complete.
 
 ### Objective
 
@@ -313,6 +313,8 @@ The translation button never grants the web process administrative privileges. T
 Stop the private editor service. Source Markdown remains readable and editable with standard tools.
 
 ## Phase 7 — End-to-end release pipeline
+
+Status: private release assembly verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a release manifest from commit `5974440`. The bounded release unit exited successfully, the manifest retained `deployment: "disabled"`, and the public Cloudflare deployment remained unchanged. Retention, overlapping-publication locking, and restore testing remain before this phase is complete.
 
 ### Objective
 
