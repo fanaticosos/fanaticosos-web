@@ -11,7 +11,10 @@ const imagePreview = document.querySelector("#image-preview");
 const generateEnglish = document.querySelector("#generate-english");
 const workflowState = document.querySelector("#workflow-state");
 const englishResult = document.querySelector("#english-result");
+const generateAudio = document.querySelector("#generate-audio");
+const audioResult = document.querySelector("#audio-result");
 let translationTimer = null;
+let audioTimer = null;
 
 function fields() {
   const data = new FormData(form);
@@ -35,6 +38,8 @@ function fields() {
 function setFields(draft) {
   if (translationTimer) clearInterval(translationTimer);
   translationTimer = null;
+  if (audioTimer) clearInterval(audioTimer);
+  audioTimer = null;
   form.elements.title.value = draft?.title ?? "";
   form.elements.description.value = draft?.description ?? "";
   form.elements.body.value = draft?.body ?? "";
@@ -52,6 +57,8 @@ function setFields(draft) {
   generateEnglish.disabled = !draft;
   workflowState.textContent = draft ? "Listo para generar la versión en inglés." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
+  audioResult.hidden = true;
+  generateAudio.disabled = true;
 }
 
 function applySettings(settings) {
@@ -154,6 +161,7 @@ async function refreshList() {
 form.addEventListener("input", () => {
   saveState.textContent = "Cambios sin guardar";
   generateEnglish.disabled = true;
+  generateAudio.disabled = true;
   message.hidden = true;
 });
 
@@ -197,6 +205,9 @@ async function pollTranslation() {
       englishResult.hidden = false;
       generateEnglish.disabled = false;
       await refreshNotifications();
+      generateAudio.disabled = false;
+      const audioStatus = await pollAudio();
+      if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "failed") {
       clearInterval(translationTimer);
       translationTimer = null;
@@ -228,6 +239,54 @@ generateEnglish.addEventListener("click", async () => {
   } catch (error) {
     generateEnglish.disabled = false;
     workflowState.textContent = "No se inició la traducción.";
+    showError(error.message);
+  }
+});
+
+async function pollAudio() {
+  if (!current) return null;
+  try {
+    const { audio } = await request(`/api/drafts/${current.articleId}/audio`);
+    if (audio.status === "completed") {
+      if (audioTimer) clearInterval(audioTimer);
+      audioTimer = null;
+      workflowState.textContent = "Audios en español e inglés listos.";
+      document.querySelector("#audio-es").src = `/api/drafts/${current.articleId}/audio/es`;
+      document.querySelector("#audio-en").src = `/api/drafts/${current.articleId}/audio/en`;
+      audioResult.hidden = false;
+      generateAudio.disabled = false;
+      await refreshNotifications();
+    } else if (audio.status === "failed") {
+      if (audioTimer) clearInterval(audioTimer);
+      audioTimer = null;
+      generateAudio.disabled = false;
+      showError(audio.error || "La generación de audio no pasó la validación.");
+      await refreshNotifications();
+    } else {
+      workflowState.textContent = audio.status === "queued" ? "Audios en cola…" : "Generando audios…";
+    }
+    return audio.status;
+  } catch (error) {
+    if (!/not found/i.test(error.message)) showError(error.message);
+    return null;
+  }
+}
+
+generateAudio.addEventListener("click", async () => {
+  if (!current) return;
+  generateAudio.disabled = true;
+  workflowState.textContent = "Enviando audios…";
+  try {
+    await request(`/api/drafts/${current.articleId}/audio`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedRevision: current.revision }),
+    });
+    await refreshNotifications();
+    const audioStatus = await pollAudio();
+    if (["queued", "running"].includes(audioStatus)) audioTimer = setInterval(pollAudio, 5000);
+  } catch (error) {
+    generateAudio.disabled = false;
+    workflowState.textContent = "No se inició la generación de audio.";
     showError(error.message);
   }
 });

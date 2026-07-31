@@ -9,11 +9,13 @@ import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations } from "./lib/translation-jobs.mjs";
+import { audioFileForState, queueTts, readTtsState, reconcileTts } from "./lib/tts-jobs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
+const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
@@ -143,6 +145,42 @@ export function createPublisherServer({
         });
         return json(response, 200, { translation: await readTranslationState(statesRoot, translationMatch[1]) });
       }
+      const audioMatch = AUDIO_PATH.exec(url.pathname);
+      if (audioMatch && request.method === "POST" && !audioMatch[2]) {
+        const value = await requestJson(request);
+        const draft = await readDraft(draftsRoot, audioMatch[1]);
+        if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
+        const translation = await readTranslationState(statesRoot, draft.articleId);
+        const audio = await queueTts({ draft, translation, queueRoot, statesRoot });
+        await createNotification(notificationsRoot, {
+          level: "info", event: "audio-started", articleId: draft.articleId,
+          message: `Audios en español e inglés iniciados: ${draft.title}`,
+        });
+        return json(response, 202, { audio });
+      }
+      if (audioMatch && request.method === "GET" && !audioMatch[2]) {
+        await reconcileTts({
+          statesRoot, jobsRoot,
+          onComplete: (state) => createNotification(notificationsRoot, {
+            level: "success", event: "audio-completed", articleId: state.articleId,
+            message: "Los audios en español e inglés están listos para escuchar.",
+          }),
+          onFailure: (state) => createNotification(notificationsRoot, {
+            level: "error", event: "audio-failed", articleId: state.articleId,
+            message: `La generación de audio se detuvo: ${state.error}`,
+          }),
+        });
+        return json(response, 200, { audio: await readTtsState(statesRoot, audioMatch[1]) });
+      }
+      if (audioMatch && request.method === "GET" && audioMatch[2]) {
+        const state = await readTtsState(statesRoot, audioMatch[1]);
+        const body = await readFile(audioFileForState(state, audioMatch[2], jobsRoot));
+        response.writeHead(200, {
+          "Content-Type": "audio/mpeg", "Content-Length": body.length,
+          "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+        });
+        return response.end(body);
+      }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
       if (uploadMatch && request.method === "GET") {
         const contentType = contentTypeForName(uploadMatch[1]);
@@ -200,8 +238,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       message: `La traducción se detuvo: ${state.error}`,
     }),
   }).catch((error) => console.error("translation reconciliation failed", error));
+  const reconcileAudio = () => reconcileTts({
+    statesRoot, jobsRoot,
+    onComplete: (state) => createNotification(notificationsRoot, {
+      level: "success", event: "audio-completed", articleId: state.articleId,
+      message: "Los audios en español e inglés están listos para escuchar.",
+    }),
+    onFailure: (state) => createNotification(notificationsRoot, {
+      level: "error", event: "audio-failed", articleId: state.articleId,
+      message: `La generación de audio se detuvo: ${state.error}`,
+    }),
+  }).catch((error) => console.error("audio reconciliation failed", error));
   setInterval(reconcile, 10_000).unref();
+  setInterval(reconcileAudio, 10_000).unref();
   reconcile();
+  reconcileAudio();
   createPublisherServer(options).listen(port, host, () => {
     console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
   });

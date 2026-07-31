@@ -30,6 +30,8 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(pathUnit, /PathExists=\/opt\/fanaticosos-blog\/publisher\/queue\/\.wake/);
   assert.match(serviceUnit, /ExecStart=\/usr\/local\/sbin\/fanaticosos-publisher-dispatcher/);
   assert.match(dispatcher, /validate_translation_request/);
+  assert.match(dispatcher, /from article_contract import validate_request/);
   assert.match(dispatcher, /systemctl start --no-block/);
+  assert.match(dispatcher, /fanaticosos-tts@\$job_id\.service/);
   assert.doesNotMatch(dispatcher, /eval /);
 });

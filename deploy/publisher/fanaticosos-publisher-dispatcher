@@ -34,4 +34,27 @@ PY
   systemctl reset-failed "fanaticosos-translation@$job_id.service" 2>/dev/null || true
   systemctl start --no-block "fanaticosos-translation@$job_id.service"
 done
+for queued in "$queue_root"/tts-??-*-r*-*; do
+  [[ -d "$queued" && ! -L "$queued" ]] || continue
+  job_id="$(basename "$queued")"
+  [[ "$job_id" =~ ^tts-(es|en)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || continue
+  [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
+  [[ -f "$queued/request.json" && ! -L "$queued/request.json" ]] || continue
+  [[ ! -e "$jobs_root/$job_id" ]] || continue
+  runuser -u "$service_account" -- env PYTHONDONTWRITEBYTECODE=1 python3 - "$repository" "$queued/request.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[1]) / "scripts" / "tts"))
+from article_contract import validate_request
+with open(sys.argv[2], encoding="utf-8") as handle:
+    validate_request(json.load(handle))
+PY
+  mv "$queued" "$jobs_root/$job_id"
+  chown -R "$service_account:$service_account" "$jobs_root/$job_id"
+  chmod 0700 "$jobs_root/$job_id"
+  chmod 0600 "$jobs_root/$job_id/request.json"
+  systemctl reset-failed "fanaticosos-tts@$job_id.service" 2>/dev/null || true
+  systemctl start --no-block "fanaticosos-tts@$job_id.service"
+done
 rm -f -- "$queue_root/.wake"

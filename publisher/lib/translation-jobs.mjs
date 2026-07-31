@@ -37,6 +37,8 @@ function bodySegments(body) {
 
 export function translationRequestForDraft(draft) {
   const body = bodySegments(draft.body);
+  if (body.segments.length + 2 > 512) throw new Error("the article has too many translation segments");
+  if (body.segments.some((segment) => segment.text.length > 12_000)) throw new Error("an article paragraph is too long for translation");
   return {
     request: {
       schemaVersion: 1,
