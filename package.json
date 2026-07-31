@@ -12,6 +12,7 @@
     "test:article-routes": "node scripts/test-article-routes.mjs",
     "validate:settings": "node scripts/validate-site-settings.mjs",
     "test:site-settings": "node scripts/test-site-settings.mjs",
+    "test:publisher": "node --test publisher/test/*.test.mjs",
     "validate:build": "node scripts/validate-build.mjs",
     "preview": "astro preview"
   },
