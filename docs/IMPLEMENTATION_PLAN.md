@@ -314,7 +314,7 @@ Stop the private editor service. Source Markdown remains readable and editable w
 
 ## Phase 7 — End-to-end release pipeline
 
-Status: private release assembly verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a release manifest from commit `5974440`. The bounded release unit exited successfully, the manifest retained `deployment: "disabled"`, and the public Cloudflare deployment remained unchanged. Release admission locking and atomic local selection/rollback are installed and verified on Papabear. The owner approved retaining 10 validated releases and 30 days of failed diagnostics; installation and live verification of that maintenance policy remain before this phase is complete.
+Status: complete and verified on `papabear` on 2026-07-31. A revision-bound bilingual test article produced localized Markdown, both MP3 assets, nine static pages, feeds, sitemaps, audio checksums, and a deployment-disabled release manifest. Release admission locking admitted exactly one simultaneous build, and atomic local selection successfully moved to an older validated release and restored the latest one without changing Cloudflare. The approved daily retention service is active: it protects the selected release, retains the 10 newest validated releases and 30 days of failed diagnostics, defers all deletion around active or unknown jobs, and records each decision in the system journal. Its first live run retained five validated releases and four recent failures and removed nothing.
 
 ### Objective
 
