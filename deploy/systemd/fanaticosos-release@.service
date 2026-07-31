@@ -10,7 +10,9 @@ Group=fanaticosos-blog
 WorkingDirectory=/opt/fanaticosos-blog/repository
 Environment=HOME=/opt/fanaticosos-blog
 Environment=NODE_ENV=production
+Environment=PATH=/opt/nodejs/current/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/build_release.mjs --request /opt/fanaticosos-blog/publisher/releases/%i/request.json --repository /opt/fanaticosos-blog/repository --publisher-root /opt/fanaticosos-blog/publisher --jobs-root /opt/fanaticosos-blog/jobs --output /opt/fanaticosos-blog/publisher/releases/%i/release
+ExecStopPost=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/record_release_exit.mjs --release-root /opt/fanaticosos-blog/publisher/releases/%i --service-result ${SERVICE_RESULT} --exit-status ${EXIT_STATUS}
 RuntimeMaxSec=10min
 MemoryMax=4G
 MemorySwapMax=512M

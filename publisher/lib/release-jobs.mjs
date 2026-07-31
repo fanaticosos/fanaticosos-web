@@ -57,6 +57,17 @@ export async function reconcileReleases({ statesRoot, releasesRoot, onComplete, 
       if (error.code !== "ENOENT") throw error;
     }
     try {
+      const failure = JSON.parse(await readFile(join(releasesRoot, state.jobId, "failure.json"), "utf8"));
+      state.status = "failed";
+      state.error = failure.error;
+      state.updatedAt = now.toISOString();
+      await atomicJson(path, state);
+      await onFailure?.(state);
+      continue;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    try {
       await readFile(join(releasesRoot, state.jobId, "request.json"));
       state.status = "running";
     } catch (error) {
