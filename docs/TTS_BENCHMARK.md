@@ -40,6 +40,13 @@ The English candidates were the official inventory's two highest-rated American-
 
 Generic `es` support is not an acceptance criterion. A future engine must demonstrate a Latin-American voice and natural American-English pronunciation for embedded NFL teams, cities, players, stadiums, abbreviations, and football terminology.
 
+Mexican-broadcast pronunciation references are tracked separately from active
+pronunciation overrides. `config/tts/mexican-broadcast-sources.json` records
+Primero y Diez's dedicated NFL team-name series as editorial evidence for 30
+teams and explicitly records the two current coverage gaps. A source reference
+never activates a pronunciation; only an approved entry in
+`config/tts/pronunciations.json` can alter narration.
+
 ## Listening fixture
 
 `benchmarks/tts/es-en.json` gives every candidate the same language-appropriate NFL passage. It tests names, teams, scores, passing statistics, English terms inside Spanish reporting, stadium names, abbreviations, football terminology, sentence pacing, and paragraph-length narration.
