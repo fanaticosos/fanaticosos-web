@@ -187,6 +187,7 @@ class AdminHelperTests(unittest.TestCase):
         )[1].split("\n}\n", 1)[0]
         self.assertIn('PATH="/opt/nodejs/current/bin:/usr/bin:/bin"', runtime)
         self.assertIn("npm ci", runtime)
+        self.assertIn('--prefix "$repository"', runtime)
         self.assertIn("--ignore-scripts", runtime)
 
     def test_kokoro_installer_has_fixed_scope(self):
