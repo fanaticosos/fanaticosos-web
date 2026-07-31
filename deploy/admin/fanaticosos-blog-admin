@@ -29,6 +29,7 @@ readonly publisher_dispatcher_path_source="$repository/deploy/systemd/fanaticoso
 readonly publisher_dispatcher_path_installed="/etc/systemd/system/fanaticosos-publisher-dispatcher.path"
 readonly publisher_release_source="$repository/deploy/systemd/fanaticosos-release@.service"
 readonly publisher_release_installed="/etc/systemd/system/fanaticosos-release@.service"
+readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly publisher_data="$data_root/publisher"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
@@ -101,6 +102,9 @@ Commands:
   azure-speech-credential-status
   install-cloudflare-pages-credential EXPECTED_COMMIT
   cloudflare-pages-credential-status
+  install-pages-deployment-runtime EXPECTED_COMMIT
+  verify-cloudflare-pages-token EXPECTED_COMMIT
+  deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   install-publisher EXPECTED_COMMIT
   publisher-status
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
@@ -762,6 +766,45 @@ command_cloudflare_pages_credential_status() {
   [[ "$(sed -n 's/^CLOUDFLARE_API_TOKEN=//p' "$cloudflare_credential_file" | wc -c)" -ge 21 ]] || \
     stop "Cloudflare API token is missing."
   echo "PASS: Cloudflare Pages credential exists with root-only permissions."
+}
+
+command_install_pages_deployment_runtime() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service env HOME="$data_root" /opt/nodejs/current/bin/npm ci \
+    --ignore-scripts --no-audit --no-fund
+  [[ "$(run_as_service "$repository/node_modules/.bin/wrangler" --version)" == "4.118.0" ]] || \
+    stop "Pinned Wrangler version verification failed."
+  echo "PASS: Pinned Wrangler 4.118.0 deployment runtime installed."
+}
+
+command_verify_cloudflare_pages_token() {
+  local expected="$1"
+  local response
+  require_repository_commit "$expected"
+  command_cloudflare_pages_credential_status
+  set -a
+  # shellcheck disable=SC1090
+  source "$cloudflare_credential_file"
+  set +a
+  response="$(curl --fail --silent --show-error --max-time 30 \
+    --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT")"
+  unset CLOUDFLARE_API_TOKEN
+  python3 -c 'import json,sys; value=json.load(sys.stdin); result=value.get("result") or {}; assert value.get("success") is True; assert result.get("name")=="fanaticosos-web"; assert result.get("production_branch")=="main"' <<<"$response" || \
+    stop "Cloudflare token did not return the expected Pages project."
+  echo "PASS: Cloudflare token can access fanaticosos-web with production branch main."
+}
+
+command_deploy_cloudflare_preview() {
+  local expected="$1"
+  local job_id="$2"
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  [[ -x "$cloudflare_preview_script" ]] || stop "Versioned Cloudflare preview script is missing."
+  exec "$cloudflare_preview_script" "$repository" "$data_root" "$job_id"
 }
 
 command_install_publisher() {
@@ -1446,6 +1489,18 @@ case "$command" in
   cloudflare-pages-credential-status)
     [[ $# == 0 ]] || stop "cloudflare-pages-credential-status takes no arguments."
     command_cloudflare_pages_credential_status
+    ;;
+  install-pages-deployment-runtime)
+    [[ $# == 1 ]] || stop "install-pages-deployment-runtime requires EXPECTED_COMMIT."
+    command_install_pages_deployment_runtime "$1"
+    ;;
+  verify-cloudflare-pages-token)
+    [[ $# == 1 ]] || stop "verify-cloudflare-pages-token requires EXPECTED_COMMIT."
+    command_verify_cloudflare_pages_token "$1"
+    ;;
+  deploy-cloudflare-preview)
+    [[ $# == 2 ]] || stop "deploy-cloudflare-preview requires EXPECTED_COMMIT RELEASE_JOB_ID."
+    command_deploy_cloudflare_preview "$1" "$2"
     ;;
   install-publisher)
     [[ $# == 1 ]] || stop "install-publisher requires EXPECTED_COMMIT."

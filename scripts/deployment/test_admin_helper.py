@@ -79,6 +79,9 @@ class AdminHelperTests(unittest.TestCase):
                 "azure-speech-credential-status",
                 "install-cloudflare-pages-credential",
                 "cloudflare-pages-credential-status",
+                "install-pages-deployment-runtime",
+                "verify-cloudflare-pages-token",
+                "deploy-cloudflare-preview",
                 "install-publisher",
                 "publisher-status",
                 "prepare-tts-demo",
@@ -165,6 +168,19 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('CLOUDFLARE_ACCOUNT_ID=500cc7e82e34b5837b06a22ffee9f162', installer)
         self.assertIn('CLOUDFLARE_PAGES_PROJECT=fanaticosos-web', installer)
         self.assertNotIn('echo "$api_token"', installer)
+
+    def test_cloudflare_preview_deployment_is_fixed_and_nonproduction(self):
+        script = (
+            ROOT / "scripts" / "deployment" / "deploy_cloudflare_preview.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('readonly production_branch="main"', script)
+        self.assertIn('readonly preview_branch="papabear-preview-${job_id: -8}"', script)
+        self.assertIn('[[ "$preview_branch" != "$production_branch" ]]', script)
+        self.assertIn('manifest.get("deployment") != "disabled"', script)
+        self.assertIn('--branch "$preview_branch"', script)
+        self.assertIn('"productionChanged": False', script)
+        self.assertNotIn('--branch "$production_branch"', script)
+        self.assertNotIn("eval ", script)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(

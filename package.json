@@ -21,7 +21,8 @@
     "@astrojs/check": "0.9.10",
     "astro": "7.1.4",
     "js-yaml": "4.3.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "wrangler": "4.118.0"
   },
   "engines": {
     "node": ">=24 <25"
