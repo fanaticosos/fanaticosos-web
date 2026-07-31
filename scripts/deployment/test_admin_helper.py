@@ -193,6 +193,9 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("npm ci", runtime)
         self.assertIn('--prefix "$repository"', runtime)
         self.assertIn("--ignore-scripts", runtime)
+        self.assertIn('node_modules/@esbuild/linux-x64/bin/esbuild', runtime)
+        self.assertIn('chmod 0755 "$esbuild_binary"', runtime)
+        self.assertIn('== "0.28.1"', runtime)
 
         diagnostics = self.helper.split(
             "command_cloudflare_preview_failure()", 1
