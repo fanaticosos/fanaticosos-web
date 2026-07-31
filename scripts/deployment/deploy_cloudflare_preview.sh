@@ -82,6 +82,7 @@ readonly temporary_log="$job_root/.cloudflare-preview.log.$$"
 trap 'rm -f "$temporary_log"' ERR
 timeout 5m runuser -u "$service_account" -- env \
   HOME="$data_root" \
+  PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
   CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
   CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" \
   "$wrangler" pages deploy "$dist_root" \

@@ -178,6 +178,7 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('[[ "$preview_branch" != "$production_branch" ]]', script)
         self.assertIn('manifest.get("deployment") != "disabled"', script)
         self.assertIn('--branch "$preview_branch"', script)
+        self.assertIn('PATH="/opt/nodejs/current/bin:/usr/bin:/bin"', script)
         self.assertIn('"productionChanged": False', script)
         self.assertNotIn('--branch "$production_branch"', script)
         self.assertNotIn("eval ", script)
