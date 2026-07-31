@@ -106,6 +106,7 @@ Commands:
   pages-deployment-runtime-status
   verify-cloudflare-pages-token EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
+  cloudflare-preview-status RELEASE_JOB_ID
   cloudflare-preview-failure RELEASE_JOB_ID
   install-publisher EXPECTED_COMMIT
   publisher-status
@@ -844,6 +845,39 @@ command_cloudflare_preview_failure() {
     -e 's/(CLOUDFLARE_API_TOKEN=)[A-Za-z0-9_-]+/\1[REDACTED]/g'
 }
 
+command_cloudflare_preview_status() {
+  local job_id="$1"
+  local release_dir
+  local receipt
+  local log_file
+  validate_job_id "$job_id"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  release_dir="$publisher_data/releases/$job_id"
+  receipt="$release_dir/cloudflare-preview.json"
+  log_file="$release_dir/cloudflare-preview.log"
+  [[ -f "$receipt" && ! -L "$receipt" ]] || stop "Cloudflare preview receipt is missing."
+  [[ -f "$log_file" && ! -L "$log_file" ]] || stop "Cloudflare preview log is missing."
+  echo "=== Cloudflare preview receipt ==="
+  python3 - "$receipt" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+allowed = {
+    key: value.get(key)
+    for key in (
+        "schemaVersion", "environment", "jobId", "branch", "url",
+        "commit", "validatedAt", "productionChanged",
+    )
+}
+print(json.dumps(allowed, indent=2))
+PY
+  echo "=== Deployment URLs recorded by Wrangler ==="
+  grep -Eo 'https://[a-z0-9-]+\.fanaticosos-web\.pages\.dev' "$log_file" | sort -u || true
+}
+
 command_install_publisher() {
   local expected="$1"
   local diagnostics
@@ -1542,6 +1576,10 @@ case "$command" in
   deploy-cloudflare-preview)
     [[ $# == 2 ]] || stop "deploy-cloudflare-preview requires EXPECTED_COMMIT RELEASE_JOB_ID."
     command_deploy_cloudflare_preview "$1" "$2"
+    ;;
+  cloudflare-preview-status)
+    [[ $# == 1 ]] || stop "cloudflare-preview-status requires RELEASE_JOB_ID."
+    command_cloudflare_preview_status "$1"
     ;;
   cloudflare-preview-failure)
     [[ $# == 1 ]] || stop "cloudflare-preview-failure requires RELEASE_JOB_ID."

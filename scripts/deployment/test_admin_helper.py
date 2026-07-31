@@ -83,6 +83,7 @@ class AdminHelperTests(unittest.TestCase):
                 "pages-deployment-runtime-status",
                 "verify-cloudflare-pages-token",
                 "deploy-cloudflare-preview",
+                "cloudflare-preview-status",
                 "cloudflare-preview-failure",
                 "install-publisher",
                 "publisher-status",
