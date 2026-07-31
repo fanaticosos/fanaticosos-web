@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import uuid
 from pathlib import Path
 
 
@@ -38,11 +39,12 @@ def markdown_paragraphs(source: str) -> list[str]:
 def prepare(source_path: Path, title: str) -> dict:
     source = source_path.read_text(encoding="utf-8")
     paragraphs = markdown_paragraphs(source)
+    revision = hashlib.sha256(source.encode("utf-8")).hexdigest()
     return {
         "schemaVersion": 1,
-        "articleId": hashlib.sha256(source.encode("utf-8")).hexdigest()[:32],
+        "articleId": str(uuid.uuid5(uuid.NAMESPACE_URL, f"fanaticosos:{revision}")),
         "locale": "es",
-        "sourceRevision": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        "sourceRevision": revision,
         "title": title,
         "segments": [
             {"id": f"section-{index:02d}", "text": paragraph}
