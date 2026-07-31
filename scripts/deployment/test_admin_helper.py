@@ -96,6 +96,9 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('sha256sum "$import_file"', importer)
         self.assertIn('[[ "$(stat -c %U "$import_file")" == "sysadmin" ]]', importer)
         self.assertIn('[[ ! -e "$job_dir" ]]', importer)
+        self.assertIn('"$job_dir/request.json.importing"', importer)
+        self.assertIn("trap cleanup_failed_import ERR", importer)
+        self.assertIn('mv "$job_dir/request.json.importing" "$job_dir/request.json"', importer)
         self.assertNotIn("eval ", importer)
 
     def test_real_tts_commands_are_fixed_scoped(self):

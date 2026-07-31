@@ -189,8 +189,15 @@ command_import_job_request() {
     stop "Import file checksum does not match."
   [[ ! -e "$job_dir" ]] || stop "Job already exists: $job_id"
 
+  install -d -o "$service_account" -g "$service_account" -m 0700 "$job_dir"
+  install -o "$service_account" -g "$service_account" -m 0600 \
+    "$import_file" "$job_dir/request.json.importing"
+  cleanup_failed_import() {
+    rm -rf -- "$job_dir"
+  }
+  trap cleanup_failed_import ERR
   run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 - \
-    "$repository" "$kind" "$import_file" <<'PY'
+    "$repository" "$kind" "$job_dir/request.json.importing" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -209,9 +216,8 @@ with open(source, encoding="utf-8") as handle:
     validator(json.load(handle))
 PY
 
-  install -d -o "$service_account" -g "$service_account" -m 0700 "$job_dir"
-  install -o "$service_account" -g "$service_account" -m 0600 \
-    "$import_file" "$job_dir/request.json"
+  mv "$job_dir/request.json.importing" "$job_dir/request.json"
+  trap - ERR
   rm -f -- "$import_file"
   echo "PASS: Validated $kind request imported: $job_id"
 }
