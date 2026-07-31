@@ -119,6 +119,7 @@ Commands:
   release-retention-preview EXPECTED_COMMIT
   run-release-retention EXPECTED_COMMIT
   release-job-status RELEASE_JOB_ID
+  record-release-failure EXPECTED_COMMIT RELEASE_JOB_ID
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -1015,6 +1016,31 @@ command_release_job_status() {
     --property=Result --property=ExecMainCode --property=ExecMainStatus --no-pager
 }
 
+command_record_release_failure() {
+  local expected="$1"
+  local job_id="$2"
+  local job_root
+  local result
+  local exit_status
+  require_repository_commit "$expected"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  job_root="$publisher_data/releases/$job_id"
+  [[ -d "$job_root" && ! -L "$job_root" ]] || stop "Release job directory is missing."
+  [[ ! -e "$job_root/release/release-manifest.json" ]] || stop "Successful release cannot be marked failed."
+  [[ ! -e "$job_root/failure.json" ]] || stop "Release failure is already recorded."
+  result="$(systemctl show "fanaticosos-release@$job_id.service" --property=Result --value)"
+  exit_status="$(systemctl show "fanaticosos-release@$job_id.service" --property=ExecMainStatus --value)"
+  [[ -n "$result" && "$result" != "success" ]] || stop "Release service is not failed."
+  [[ "$exit_status" =~ ^[0-9]+$ ]] || stop "Release exit status is invalid."
+  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+    "$repository/scripts/publisher/record_release_exit.mjs" \
+    --release-root "$job_root" --service-result "$result" --exit-status "$exit_status"
+  [[ -f "$job_root/failure.json" && ! -L "$job_root/failure.json" ]] || \
+    stop "Release failure record was not created."
+  echo "PASS: Existing failed release was recorded without removing its diagnostics."
+}
+
 command_publisher_status() {
   systemctl show fanaticosos-publisher.service \
     --property=LoadState --property=ActiveState --property=SubState \
@@ -1705,6 +1731,10 @@ case "$command" in
   release-job-status)
     [[ $# == 1 ]] || stop "release-job-status requires RELEASE_JOB_ID."
     command_release_job_status "$1"
+    ;;
+  record-release-failure)
+    [[ $# == 2 ]] || stop "record-release-failure requires EXPECTED_COMMIT RELEASE_JOB_ID."
+    command_record_release_failure "$1" "$2"
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."
