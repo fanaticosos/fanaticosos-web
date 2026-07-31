@@ -944,11 +944,12 @@ command_install_publisher() {
 command_latest_private_release() {
   local release_dir
   local manifest
-  release_dir="$(find "$publisher_data/releases" -mindepth 1 -maxdepth 1 -type d \
-    -name 'release-*-r*-*' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  manifest="$(find "$publisher_data/releases" -mindepth 3 -maxdepth 3 -type f \
+    -path '*/release/release-manifest.json' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  [[ -n "$manifest" ]] || stop "No private release exists."
+  release_dir="$(dirname "$(dirname "$manifest")")"
   [[ -n "$release_dir" && -d "$release_dir" && ! -L "$release_dir" ]] || \
     stop "No private release exists."
-  manifest="$release_dir/release/release-manifest.json"
   [[ -f "$manifest" && ! -L "$manifest" ]] || stop "Latest private release manifest is missing."
   python3 - "$release_dir" "$manifest" <<'PY'
 import json

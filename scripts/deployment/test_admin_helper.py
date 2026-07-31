@@ -284,6 +284,14 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('rmdir "$legacy_root"', finalizer)
         self.assertNotIn("rm ", finalizer)
 
+    def test_latest_private_release_ignores_failed_job_directories(self):
+        latest = self.helper.split("command_latest_private_release()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn("*/release/release-manifest.json", latest)
+        self.assertNotIn("-name 'release-*-r*-*'", latest)
+        self.assertIn('release_dir="$(dirname "$(dirname "$manifest")")"', latest)
+
     def test_kokoro_benchmark_is_fixed_bounded_and_offline(self):
         runner = self.helper.split("command_run_kokoro_benchmark()", 1)[1].split(
             "\n}\n", 1
