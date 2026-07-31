@@ -16,6 +16,8 @@ readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.servic
 readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
 readonly tts_source_unit="$repository/deploy/systemd/fanaticosos-tts@.service"
 readonly tts_installed_unit="/etc/systemd/system/fanaticosos-tts@.service"
+readonly azure_credential_dir="/etc/fanaticosos-blog"
+readonly azure_credential_file="$azure_credential_dir/azure-speech.env"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="$data_root/jobs"
@@ -83,6 +85,8 @@ Commands:
   run-claude-nfl-review EXPECTED_COMMIT
   export-claude-nfl-review EXPECTED_COMMIT
   install-tts-template EXPECTED_COMMIT
+  install-azure-speech-credential EXPECTED_COMMIT
+  azure-speech-credential-status
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -673,6 +677,38 @@ command_install_tts_template() {
   systemctl daemon-reload
   cmp -s "$tts_source_unit" "$tts_installed_unit" || stop "Installed TTS unit differs from Git."
   echo "PASS: TTS template installed from commit $expected."
+}
+
+command_install_azure_speech_credential() {
+  local expected="$1"
+  local speech_key
+  local temporary
+  require_repository_commit "$expected"
+  IFS= read -r speech_key || stop "Azure Speech key was not received on standard input."
+  [[ "$speech_key" =~ ^[A-Za-z0-9._+/=-]{32,128}$ ]] || \
+    stop "Azure Speech key has an invalid format."
+  install -d -o root -g root -m 0700 "$azure_credential_dir"
+  umask 0077
+  temporary="$(mktemp "$azure_credential_dir/.azure-speech.env.XXXXXX")"
+  trap 'rm -f "$temporary"' ERR
+  printf 'AZURE_SPEECH_KEY=%s\nAZURE_SPEECH_REGION=eastus\n' "$speech_key" > "$temporary"
+  chown root:root "$temporary"
+  chmod 0600 "$temporary"
+  mv -f "$temporary" "$azure_credential_file"
+  trap - ERR
+  unset speech_key
+  echo "PASS: Azure Speech credential installed with root-only permissions."
+}
+
+command_azure_speech_credential_status() {
+  [[ -f "$azure_credential_file" ]] || stop "Azure Speech credential is not installed."
+  [[ "$(stat -c '%U:%G:%a' "$azure_credential_file")" == "root:root:600" ]] || \
+    stop "Azure Speech credential permissions are incorrect."
+  grep -qx 'AZURE_SPEECH_REGION=eastus' "$azure_credential_file" || \
+    stop "Azure Speech region is not eastus."
+  [[ "$(sed -n 's/^AZURE_SPEECH_KEY=//p' "$azure_credential_file" | wc -c)" -ge 33 ]] || \
+    stop "Azure Speech key is missing."
+  echo "PASS: Azure Speech credential exists with root-only permissions in eastus."
 }
 
 command_prepare_tts_demo() {
@@ -1287,6 +1323,14 @@ case "$command" in
   install-tts-template)
     [[ $# == 1 ]] || stop "install-tts-template requires EXPECTED_COMMIT."
     command_install_tts_template "$1"
+    ;;
+  install-azure-speech-credential)
+    [[ $# == 1 ]] || stop "install-azure-speech-credential requires EXPECTED_COMMIT."
+    command_install_azure_speech_credential "$1"
+    ;;
+  azure-speech-credential-status)
+    [[ $# == 0 ]] || stop "azure-speech-credential-status takes no arguments."
+    command_azure_speech_credential_status
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."

@@ -75,6 +75,8 @@ class AdminHelperTests(unittest.TestCase):
                 "run-claude-nfl-review",
                 "export-claude-nfl-review",
                 "install-tts-template",
+                "install-azure-speech-credential",
+                "azure-speech-credential-status",
                 "prepare-tts-demo",
                 "start-tts",
                 "tts-status",
@@ -122,6 +124,16 @@ class AdminHelperTests(unittest.TestCase):
         )[0]
         self.assertIn('/home/sysadmin/fanaticosos-tts-result-', exporter)
         self.assertNotIn('"$2"', exporter)
+
+    def test_azure_credential_installer_is_stdin_only_and_root_scoped(self):
+        installer = self.helper.split(
+            "command_install_azure_speech_credential()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn("IFS= read -r speech_key", installer)
+        self.assertIn('install -d -o root -g root -m 0700', installer)
+        self.assertIn('chmod 0600 "$temporary"', installer)
+        self.assertIn('AZURE_SPEECH_REGION=eastus', installer)
+        self.assertNotIn('echo "$speech_key"', installer)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(
