@@ -15,8 +15,14 @@ from review_nfl_names import validate_inventory
 
 
 DIVISION_SPOKEN = {
-    "nfc": "ene efe ce",
-    "afc": "a efe ce",
+    "nfc-north": "ene efe ce norte",
+    "nfc-east": "ene efe ce este",
+    "nfc-south": "ene efe ce sur",
+    "nfc-west": "ene efe ce oeste",
+    "afc-north": "a efe ce norte",
+    "afc-east": "a efe ce este",
+    "afc-south": "a efe ce sur",
+    "afc-west": "a efe ce oeste",
 }
 
 
@@ -39,10 +45,9 @@ def main() -> None:
         voice = PiperVoice.load(str(args.model), use_cuda=False)
         results = []
         for division in inventory["divisions"]:
-            conference, direction = division["id"].split("-", 1)
             team_names = ", ".join(entry["spoken"] for entry in division["teams"])
             markets = ", ".join(entry["marketSpoken"] for entry in division["teams"])
-            text = f"{DIVISION_SPOKEN[conference]} {direction}. Equipos: {team_names}. Ciudades: {markets}."
+            text = f"{DIVISION_SPOKEN[division['id']]}. Equipos: {team_names}. Ciudades: {markets}."
             wav_path = staging / f"{division['id']}.wav"
             mp3_path = staging / f"{division['id']}.mp3"
             with wave.open(str(wav_path), "wb") as wav_file:

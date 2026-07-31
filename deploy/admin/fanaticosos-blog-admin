@@ -33,7 +33,7 @@ readonly long_form_review="$data_root/work/tts-long-form-review-v2"
 readonly nfl_name_review="$data_root/work/tts-nfl-name-review-v1"
 readonly piper_claude_venv="$data_root/runtimes/tts-piper-claude-v1"
 readonly piper_claude_model="$data_root/models/piper-claude-es-mx/0d907f158acc877ddeebcbf827659ee13bea8bcd"
-readonly piper_claude_output="$data_root/work/tts-nfl-name-review-claude-v1"
+readonly piper_claude_output="$data_root/work/tts-nfl-name-review-claude-v2"
 
 usage() {
   cat <<'EOF'
@@ -866,7 +866,7 @@ command_run_claude_nfl_review() {
 
 command_export_claude_nfl_review() {
   local expected="$1"
-  local export_root="/home/sysadmin/fanaticosos-claude-nfl-review-v1"
+  local export_root="/home/sysadmin/fanaticosos-claude-nfl-review-v2"
   require_repository_commit "$expected"
   [[ -f "$piper_claude_output/summary.json" ]] || stop "Claude NFL review is missing."
   [[ ! -e "$export_root" ]] || stop "Claude NFL review export already exists."
