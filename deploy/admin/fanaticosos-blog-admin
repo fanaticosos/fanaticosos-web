@@ -45,6 +45,7 @@ Commands:
   sync EXPECTED_COMMIT
   preflight EXPECTED_COMMIT JOB_ID
   install-translation-template EXPECTED_COMMIT
+  import-job-request EXPECTED_COMMIT JOB_ID KIND SHA256
   prepare-acceptance-job EXPECTED_COMMIT JOB_ID
   start-translation JOB_ID
   translation-status JOB_ID
@@ -164,6 +165,55 @@ command_install_translation_template() {
   diagnostics="$(systemd-analyze verify "$installed_unit" 2>&1)"
   [[ -z "$diagnostics" ]] || stop "Installed unit produced diagnostics: $diagnostics"
   echo "PASS: Translation template installed from commit $expected."
+}
+
+command_import_job_request() {
+  local expected="$1"
+  local job_id="$2"
+  local kind="$3"
+  local expected_sha256="$4"
+  local import_file
+  local job_dir
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  [[ "$kind" == "translation" || "$kind" == "tts" ]] || \
+    stop "Import kind must be translation or tts."
+  [[ "$expected_sha256" =~ ^[0-9a-f]{64}$ ]] || stop "Invalid request SHA-256."
+  import_file="/home/sysadmin/fanaticosos-job-$job_id.json"
+  job_dir="$jobs_root/$job_id"
+  [[ -f "$import_file" && ! -L "$import_file" ]] || \
+    stop "Import file is missing or is not a regular file: $import_file"
+  [[ "$(stat -c %U "$import_file")" == "sysadmin" ]] || \
+    stop "Import file must be owned by sysadmin."
+  [[ "$(sha256sum "$import_file" | awk '{print $1}')" == "$expected_sha256" ]] || \
+    stop "Import file checksum does not match."
+  [[ ! -e "$job_dir" ]] || stop "Job already exists: $job_id"
+
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 - \
+    "$repository" "$kind" "$import_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+repository, kind, source = sys.argv[1:]
+if kind == "translation":
+    sys.path.insert(0, str(Path(repository) / "scripts" / "translation"))
+    from article_contract import validate_translation_request
+    validator = validate_translation_request
+else:
+    sys.path.insert(0, str(Path(repository) / "scripts" / "tts"))
+    from article_contract import validate_request
+    validator = validate_request
+
+with open(source, encoding="utf-8") as handle:
+    validator(json.load(handle))
+PY
+
+  install -d -o "$service_account" -g "$service_account" -m 0700 "$job_dir"
+  install -o "$service_account" -g "$service_account" -m 0600 \
+    "$import_file" "$job_dir/request.json"
+  rm -f -- "$import_file"
+  echo "PASS: Validated $kind request imported: $job_id"
 }
 
 command_prepare_acceptance_job() {
@@ -1009,6 +1059,11 @@ case "$command" in
   install-translation-template)
     [[ $# == 1 ]] || stop "install-translation-template requires EXPECTED_COMMIT."
     command_install_translation_template "$1"
+    ;;
+  import-job-request)
+    [[ $# == 4 ]] || \
+      stop "import-job-request requires EXPECTED_COMMIT JOB_ID KIND SHA256."
+    command_import_job_request "$1" "$2" "$3" "$4"
     ;;
   prepare-acceptance-job)
     [[ $# == 2 ]] || stop "prepare-acceptance-job requires EXPECTED_COMMIT JOB_ID."

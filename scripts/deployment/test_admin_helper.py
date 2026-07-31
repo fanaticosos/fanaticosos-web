@@ -42,6 +42,7 @@ class AdminHelperTests(unittest.TestCase):
                 "sync",
                 "preflight",
                 "install-translation-template",
+                "import-job-request",
                 "prepare-acceptance-job",
                 "start-translation",
                 "translation-status",
@@ -80,6 +81,22 @@ class AdminHelperTests(unittest.TestCase):
                 "export-tts-result",
             ],
         )
+
+    def test_job_import_is_fixed_scoped_and_validated(self):
+        importer = self.helper.split("command_import_job_request()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn(
+            'import_file="/home/sysadmin/fanaticosos-job-$job_id.json"',
+            importer,
+        )
+        self.assertIn('[[ "$kind" == "translation" || "$kind" == "tts" ]]', importer)
+        self.assertIn("validate_translation_request", importer)
+        self.assertIn("validate_request", importer)
+        self.assertIn('sha256sum "$import_file"', importer)
+        self.assertIn('[[ "$(stat -c %U "$import_file")" == "sysadmin" ]]', importer)
+        self.assertIn('[[ ! -e "$job_dir" ]]', importer)
+        self.assertNotIn("eval ", importer)
 
     def test_real_tts_commands_are_fixed_scoped(self):
         installer = self.helper.split("command_install_tts_template()", 1)[1].split(
