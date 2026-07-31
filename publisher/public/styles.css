@@ -29,6 +29,11 @@ input, textarea { width: 100%; border: 1px solid #2b435b; border-radius: 8px; pa
 input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a1322; }
 .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .message { margin-bottom: 18px; padding: 13px 16px; border: 1px solid #c44; border-radius: 8px; background: #451a1a; }
+.drop-zone { place-items: center; padding: 28px; border: 1px dashed #42617d; border-radius: 10px; color: #b9cad7; background: #0a1622; cursor: pointer; }
+.drop-zone:hover, .drop-zone.dragging { border-color: #ff7b2f; background: #152334; }
+.drop-zone span { color: #7f94a8; font-weight: 500; }
+.drop-zone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.image-preview { display: block; width: min(100%, 540px); max-height: 320px; margin: 0 0 18px; border-radius: 10px; object-fit: cover; }
 .future { opacity: .72; }
 .future p { color: #9bb0c1; }
 .future-actions { display: flex; flex-wrap: wrap; gap: 10px; }

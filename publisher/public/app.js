@@ -4,6 +4,9 @@ const message = document.querySelector("#message");
 const saveState = document.querySelector("#save-state");
 const pageTitle = document.querySelector("#page-title");
 let current = null;
+const dropZone = document.querySelector("#drop-zone");
+const imageFile = document.querySelector("#image-file");
+const imagePreview = document.querySelector("#image-preview");
 
 function fields() {
   const data = new FormData(form);
@@ -33,8 +36,31 @@ function setFields(draft) {
   form.elements.imageAlt.value = draft?.featuredImage?.alt ?? "";
   form.elements.imageCaption.value = draft?.featuredImage?.caption ?? "";
   form.elements.imageCredit.value = draft?.featuredImage?.credit ?? "";
+  imagePreview.src = draft?.featuredImage?.path ?? "";
+  imagePreview.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
+}
+
+async function uploadImage(file) {
+  message.hidden = true;
+  saveState.textContent = "Subiendo imagen…";
+  try {
+    const response = await fetch("/api/uploads", {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    const value = await response.json();
+    if (!response.ok) throw new Error(value.error || "La imagen no pudo subirse.");
+    form.elements.imagePath.value = value.upload.path;
+    imagePreview.src = value.upload.path;
+    imagePreview.hidden = false;
+    saveState.textContent = "Imagen lista · guarda el borrador";
+  } catch (error) {
+    saveState.textContent = "Imagen no guardada";
+    showError(error.message);
+  }
 }
 
 function showError(text) {
@@ -106,6 +132,25 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   setFields(null);
   message.hidden = true;
   refreshList().catch((error) => showError(error.message));
+});
+
+imageFile.addEventListener("change", () => {
+  if (imageFile.files[0]) uploadImage(imageFile.files[0]);
+});
+for (const eventName of ["dragenter", "dragover"]) {
+  dropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    dropZone.classList.add("dragging");
+  });
+}
+for (const eventName of ["dragleave", "drop"]) {
+  dropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    dropZone.classList.remove("dragging");
+  });
+}
+dropZone.addEventListener("drop", (event) => {
+  if (event.dataTransfer.files[0]) uploadImage(event.dataTransfer.files[0]);
 });
 
 setFields(null);

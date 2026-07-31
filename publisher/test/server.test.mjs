@@ -18,7 +18,8 @@ const fields = {
 
 async function fixture() {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
-  const server = createPublisherServer({ draftsRoot });
+  const uploadsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-uploads-"));
+  const server = createPublisherServer({ draftsRoot, uploadsRoot });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   return { server, base: `http://127.0.0.1:${port}` };
@@ -30,6 +31,22 @@ test("health endpoint is available without touching drafts", async (context) => 
   const response = await fetch(`${base}/health`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { status: "ok" });
+});
+
+test("valid image upload can be previewed privately", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+  const response = await fetch(`${base}/api/uploads`, {
+    method: "POST",
+    headers: { "Content-Type": "image/png" },
+    body: png,
+  });
+  assert.equal(response.status, 201);
+  const upload = (await response.json()).upload;
+  const preview = await fetch(`${base}${upload.path}`);
+  assert.equal(preview.headers.get("content-type"), "image/png");
+  assert.deepEqual(Buffer.from(await preview.arrayBuffer()), png);
 });
 
 test("editor shell is served with private security headers", async (context) => {

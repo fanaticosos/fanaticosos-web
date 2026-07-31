@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
+import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
@@ -41,7 +42,18 @@ async function requestJson(request) {
   }
 }
 
-export function createPublisherServer({ draftsRoot }) {
+async function requestBuffer(request, maximum) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > maximum) throw new Error("upload is too large");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+export function createPublisherServer({ draftsRoot, uploadsRoot = join(dirname(draftsRoot), "uploads") }) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://publisher.local");
@@ -68,6 +80,28 @@ export function createPublisherServer({ draftsRoot }) {
         const draft = newDraft(await requestJson(request));
         await writeDraft(draftsRoot, draft);
         return json(response, 201, { draft });
+      }
+      if (url.pathname === "/api/uploads" && request.method === "POST") {
+        const contentType = request.headers["content-type"]?.split(";", 1)[0] ?? "";
+        const upload = await saveImage(
+          uploadsRoot,
+          await requestBuffer(request, MAX_IMAGE_BYTES + 1),
+          contentType,
+        );
+        return json(response, 201, { upload });
+      }
+      const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
+      if (uploadMatch && request.method === "GET") {
+        const contentType = contentTypeForName(uploadMatch[1]);
+        if (!contentType) return json(response, 404, { error: "not found" });
+        const body = await readFile(join(uploadsRoot, uploadMatch[1]));
+        response.writeHead(200, {
+          "Content-Type": contentType,
+          "Content-Length": body.length,
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+        });
+        return response.end(body);
       }
       const match = UUID_PATH.exec(url.pathname);
       if (match && request.method === "GET") {
@@ -96,7 +130,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const host = process.env.PUBLISHER_HOST ?? "127.0.0.1";
   const port = Number(process.env.PUBLISHER_PORT ?? "4310");
   const draftsRoot = process.env.PUBLISHER_DRAFTS_ROOT ?? join(HERE, ".local-drafts");
-  createPublisherServer({ draftsRoot }).listen(port, host, () => {
+  const uploadsRoot = process.env.PUBLISHER_UPLOADS_ROOT ?? join(HERE, ".local-uploads");
+  createPublisherServer({ draftsRoot, uploadsRoot }).listen(port, host, () => {
     console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
   });
 }

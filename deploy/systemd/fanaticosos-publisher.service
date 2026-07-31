@@ -14,6 +14,7 @@ Environment=NODE_ENV=production
 Environment=PUBLISHER_HOST=100.121.48.92
 Environment=PUBLISHER_PORT=4310
 Environment=PUBLISHER_DRAFTS_ROOT=/opt/fanaticosos-blog/publisher/drafts
+Environment=PUBLISHER_UPLOADS_ROOT=/opt/fanaticosos-blog/publisher/uploads
 ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/publisher/server.mjs
 Restart=on-failure
 RestartSec=3s
