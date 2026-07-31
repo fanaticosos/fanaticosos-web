@@ -1,61 +1,97 @@
 {
-  "schemaVersion": 1,
-  "version": 5,
+  "schemaVersion": 2,
+  "version": 6,
   "overrides": {
     "es": [
       {
         "category": "team",
         "written": "Chicago Bears",
+        "aliases": ["Bears"],
         "spoken": "Chicágo Bers",
-        "reason": "Latin-American sports-broadcast pronunciation"
+        "reason": "Latin-American sports-broadcast pronunciation",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "player",
         "written": "Caleb Williams",
+        "aliases": [],
         "spoken": "Kéileb Uíliams",
-        "reason": "Latin-American sports-broadcast pronunciation"
+        "reason": "Latin-American sports-broadcast pronunciation",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "team",
         "written": "Green Bay Packers",
+        "aliases": ["Packers"],
         "spoken": "Grin Béi Páquers",
-        "reason": "Latin-American sports-broadcast pronunciation"
+        "reason": "Latin-American sports-broadcast pronunciation",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "stadium",
         "written": "Soldier Field",
+        "aliases": [],
         "spoken": "Sóldier Fíld",
-        "reason": "Latin-American sports-broadcast pronunciation"
+        "reason": "Latin-American sports-broadcast pronunciation",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "division",
         "written": "NFC North",
+        "aliases": [],
         "spoken": "ene efe ce Nort",
-        "reason": "Latin-American sports-broadcast pronunciation"
+        "reason": "Latin-American sports-broadcast pronunciation",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "term",
         "written": "touchdowns",
+        "aliases": [],
         "spoken": "tóchdauns",
-        "reason": "Avoid awkward English word separation in Spanish narration"
+        "reason": "Avoid awkward English word separation in Spanish narration",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "term",
         "written": "touchdown",
+        "aliases": [],
         "spoken": "tóchdaun",
-        "reason": "Avoid awkward English word separation in Spanish narration"
+        "reason": "Avoid awkward English word separation in Spanish narration",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "team",
         "written": "Detroit Lions",
+        "aliases": ["Lions"],
         "spoken": "Ditróit Láions",
-        "reason": "Preserve Detroit and avoid narration sounding like destroy"
+        "reason": "Preserve Detroit and avoid narration sounding like destroy",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       },
       {
         "category": "team",
         "written": "Minnesota Vikings",
+        "aliases": ["Vikings"],
         "spoken": "Minesóta Váikings",
-        "reason": "Preserve the Vikings diphthong in Spanish narration"
+        "reason": "Preserve the Vikings diphthong in Spanish narration",
+        "source": "Fanaticosos owner listening review, 2026-07-30",
+        "sourceType": "owner-review",
+        "status": "approved"
       }
     ],
     "en": []

@@ -130,15 +130,19 @@ class KokoroArticleWorkerTests(unittest.TestCase):
             )
 
         pronunciations = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "version": 2,
             "overrides": {
                 "es": [
                     {
                         "category": "player",
                         "written": "Caleb Williams",
+                        "aliases": [],
                         "spoken": "Kéileb Uíliams",
                         "reason": "reviewed narration",
+                        "source": "test fixture",
+                        "sourceType": "owner-review",
+                        "status": "approved",
                     }
                 ],
                 "en": [],

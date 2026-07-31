@@ -31,6 +31,14 @@ class PronunciationTests(unittest.TestCase):
         )
         self.assertIn("Caleb Williams", written)
 
+    def test_team_aliases_and_case_are_applied_automatically(self):
+        written = "Los BEARS reciben a los Packers, Lions y Vikings."
+        spoken = apply_pronunciations(written, "es", self.configuration)
+        self.assertEqual(
+            spoken,
+            "Los Chicágo Bers reciben a los Grin Béi Páquers, Ditróit Láions y Minesóta Váikings.",
+        )
+
     def test_english_text_is_unchanged(self):
         text = "The Bears beat Green Bay."
         self.assertEqual(apply_pronunciations(text, "en", self.configuration), text)
@@ -69,6 +77,18 @@ class PronunciationTests(unittest.TestCase):
         invalid["overrides"]["es"].append(invalid["overrides"]["es"][0])
         with self.assertRaisesRegex(ValueError, "duplicate"):
             validate_pronunciations(invalid)
+
+    def test_duplicate_alias_is_rejected_case_insensitively(self):
+        invalid = copy.deepcopy(self.configuration)
+        invalid["overrides"]["es"][1]["aliases"] = ["bears"]
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            validate_pronunciations(invalid)
+
+    def test_pending_entry_is_not_applied(self):
+        pending = copy.deepcopy(self.configuration)
+        pending["overrides"]["es"][0]["status"] = "pending"
+        text = "Los Bears juegan hoy."
+        self.assertEqual(apply_pronunciations(text, "es", pending), text)
 
 
 if __name__ == "__main__":
