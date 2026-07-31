@@ -13,8 +13,8 @@ ALLOWED_STATUSES = {"approved", "pending"}
 
 
 def validate_pronunciations(value: Any) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("schemaVersion") != 2:
-        raise ValueError("pronunciation schema version must be 2")
+    if not isinstance(value, dict) or value.get("schemaVersion") != 3:
+        raise ValueError("pronunciation schema version must be 3")
     version = value.get("version")
     if not isinstance(version, int) or isinstance(version, bool) or version < 1:
         raise ValueError("pronunciation version must be a positive integer")
@@ -31,21 +31,37 @@ def validate_pronunciations(value: Any) -> dict[str, Any]:
             category = item.get("category")
             if category not in ALLOWED_CATEGORIES:
                 raise ValueError("pronunciation override category is invalid")
-            written = item.get("written")
-            spoken = item.get("spoken")
-            if not isinstance(written, str) or not written.strip() or written != written.strip():
-                raise ValueError("written pronunciation term is invalid")
-            if not isinstance(spoken, str) or not spoken.strip() or spoken != spoken.strip():
-                raise ValueError("spoken pronunciation term is invalid")
+            canonical = item.get("canonical")
+            synthesis = item.get("synthesis")
+            if (
+                not isinstance(canonical, str)
+                or not canonical.strip()
+                or canonical != canonical.strip()
+            ):
+                raise ValueError("canonical pronunciation term is invalid")
+            if (
+                not isinstance(synthesis, dict)
+                or synthesis.get("profile") != "latino-em_alex"
+                or synthesis.get("type") != "text-substitution"
+                or not isinstance(synthesis.get("text"), str)
+                or not synthesis["text"].strip()
+                or synthesis["text"] != synthesis["text"].strip()
+            ):
+                raise ValueError("pronunciation synthesis instruction is invalid")
             aliases = item.get("aliases")
             if not isinstance(aliases, list) or any(
-                not isinstance(alias, str)
-                or not alias.strip()
-                or alias != alias.strip()
+                not isinstance(alias, dict)
+                or set(alias) != {"written", "synthesisText"}
+                or not isinstance(alias.get("written"), str)
+                or not alias["written"].strip()
+                or alias["written"] != alias["written"].strip()
+                or not isinstance(alias.get("synthesisText"), str)
+                or not alias["synthesisText"].strip()
+                or alias["synthesisText"] != alias["synthesisText"].strip()
                 for alias in aliases
             ):
-                raise ValueError("pronunciation aliases must be a list of non-empty strings")
-            terms = [written, *aliases]
+                raise ValueError("pronunciation aliases must define written and synthesis text")
+            terms = [canonical, *(alias["written"] for alias in aliases)]
             normalized_terms = [term.casefold() for term in terms]
             if len(normalized_terms) != len(set(normalized_terms)):
                 raise ValueError("pronunciation entry contains duplicate aliases")
@@ -72,10 +88,16 @@ def apply_pronunciations(text: str, locale: str, configuration: dict[str, Any]) 
         raise ValueError("locale must be es or en")
     spoken_text = text
     replacements = [
-        (term, item["spoken"])
+        replacement
         for item in configuration["overrides"][locale]
         if item["status"] == "approved"
-        for term in [item["written"], *item["aliases"]]
+        for replacement in [
+            (item["canonical"], item["synthesis"]["text"]),
+            *(
+                (alias["written"], alias["synthesisText"])
+                for alias in item["aliases"]
+            ),
+        ]
     ]
     for written, spoken in sorted(replacements, key=lambda value: len(value[0]), reverse=True):
         pattern = rf"(?<!\w){re.escape(written)}(?!\w)"

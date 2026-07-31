@@ -36,8 +36,9 @@ class PronunciationTests(unittest.TestCase):
         spoken = apply_pronunciations(written, "es", self.configuration)
         self.assertEqual(
             spoken,
-            "Los Chicágo Bers reciben a los Grin Béi Páquers, Ditróit Láions y Minesóta Váikings.",
+            "Los Bers reciben a los Páquers, Láions y Váikings.",
         )
+        self.assertNotIn("Chicago Chicago", spoken)
 
     def test_english_text_is_unchanged(self):
         text = "The Bears beat Green Bay."
@@ -80,7 +81,9 @@ class PronunciationTests(unittest.TestCase):
 
     def test_duplicate_alias_is_rejected_case_insensitively(self):
         invalid = copy.deepcopy(self.configuration)
-        invalid["overrides"]["es"][1]["aliases"] = ["bears"]
+        invalid["overrides"]["es"][1]["aliases"] = [
+            {"written": "bears", "synthesisText": "Bers"}
+        ]
         with self.assertRaisesRegex(ValueError, "duplicate"):
             validate_pronunciations(invalid)
 
