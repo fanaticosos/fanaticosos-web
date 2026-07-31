@@ -35,7 +35,7 @@ class AdminHelperTests(unittest.TestCase):
 
     def test_helper_has_no_shell_or_arbitrary_command_subcommand(self):
         case_block = self.helper.split('case "$command" in', 1)[1]
-        commands = re.findall(r"^  ([a-z][a-z-]*)\)", case_block, re.MULTILINE)
+        commands = re.findall(r"^  ([a-z][a-z0-9-]*)\)", case_block, re.MULTILINE)
         self.assertEqual(
             commands,
             [
@@ -79,6 +79,9 @@ class AdminHelperTests(unittest.TestCase):
                 "start-tts",
                 "tts-status",
                 "export-tts-result",
+                "install-supertonic3",
+                "run-supertonic3-article",
+                "export-supertonic3-article",
             ],
         )
 
@@ -310,6 +313,26 @@ class AdminHelperTests(unittest.TestCase):
     def test_installer_refuses_overwrite(self):
         self.assertIn('if [[ -e "$target" ]]', self.installer)
         self.assertIn("visudo -cf", self.installer)
+
+    def test_supertonic_candidate_is_pinned_bounded_and_isolated(self):
+        installer = self.helper.split("command_install_supertonic3()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('"supertonic==1.3.1"', installer)
+        self.assertIn("3cadd1ee6394adea1bd021217a0e650ede09a323", installer)
+        self.assertIn("HF_HUB_DISABLE_XET=1", installer)
+        runner = self.helper.split("command_run_supertonic3_article()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        for value in (
+            "RuntimeMaxSec=10min",
+            "MemoryMax=8G",
+            "MemorySwapMax=1G",
+            "PrivateNetwork=yes",
+            "ProtectSystem=strict",
+        ):
+            self.assertIn(value, runner)
+        self.assertIn("render_supertonic3_candidate.py", runner)
 
 
 if __name__ == "__main__":

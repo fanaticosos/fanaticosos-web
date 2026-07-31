@@ -36,6 +36,11 @@ readonly nfl_name_review="$data_root/work/tts-nfl-name-review-v1"
 readonly piper_claude_venv="$data_root/runtimes/tts-piper-claude-v1"
 readonly piper_claude_model="$data_root/models/piper-claude-es-mx/0d907f158acc877ddeebcbf827659ee13bea8bcd"
 readonly piper_claude_output="$data_root/work/tts-nfl-name-review-claude-v2"
+readonly supertonic_venv="$data_root/runtimes/tts-supertonic3-v1"
+readonly supertonic_model="$data_root/models/supertonic-3/3cadd1ee6394adea1bd021217a0e650ede09a323"
+readonly supertonic_candidate="$repository/config/tts/supertonic3-candidate.json"
+readonly supertonic_request="$jobs_root/poking-bear-w1s25-tts-es/request.json"
+readonly supertonic_output="$data_root/work/tts-supertonic3-poking-bear-w1s25-v1"
 
 usage() {
   cat <<'EOF'
@@ -82,6 +87,9 @@ Commands:
   start-tts JOB_ID
   tts-status JOB_ID
   export-tts-result JOB_ID
+  install-supertonic3 EXPECTED_COMMIT
+  run-supertonic3-article EXPECTED_COMMIT
+  export-supertonic3-article EXPECTED_COMMIT
 EOF
 }
 
@@ -753,6 +761,87 @@ command_export_tts_result() {
   echo "PASS: TTS result exported to $export_root."
 }
 
+command_install_supertonic3() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ ! -e "$supertonic_venv" ]] || stop "Supertonic runtime already exists."
+  [[ ! -e "$supertonic_model" ]] || stop "Supertonic model already exists."
+  [[ -f "$supertonic_candidate" ]] || stop "Supertonic candidate configuration is missing."
+  cleanup_supertonic_install() {
+    rm -rf -- "$supertonic_venv" "$supertonic_model"
+  }
+  trap cleanup_supertonic_install ERR
+  run_as_service python3 -m venv "$supertonic_venv"
+  run_as_service "$supertonic_venv/bin/python" -m pip install \
+    --disable-pip-version-check --no-cache-dir "supertonic==1.3.1"
+  run_as_service env HF_HUB_DISABLE_XET=1 HF_HUB_DISABLE_TELEMETRY=1 \
+    "$supertonic_venv/bin/python" - "$supertonic_model" <<'PY'
+import sys
+from huggingface_hub import snapshot_download
+
+target = sys.argv[1]
+snapshot_download(
+    repo_id="Supertone/supertonic-3",
+    revision="3cadd1ee6394adea1bd021217a0e650ede09a323",
+    local_dir=target,
+)
+PY
+  run_as_service "$supertonic_venv/bin/python" -c \
+    'import supertonic; print(supertonic.__version__)' | grep -Fx "1.3.1"
+  [[ -f "$supertonic_model/onnx/vocoder.onnx" ]] || stop "Supertonic model is incomplete."
+  [[ -f "$supertonic_model/voice_styles/M1.json" ]] || stop "Supertonic M1 voice is missing."
+  trap - ERR
+  echo "PASS: Isolated Supertonic 3 candidate installed."
+}
+
+command_run_supertonic3_article() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ -x "$supertonic_venv/bin/python" ]] || stop "Supertonic runtime is missing."
+  [[ -d "$supertonic_model" ]] || stop "Supertonic model is missing."
+  [[ -f "$supertonic_request" ]] || stop "Validated Spanish article request is missing."
+  [[ ! -e "$supertonic_output" ]] || stop "Supertonic article output already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-supertonic3-article.service \
+    --property="User=$service_account" \
+    --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="Environment=PYTHONDONTWRITEBYTECODE=1" \
+    --property="Environment=HF_HUB_OFFLINE=1" \
+    --property="RuntimeMaxSec=10min" \
+    --property="MemoryMax=8G" \
+    --property="MemorySwapMax=1G" \
+    --property="KillMode=control-group" \
+    --property="PrivateNetwork=yes" \
+    --property="PrivateTmp=yes" \
+    --property="ProtectSystem=strict" \
+    --property="ReadWritePaths=$data_root/work" \
+    "$supertonic_venv/bin/python" \
+      "$repository/scripts/tts/render_supertonic3_candidate.py" \
+      --request "$supertonic_request" \
+      --candidate "$supertonic_candidate" \
+      --model-dir "$supertonic_model" \
+      --output "$supertonic_output"
+  [[ "$(find "$supertonic_output" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "2" ]] || \
+    stop "Supertonic test did not produce two MP3 files."
+  echo "PASS: Supertonic 3 full-article comparison completed."
+}
+
+command_export_supertonic3_article() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-supertonic3-poking-bear-w1s25"
+  require_repository_commit "$expected"
+  [[ -f "$supertonic_output/summary.json" ]] || stop "Supertonic summary is missing."
+  [[ ! -e "$export_root" ]] || stop "Supertonic export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  while IFS= read -r -d '' artifact; do
+    install -o sysadmin -g sysadmin -m 0640 "$artifact" "$export_root/$(basename "$artifact")"
+  done < <(find "$supertonic_output" -maxdepth 1 -type f \
+    \( -name '*.mp3' -o -name 'summary.json' \) -print0)
+  echo "PASS: Supertonic 3 article files exported to $export_root."
+}
+
 command_run_spanglish_diagnostic() {
   local expected="$1"
   require_repository_commit "$expected"
@@ -1214,6 +1303,18 @@ case "$command" in
   export-tts-result)
     [[ $# == 1 ]] || stop "export-tts-result requires JOB_ID."
     command_export_tts_result "$1"
+    ;;
+  install-supertonic3)
+    [[ $# == 1 ]] || stop "install-supertonic3 requires EXPECTED_COMMIT."
+    command_install_supertonic3 "$1"
+    ;;
+  run-supertonic3-article)
+    [[ $# == 1 ]] || stop "run-supertonic3-article requires EXPECTED_COMMIT."
+    command_run_supertonic3_article "$1"
+    ;;
+  export-supertonic3-article)
+    [[ $# == 1 ]] || stop "export-supertonic3-article requires EXPECTED_COMMIT."
+    command_export_supertonic3_article "$1"
     ;;
   *)
     stop "Unsupported command: $command"
