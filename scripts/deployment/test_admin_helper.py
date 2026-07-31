@@ -87,6 +87,7 @@ class AdminHelperTests(unittest.TestCase):
                 "cloudflare-preview-failure",
                 "install-publisher",
                 "publisher-status",
+                "latest-private-release",
                 "prepare-tts-demo",
                 "start-tts",
                 "tts-status",

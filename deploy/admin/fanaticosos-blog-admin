@@ -110,6 +110,7 @@ Commands:
   cloudflare-preview-failure RELEASE_JOB_ID
   install-publisher EXPECTED_COMMIT
   publisher-status
+  latest-private-release
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -922,6 +923,33 @@ command_install_publisher() {
   echo "PASS: Private publisher installed and active on the NetBird address."
 }
 
+command_latest_private_release() {
+  local release_dir
+  local manifest
+  release_dir="$(find "$publisher_data/releases" -mindepth 1 -maxdepth 1 -type d \
+    -name 'release-*-r*-*' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+  [[ -n "$release_dir" && -d "$release_dir" && ! -L "$release_dir" ]] || \
+    stop "No private release exists."
+  manifest="$release_dir/release/release-manifest.json"
+  [[ -f "$manifest" && ! -L "$manifest" ]] || stop "Latest private release manifest is missing."
+  python3 - "$release_dir" "$manifest" <<'PY'
+import json
+import os
+import sys
+
+release_dir, manifest_path = sys.argv[1:]
+with open(manifest_path, encoding="utf-8") as handle:
+    manifest = json.load(handle)
+if manifest.get("schemaVersion") != 1 or manifest.get("deployment") != "disabled":
+    raise SystemExit("latest private release manifest is invalid")
+print(f"Release job: {os.path.basename(release_dir)}")
+print(f"Commit: {manifest.get('commit', '')}")
+print(f"Deployment: {manifest.get('deployment', '')}")
+print(f"Spanish route: {manifest.get('routes', {}).get('es', '')}")
+print(f"English route: {manifest.get('routes', {}).get('en', '')}")
+PY
+}
+
 command_publisher_status() {
   systemctl show fanaticosos-publisher.service \
     --property=LoadState --property=ActiveState --property=SubState \
@@ -1592,6 +1620,10 @@ case "$command" in
   publisher-status)
     [[ $# == 0 ]] || stop "publisher-status takes no arguments."
     command_publisher_status
+    ;;
+  latest-private-release)
+    [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
+    command_latest_private_release
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."
