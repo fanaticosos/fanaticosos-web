@@ -77,6 +77,8 @@ class AdminHelperTests(unittest.TestCase):
                 "install-tts-template",
                 "install-azure-speech-credential",
                 "azure-speech-credential-status",
+                "install-publisher",
+                "publisher-status",
                 "prepare-tts-demo",
                 "start-tts",
                 "tts-status",
@@ -134,6 +136,15 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('chmod 0600 "$temporary"', installer)
         self.assertIn('AZURE_SPEECH_REGION=eastus', installer)
         self.assertNotIn('echo "$speech_key"', installer)
+
+    def test_publisher_installer_is_netbird_scoped(self):
+        installer = self.helper.split("command_install_publisher()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('systemd-analyze verify "$publisher_source_unit"', installer)
+        self.assertIn('install -d -o "$service_account"', installer)
+        self.assertIn("systemctl enable --now fanaticosos-publisher.service", installer)
+        self.assertIn('cmp -s "$publisher_source_unit"', installer)
 
     def test_kokoro_installer_has_fixed_scope(self):
         self.assertIn(

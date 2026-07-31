@@ -18,6 +18,9 @@ readonly tts_source_unit="$repository/deploy/systemd/fanaticosos-tts@.service"
 readonly tts_installed_unit="/etc/systemd/system/fanaticosos-tts@.service"
 readonly azure_credential_dir="/etc/fanaticosos-blog"
 readonly azure_credential_file="$azure_credential_dir/azure-speech.env"
+readonly publisher_source_unit="$repository/deploy/systemd/fanaticosos-publisher.service"
+readonly publisher_installed_unit="/etc/systemd/system/fanaticosos-publisher.service"
+readonly publisher_data="$data_root/publisher"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="$data_root/jobs"
@@ -87,6 +90,8 @@ Commands:
   install-tts-template EXPECTED_COMMIT
   install-azure-speech-credential EXPECTED_COMMIT
   azure-speech-credential-status
+  install-publisher EXPECTED_COMMIT
+  publisher-status
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -711,6 +716,35 @@ command_azure_speech_credential_status() {
   echo "PASS: Azure Speech credential exists with root-only permissions in eastus."
 }
 
+command_install_publisher() {
+  local expected="$1"
+  local diagnostics
+  require_repository_commit "$expected"
+  [[ -f "$publisher_source_unit" ]] || stop "Versioned publisher unit is missing."
+  diagnostics="$(systemd-analyze verify "$publisher_source_unit" 2>&1)"
+  [[ -z "$diagnostics" ]] || stop "Publisher unit produced diagnostics: $diagnostics"
+  install -d -o "$service_account" -g "$service_account" -m 0700 \
+    "$publisher_data" "$publisher_data/drafts"
+  install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
+  systemctl daemon-reload
+  systemctl enable --now fanaticosos-publisher.service
+  [[ "$(systemctl is-active fanaticosos-publisher.service)" == "active" ]] || \
+    stop "Publisher service is not active."
+  cmp -s "$publisher_source_unit" "$publisher_installed_unit" || \
+    stop "Installed publisher unit differs from Git."
+  echo "PASS: Private publisher installed and active on the NetBird address."
+}
+
+command_publisher_status() {
+  systemctl show fanaticosos-publisher.service \
+    --property=LoadState --property=ActiveState --property=SubState \
+    --property=Result --property=ExecMainCode --property=ExecMainStatus \
+    --property=MainPID --no-pager
+  ss -ltnp | awk '$4 == "100.121.48.92:4310" { print }'
+  [[ "$(systemctl is-active fanaticosos-publisher.service)" == "active" ]] || \
+    stop "Publisher service is not active."
+}
+
 command_prepare_tts_demo() {
   local expected="$1"
   local job_id="$2"
@@ -1331,6 +1365,14 @@ case "$command" in
   azure-speech-credential-status)
     [[ $# == 0 ]] || stop "azure-speech-credential-status takes no arguments."
     command_azure_speech_credential_status
+    ;;
+  install-publisher)
+    [[ $# == 1 ]] || stop "install-publisher requires EXPECTED_COMMIT."
+    command_install_publisher "$1"
+    ;;
+  publisher-status)
+    [[ $# == 0 ]] || stop "publisher-status takes no arguments."
+    command_publisher_status
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."

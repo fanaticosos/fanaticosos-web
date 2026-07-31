@@ -1,0 +1,38 @@
+[Unit]
+Description=Fanaticosos private publishing interface
+After=network-online.target netbird.service
+Wants=network-online.target
+Requires=netbird.service
+
+[Service]
+Type=exec
+User=fanaticosos-blog
+Group=fanaticosos-blog
+WorkingDirectory=/opt/fanaticosos-blog/repository
+Environment=HOME=/opt/fanaticosos-blog
+Environment=NODE_ENV=production
+Environment=PUBLISHER_HOST=100.121.48.92
+Environment=PUBLISHER_PORT=4310
+Environment=PUBLISHER_DRAFTS_ROOT=/opt/fanaticosos-blog/publisher/drafts
+ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/publisher/server.mjs
+Restart=on-failure
+RestartSec=3s
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=100.64.0.0/10
+ReadWritePaths=/opt/fanaticosos-blog/publisher
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
