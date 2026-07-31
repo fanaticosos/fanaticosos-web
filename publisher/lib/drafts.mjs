@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const STATUSES = new Set(["draft", "review", "ready"]);
@@ -76,6 +76,13 @@ export async function readDraft(root, articleId) {
     throw new Error("stored draft identity is invalid");
   }
   return value;
+}
+
+export async function listDrafts(root) {
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  const names = (await readdir(root)).filter((name) => /^[0-9a-f-]{36}\.json$/.test(name));
+  const drafts = await Promise.all(names.map((name) => readDraft(root, name.slice(0, -5))));
+  return drafts.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
 export async function writeDraft(root, draft) {

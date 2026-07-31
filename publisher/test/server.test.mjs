@@ -1,0 +1,73 @@
+import assert from "node:assert/strict";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+
+import { createPublisherServer } from "../server.mjs";
+
+const fields = {
+  title: "Los Bears ganan",
+  description: "Resumen del partido.",
+  body: "Texto completo del artículo.",
+  category: "Chicago Bears",
+  tags: ["NFL"],
+  status: "draft",
+  featuredImage: {},
+};
+
+async function fixture() {
+  const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
+  const server = createPublisherServer({ draftsRoot });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  return { server, base: `http://127.0.0.1:${port}` };
+}
+
+test("health endpoint is available without touching drafts", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const response = await fetch(`${base}/health`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: "ok" });
+});
+
+test("draft can be created, listed, reopened, and updated", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const createdResponse = await fetch(`${base}/api/drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  assert.equal(createdResponse.status, 201);
+  const created = (await createdResponse.json()).draft;
+  const list = await (await fetch(`${base}/api/drafts`)).json();
+  assert.equal(list.drafts[0].articleId, created.articleId);
+  const reopened = await (await fetch(`${base}/api/drafts/${created.articleId}`)).json();
+  assert.equal(reopened.draft.body, fields.body);
+  const updatedResponse = await fetch(`${base}/api/drafts/${created.articleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: 1, draft: { ...fields, title: "Nuevo título" } }),
+  });
+  assert.equal(updatedResponse.status, 200);
+  assert.equal((await updatedResponse.json()).draft.revision, 2);
+});
+
+test("stale browser revision returns a conflict", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const created = (await (await fetch(`${base}/api/drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  })).json()).draft;
+  const update = () => fetch(`${base}/api/drafts/${created.articleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: 1, draft: fields }),
+  });
+  assert.equal((await update()).status, 200);
+  assert.equal((await update()).status, 409);
+});

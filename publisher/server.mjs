@@ -1,0 +1,83 @@
+#!/usr/bin/env node
+
+import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
+
+function json(response, status, value) {
+  const body = `${JSON.stringify(value)}\n`;
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+  });
+  response.end(body);
+}
+
+async function requestJson(request) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > 1_000_000) throw new Error("request body is too large");
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new Error("request body must be valid JSON");
+  }
+}
+
+export function createPublisherServer({ draftsRoot }) {
+  return createServer(async (request, response) => {
+    try {
+      const url = new URL(request.url, "http://publisher.local");
+      if (request.method === "GET" && url.pathname === "/health") {
+        return json(response, 200, { status: "ok" });
+      }
+      if (url.pathname === "/api/drafts" && request.method === "GET") {
+        return json(response, 200, { drafts: await listDrafts(draftsRoot) });
+      }
+      if (url.pathname === "/api/drafts" && request.method === "POST") {
+        const draft = newDraft(await requestJson(request));
+        await writeDraft(draftsRoot, draft);
+        return json(response, 201, { draft });
+      }
+      const match = UUID_PATH.exec(url.pathname);
+      if (match && request.method === "GET") {
+        return json(response, 200, { draft: await readDraft(draftsRoot, match[1]) });
+      }
+      if (match && request.method === "PUT") {
+        const value = await requestJson(request);
+        if (!Number.isInteger(value.expectedRevision)) throw new Error("expectedRevision is required");
+        const draft = await updateDraft(
+          draftsRoot,
+          match[1],
+          value.expectedRevision,
+          value.draft,
+        );
+        return json(response, 200, { draft });
+      }
+      return json(response, 404, { error: "not found" });
+    } catch (error) {
+      const status = error.code === "ENOENT" ? 404 : /another browser session/.test(error.message) ? 409 : 400;
+      return json(response, status, { error: error.message });
+    }
+  });
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const host = process.env.PUBLISHER_HOST ?? "127.0.0.1";
+  const port = Number(process.env.PUBLISHER_PORT ?? "4310");
+  const draftsRoot = process.env.PUBLISHER_DRAFTS_ROOT ?? join(HERE, ".local-drafts");
+  createPublisherServer({ draftsRoot }).listen(port, host, () => {
+    console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
+  });
+}
