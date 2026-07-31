@@ -20,7 +20,8 @@ const fields = {
 async function fixture() {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
   const uploadsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-uploads-"));
-  const server = createPublisherServer({ draftsRoot, uploadsRoot });
+  const notificationsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-notifications-"));
+  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   return { server, base: `http://127.0.0.1:${port}` };
@@ -32,6 +33,14 @@ test("health endpoint is available without touching drafts", async (context) => 
   const response = await fetch(`${base}/health`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { status: "ok" });
+});
+
+test("notification inbox is persistent and private", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const response = await fetch(`${base}/api/notifications`);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { notifications: [] });
 });
 
 test("owner defaults are centralized and available to the editor", async (context) => {

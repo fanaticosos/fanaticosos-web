@@ -19,7 +19,11 @@ main { width: min(1050px, 100%); margin: 0 auto; padding: 34px 38px 80px; }
 h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); }
 .actions { display: flex; align-items: center; gap: 14px; color: #8fa5b8; font-size: 13px; }
 .owner-line { margin: -16px 0 20px; color: #8fa5b8; font-size: 13px; }
-.notice-panel { display: flex; gap: 12px; margin-bottom: 18px; padding: 13px 16px; border: 1px solid #2f526b; border-radius: 9px; background: #10273a; color: #a9cce0; font-size: 13px; }
+.notice-panel { display: grid; gap: 10px; margin-bottom: 18px; padding: 13px 16px; border: 1px solid #2f526b; border-radius: 9px; background: #10273a; color: #a9cce0; font-size: 13px; }
+.notification { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 9px; border-top: 1px solid #29445a; }
+.notification.error { color: #ffb3b3; }
+.notification.success { color: #a9e7bd; }
+.notification button { border: 1px solid #45627a; border-radius: 6px; padding: 5px 8px; color: inherit; background: transparent; cursor: pointer; }
 .primary { border: 0; border-radius: 8px; padding: 12px 17px; background: #ff6a13; color: white; font-weight: 850; cursor: pointer; }
 .primary:hover { background: #ff7b2f; }
 .wide { width: 100%; }

@@ -62,6 +62,31 @@ function applySettings(settings) {
   document.querySelector("#promotion-links").replaceChildren(...links);
 }
 
+async function refreshNotifications() {
+  const { notifications } = await request("/api/notifications");
+  const pending = notifications.filter((item) => !item.acknowledgedAt);
+  const container = document.querySelector("#notification-list");
+  if (!pending.length) {
+    container.textContent = "No hay notificaciones pendientes.";
+    return;
+  }
+  container.replaceChildren(...pending.map((item) => {
+    const row = document.createElement("div");
+    row.className = `notification ${item.level}`;
+    const text = document.createElement("span");
+    text.textContent = item.message;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Reconocer";
+    button.addEventListener("click", async () => {
+      await request(`/api/notifications/${item.id}/acknowledge`, { method: "POST" });
+      await refreshNotifications();
+    });
+    row.append(text, button);
+    return row;
+  }));
+}
+
 async function uploadImage(file) {
   message.hidden = true;
   saveState.textContent = "Subiendo imagen…";
@@ -177,7 +202,7 @@ async function initialize() {
   publisherSettings = (await request("/api/settings")).settings;
   applySettings(publisherSettings);
   setFields(null);
-  await refreshList();
+  await Promise.all([refreshList(), refreshNotifications()]);
 }
 
 initialize().catch((error) => showError(error.message));

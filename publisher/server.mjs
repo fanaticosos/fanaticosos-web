@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 
 import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
+import { acknowledgeNotification, listNotifications } from "./lib/notifications.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
@@ -58,6 +59,7 @@ export function createPublisherServer({
   draftsRoot,
   uploadsRoot = join(dirname(draftsRoot), "uploads"),
   settingsPath = DEFAULT_SETTINGS,
+  notificationsRoot = join(dirname(draftsRoot), "notifications"),
 }) {
   return createServer(async (request, response) => {
     try {
@@ -69,6 +71,14 @@ export function createPublisherServer({
         const settings = JSON.parse(await readFile(settingsPath, "utf8"));
         if (settings.schemaVersion !== 1) throw new Error("publisher settings are invalid");
         return json(response, 200, { settings });
+      }
+      if (request.method === "GET" && url.pathname === "/api/notifications") {
+        return json(response, 200, { notifications: await listNotifications(notificationsRoot) });
+      }
+      const notificationMatch = /^\/api\/notifications\/([0-9a-f-]{36})\/acknowledge$/.exec(url.pathname);
+      if (notificationMatch && request.method === "POST") {
+        const notification = await acknowledgeNotification(notificationsRoot, notificationMatch[1]);
+        return json(response, 200, { notification });
       }
       if (request.method === "GET" && STATIC_FILES.has(url.pathname)) {
         const [name, contentType] = STATIC_FILES.get(url.pathname);
@@ -141,7 +151,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PUBLISHER_PORT ?? "4310");
   const draftsRoot = process.env.PUBLISHER_DRAFTS_ROOT ?? join(HERE, ".local-drafts");
   const uploadsRoot = process.env.PUBLISHER_UPLOADS_ROOT ?? join(HERE, ".local-uploads");
-  createPublisherServer({ draftsRoot, uploadsRoot }).listen(port, host, () => {
+  const notificationsRoot = process.env.PUBLISHER_NOTIFICATIONS_ROOT ?? join(HERE, ".local-notifications");
+  createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot }).listen(port, host, () => {
     console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
   });
 }
