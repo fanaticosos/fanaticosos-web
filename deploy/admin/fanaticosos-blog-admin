@@ -31,6 +31,9 @@ readonly tts_tuning_output="$data_root/work/tts-selected-voice-tuning-v1"
 readonly latino_diagnostic="$data_root/work/tts-latino-diagnostic-v4"
 readonly long_form_review="$data_root/work/tts-long-form-review-v2"
 readonly nfl_name_review="$data_root/work/tts-nfl-name-review-v1"
+readonly piper_claude_venv="$data_root/runtimes/tts-piper-claude-v1"
+readonly piper_claude_model="$data_root/models/piper-claude-es-mx/0d907f158acc877ddeebcbf827659ee13bea8bcd"
+readonly piper_claude_output="$data_root/work/tts-nfl-name-review-claude-v1"
 
 usage() {
   cat <<'EOF'
@@ -68,6 +71,9 @@ Commands:
   export-tts-long-form-review EXPECTED_COMMIT
   run-nfl-name-review EXPECTED_COMMIT
   export-nfl-name-review EXPECTED_COMMIT
+  install-piper-claude EXPECTED_COMMIT
+  run-claude-nfl-review EXPECTED_COMMIT
+  export-claude-nfl-review EXPECTED_COMMIT
 EOF
 }
 
@@ -814,6 +820,64 @@ command_export_nfl_name_review() {
   echo "PASS: Eight NFL name review files exported."
 }
 
+command_install_piper_claude() {
+  local expected="$1"
+  local requirements="$repository/config/tts/piper-claude-requirements.txt"
+  local manifest="$repository/config/tts/piper-claude-files.json"
+  require_repository_commit "$expected"
+  [[ ! -e "$piper_claude_venv" ]] || stop "Piper Claude runtime already exists."
+  [[ ! -e "$piper_claude_model" ]] || stop "Piper Claude model already exists."
+  run_as_service python3 -m venv "$piper_claude_venv"
+  run_as_service "$piper_claude_venv/bin/python" -m pip install \
+    --disable-pip-version-check --no-cache-dir --requirement "$requirements"
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 \
+    "$piper_claude_venv/bin/python" -c \
+    'import importlib.metadata as m; import piper; print("piper={}".format(m.version("piper-tts")))'
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 \
+    "$piper_claude_venv/bin/python" "$repository/scripts/tts/download_piper_claude.py" \
+      --manifest "$manifest" --target "$piper_claude_model"
+  echo "PASS: Isolated Piper Claude runtime and verified es-MX voice installed."
+}
+
+command_run_claude_nfl_review() {
+  local expected="$1"
+  local model="$piper_claude_model/es/es_MX/claude/high/es_MX-claude-high.onnx"
+  require_repository_commit "$expected"
+  [[ -x "$piper_claude_venv/bin/python" ]] || stop "Piper Claude runtime is missing."
+  [[ -f "$model" ]] || stop "Piper Claude model is missing."
+  [[ ! -e "$piper_claude_output" ]] || stop "Claude NFL review already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-claude-nfl-review.service \
+    --property="User=$service_account" --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="Environment=PYTHONDONTWRITEBYTECODE=1" \
+    --property="RuntimeMaxSec=10min" --property="MemoryMax=2G" \
+    --property="MemorySwapMax=256M" --property="KillMode=control-group" \
+    --property="PrivateTmp=yes" --property="PrivateNetwork=yes" \
+    --property="ProtectSystem=strict" --property="ReadWritePaths=$data_root/work" \
+    "$piper_claude_venv/bin/python" "$repository/scripts/tts/review_nfl_names_claude.py" \
+      --inventory "$repository/config/tts/nfl-name-review.json" \
+      --model "$model" --output "$piper_claude_output"
+  [[ "$(find "$piper_claude_output" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "8" ]] || \
+    stop "Claude NFL review did not produce eight MP3 files."
+  echo "PASS: Bounded Claude NFL name review completed."
+}
+
+command_export_claude_nfl_review() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-claude-nfl-review-v1"
+  require_repository_commit "$expected"
+  [[ -f "$piper_claude_output/summary.json" ]] || stop "Claude NFL review is missing."
+  [[ ! -e "$export_root" ]] || stop "Claude NFL review export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  while IFS= read -r -d '' artifact; do
+    install -o sysadmin -g sysadmin -m 0640 "$artifact" "$export_root/$(basename "$artifact")"
+  done < <(find "$piper_claude_output" -maxdepth 1 -type f \( -name '*.mp3' -o -name 'summary.json' \) -print0)
+  [[ "$(find "$export_root" -maxdepth 1 -type f | wc -l)" == "9" ]] || stop "Claude export is incomplete."
+  echo "PASS: Eight Claude NFL review files exported."
+}
+
 if [[ "${1:-}" == "--help" || $# == 0 ]]; then
   usage
   exit 0
@@ -947,6 +1011,18 @@ case "$command" in
   export-nfl-name-review)
     [[ $# == 1 ]] || stop "export-nfl-name-review requires EXPECTED_COMMIT."
     command_export_nfl_name_review "$1"
+    ;;
+  install-piper-claude)
+    [[ $# == 1 ]] || stop "install-piper-claude requires EXPECTED_COMMIT."
+    command_install_piper_claude "$1"
+    ;;
+  run-claude-nfl-review)
+    [[ $# == 1 ]] || stop "run-claude-nfl-review requires EXPECTED_COMMIT."
+    command_run_claude_nfl_review "$1"
+    ;;
+  export-claude-nfl-review)
+    [[ $# == 1 ]] || stop "export-claude-nfl-review requires EXPECTED_COMMIT."
+    command_export_claude_nfl_review "$1"
     ;;
   *)
     stop "Unsupported command: $command"

@@ -70,6 +70,9 @@ class AdminHelperTests(unittest.TestCase):
                 "export-tts-long-form-review",
                 "run-nfl-name-review",
                 "export-nfl-name-review",
+                "install-piper-claude",
+                "run-claude-nfl-review",
+                "export-claude-nfl-review",
             ],
         )
 
@@ -101,7 +104,7 @@ class AdminHelperTests(unittest.TestCase):
 
     def test_inline_python_verification_commands_parse(self):
         commands = re.findall(r"\n\s+'(import importlib\.metadata as m;[^']+)'", self.helper)
-        self.assertEqual(len(commands), 2)
+        self.assertEqual(len(commands), 3)
         for command in commands:
             compile(shlex.split(shlex.quote(command))[0], "<admin-helper>", "exec")
 
@@ -250,6 +253,14 @@ class AdminHelperTests(unittest.TestCase):
         ):
             self.assertIn(value, review)
         self.assertIn("nfl-name-review.json", review)
+        self.assertNotIn('"$2"', review)
+
+    def test_claude_review_has_fixed_automatic_limits(self):
+        review = self.helper.split(
+            "command_run_claude_nfl_review()", 1
+        )[1].split("\n}\n", 1)[0]
+        for value in ("RuntimeMaxSec=10min", "MemoryMax=2G", "PrivateNetwork=yes"):
+            self.assertIn(value, review)
         self.assertNotIn('"$2"', review)
 
     def test_installer_refuses_overwrite(self):

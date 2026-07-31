@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "repository": "rhasspy/piper-voices",
+  "revision": "0d907f158acc877ddeebcbf827659ee13bea8bcd",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "path": "es/es_MX/claude/high/es_MX-claude-high.onnx",
+      "size": 63122309,
+      "sha256": "3ef40a71ea63852cd8ab7e6fa7d2ecdcfa67a0b47c9c48e3f10e02ee02083ea0"
+    },
+    {
+      "path": "es/es_MX/claude/high/es_MX-claude-high.onnx.json",
+      "size": 4963,
+      "sha256": "1afc81f703c0e4cb3b4d7c0dca096b8b54a98806807f0170cf5eb5557723c12d"
+    }
+  ]
+}
