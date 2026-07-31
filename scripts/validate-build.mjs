@@ -2,6 +2,8 @@ import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { validateGeneratedMedia } from "./build-media-policy.mjs";
+
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(projectRoot, "dist");
 
@@ -227,12 +229,11 @@ async function listFiles(directory, prefix = "") {
 
 const outputFiles = await listFiles(distRoot);
 const forbiddenNames = /(^|\/)(\.env(?:\.|$)|node_modules|.*\.(?:key|pem|psd|map|pyc))$/i;
-const forbiddenGeneratedMedia = /\.(?:mp3|wav|flac)$/i;
 
 for (const outputFile of outputFiles) {
   record(!forbiddenNames.test(outputFile), `dist contains forbidden private or development file: ${outputFile}`);
-  record(!forbiddenGeneratedMedia.test(outputFile), `Phase 1 dist unexpectedly contains generated audio: ${outputFile}`);
 }
+for (const failure of validateGeneratedMedia(outputFiles)) record(false, failure);
 
 async function requireOutput(relativeFile, expectedPatterns) {
   const absoluteFile = path.join(distRoot, relativeFile);

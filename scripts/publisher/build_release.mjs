@@ -75,7 +75,12 @@ async function main() {
     await cp(source, target, { force: false, errorOnExist: true });
     copiedAssets[key] = { path: asset.publicPath, sha256: await sha256(target) };
   }
-  const environment = { ...process.env, NODE_ENV: "production" };
+  const environment = {
+    ...process.env,
+    NODE_ENV: "production",
+    FANATICOSOS_PRIVATE_RELEASE_BUILD: "1",
+    FANATICOSOS_RELEASE_ARTICLE_ID: request.articleId,
+  };
   const { stdout, stderr } = await execute("/opt/nodejs/current/bin/npm", ["run", "build"], { cwd: temporary, env: environment, maxBuffer: 10_000_000 });
   const slugs = {
     es: Object.keys(release.files).length && release.files[`src/content/articles/es/${request.articleId}.md`].match(/\nslug: ([^\n]+)/)?.[1],

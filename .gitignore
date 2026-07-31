@@ -2,5 +2,6 @@
 *.psd
 node_modules/
 .astro/
+.vite/
 dist/
 /artifacts/
