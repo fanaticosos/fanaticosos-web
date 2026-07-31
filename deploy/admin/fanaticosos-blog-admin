@@ -730,6 +730,7 @@ command_install_publisher() {
   [[ -x "$publisher_dispatcher_source" ]] || stop "Versioned publisher dispatcher is missing."
   [[ -f "$publisher_dispatcher_service_source" ]] || stop "Dispatcher service unit is missing."
   [[ -f "$publisher_dispatcher_path_source" ]] || stop "Dispatcher path unit is missing."
+  install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
   if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" 2>&1)"; then
     stop "Publisher service units failed verification: $diagnostics"
   fi
@@ -739,7 +740,6 @@ command_install_publisher() {
     "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
     "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
-  install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"
   systemctl daemon-reload
   if ! diagnostics="$(systemd-analyze verify "$publisher_dispatcher_path_source" 2>&1)"; then
