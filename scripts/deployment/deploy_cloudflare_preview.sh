@@ -79,6 +79,7 @@ set +a
 
 umask 0077
 readonly temporary_log="$job_root/.cloudflare-preview.log.$$"
+cd "$release_root"
 if ! timeout 5m runuser -u "$service_account" -- env \
   HOME="$data_root" \
   PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
