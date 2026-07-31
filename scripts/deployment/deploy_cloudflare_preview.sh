@@ -79,8 +79,7 @@ set +a
 
 umask 0077
 readonly temporary_log="$job_root/.cloudflare-preview.log.$$"
-trap 'rm -f "$temporary_log"' ERR
-timeout 5m runuser -u "$service_account" -- env \
+if ! timeout 5m runuser -u "$service_account" -- env \
   HOME="$data_root" \
   PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
   CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
@@ -90,7 +89,14 @@ timeout 5m runuser -u "$service_account" -- env \
     --branch "$preview_branch" \
     --commit-hash "$commit" \
     --commit-message "Validated Papabear preview $job_id" \
-    --commit-dirty=false >"$temporary_log" 2>&1
+    --commit-dirty=false >"$temporary_log" 2>&1; then
+  unset CLOUDFLARE_API_TOKEN
+  mv "$temporary_log" "$log_file"
+  chown "$service_account:$service_account" "$log_file"
+  chmod 0600 "$log_file"
+  echo "STOP: Wrangler preview upload failed; private diagnostics were preserved." >&2
+  exit 1
+fi
 unset CLOUDFLARE_API_TOKEN
 
 readonly preview_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"

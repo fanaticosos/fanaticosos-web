@@ -180,6 +180,8 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('--branch "$preview_branch"', script)
         self.assertIn('PATH="/opt/nodejs/current/bin:/usr/bin:/bin"', script)
         self.assertIn('"productionChanged": False', script)
+        self.assertIn("private diagnostics were preserved", script)
+        self.assertIn('chmod 0600 "$log_file"', script)
         self.assertNotIn('--branch "$production_branch"', script)
         self.assertNotIn("eval ", script)
 
