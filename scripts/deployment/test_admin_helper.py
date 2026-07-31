@@ -91,6 +91,7 @@ class AdminHelperTests(unittest.TestCase):
                 "select-private-release",
                 "release-retention-preview",
                 "run-release-retention",
+                "release-job-status",
                 "prepare-tts-demo",
                 "start-tts",
                 "tts-status",

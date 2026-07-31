@@ -118,6 +118,7 @@ Commands:
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
   run-release-retention EXPECTED_COMMIT
+  release-job-status RELEASE_JOB_ID
   prepare-tts-demo EXPECTED_COMMIT JOB_ID LOCALE
   start-tts JOB_ID
   tts-status JOB_ID
@@ -999,6 +1000,21 @@ command_run_release_retention() {
   echo "PASS: Approved release retention ran successfully and the daily timer is active."
 }
 
+command_release_job_status() {
+  local job_id="$1"
+  local job_root
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  job_root="$publisher_data/releases/$job_id"
+  [[ -d "$job_root" && ! -L "$job_root" ]] || stop "Release job directory is missing."
+  echo "=== Release job files ==="
+  find "$job_root" -xdev -maxdepth 3 -type f -printf '%TY-%Tm-%TdT%TH:%TM:%TSZ %s bytes %P\n' | sort
+  echo "=== Release service state ==="
+  systemctl show "fanaticosos-release@$job_id.service" \
+    --property=LoadState --property=ActiveState --property=SubState \
+    --property=Result --property=ExecMainCode --property=ExecMainStatus --no-pager
+}
+
 command_publisher_status() {
   systemctl show fanaticosos-publisher.service \
     --property=LoadState --property=ActiveState --property=SubState \
@@ -1685,6 +1701,10 @@ case "$command" in
   run-release-retention)
     [[ $# == 1 ]] || stop "run-release-retention requires EXPECTED_COMMIT."
     command_run_release_retention "$1"
+    ;;
+  release-job-status)
+    [[ $# == 1 ]] || stop "release-job-status requires RELEASE_JOB_ID."
+    command_release_job_status "$1"
     ;;
   prepare-tts-demo)
     [[ $# == 3 ]] || stop "prepare-tts-demo requires EXPECTED_COMMIT JOB_ID LOCALE."
