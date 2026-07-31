@@ -14,9 +14,9 @@ class TtsSystemdUnitTests(unittest.TestCase):
         cls.unit = UNIT.read_text(encoding="utf-8")
 
     def test_unit_has_fixed_worker_and_configuration(self):
-        self.assertIn("scripts/tts/render_article_kokoro.py", self.unit)
-        self.assertIn("--configuration /opt/fanaticosos-blog/repository/config/tts/production.json", self.unit)
-        self.assertIn("--pronunciations /opt/fanaticosos-blog/repository/config/tts/pronunciations.json", self.unit)
+        self.assertIn("scripts/tts/render_article_production.py", self.unit)
+        self.assertIn("--repository /opt/fanaticosos-blog/repository", self.unit)
+        self.assertIn("EnvironmentFile=-/etc/fanaticosos-blog/azure-speech.env", self.unit)
         self.assertNotIn("--voice", self.unit)
 
     def test_unit_has_automatic_resource_boundaries(self):
@@ -31,9 +31,8 @@ class TtsSystemdUnitTests(unittest.TestCase):
         ):
             self.assertIn(directive, self.unit)
 
-    def test_unit_is_offline_and_write_restricted(self):
+    def test_unit_is_write_restricted(self):
         for directive in (
-            "PrivateNetwork=yes",
             "ProtectSystem=strict",
             "ProtectHome=yes",
             "NoNewPrivileges=yes",
@@ -41,6 +40,9 @@ class TtsSystemdUnitTests(unittest.TestCase):
             "UMask=0077",
         ):
             self.assertIn(directive, self.unit)
+
+    def test_network_is_available_for_bounded_spanish_azure_jobs(self):
+        self.assertNotIn("PrivateNetwork=yes", self.unit)
 
     def test_unit_uses_service_account_and_fixed_job_paths(self):
         self.assertIn("User=fanaticosos-blog", self.unit)
