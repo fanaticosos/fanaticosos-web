@@ -727,7 +727,8 @@ command_install_publisher() {
     "$publisher_data" "$publisher_data/drafts"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   systemctl daemon-reload
-  systemctl enable --now fanaticosos-publisher.service
+  systemctl enable fanaticosos-publisher.service
+  systemctl restart fanaticosos-publisher.service
   [[ "$(systemctl is-active fanaticosos-publisher.service)" == "active" ]] || \
     stop "Publisher service is not active."
   cmp -s "$publisher_source_unit" "$publisher_installed_unit" || \
