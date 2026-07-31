@@ -4,6 +4,7 @@ const message = document.querySelector("#message");
 const saveState = document.querySelector("#save-state");
 const pageTitle = document.querySelector("#page-title");
 let current = null;
+let publisherSettings = null;
 const dropZone = document.querySelector("#drop-zone");
 const imageFile = document.querySelector("#image-file");
 const imagePreview = document.querySelector("#image-preview");
@@ -15,6 +16,7 @@ function fields() {
     description: data.get("description"),
     body: data.get("body"),
     category: data.get("category"),
+    season: Number(data.get("season")),
     tags: data.get("tags").split(",").map((tag) => tag.trim()).filter(Boolean),
     status: "draft",
     featuredImage: {
@@ -30,8 +32,9 @@ function setFields(draft) {
   form.elements.title.value = draft?.title ?? "";
   form.elements.description.value = draft?.description ?? "";
   form.elements.body.value = draft?.body ?? "";
-  form.elements.category.value = draft?.category ?? "Chicago Bears";
-  form.elements.tags.value = draft?.tags?.join(", ") ?? "NFL, Chicago Bears";
+  form.elements.category.value = draft?.category ?? publisherSettings?.defaultCategory ?? "";
+  form.elements.season.value = draft?.season ?? publisherSettings?.defaultSeason ?? "";
+  form.elements.tags.value = draft?.tags?.join(", ") ?? publisherSettings?.defaultTags?.join(", ") ?? "";
   form.elements.imagePath.value = draft?.featuredImage?.path ?? "";
   form.elements.imageAlt.value = draft?.featuredImage?.alt ?? "";
   form.elements.imageCaption.value = draft?.featuredImage?.caption ?? "";
@@ -40,6 +43,23 @@ function setFields(draft) {
   imagePreview.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
+}
+
+function applySettings(settings) {
+  document.querySelector("#owner-name").textContent = settings.author.name;
+  document.querySelector("#owner-social").textContent = settings.author.socialHandle;
+  document.querySelector("#owner-timezone").textContent = settings.timezone;
+  document.querySelector("#promotion-heading").textContent = settings.promotion.heading;
+  document.querySelector("#promotion-label").textContent = settings.promotion.label;
+  const links = settings.promotion.platforms.map((platform) => {
+    const anchor = document.createElement("a");
+    anchor.href = platform.url;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.textContent = platform.name;
+    return anchor;
+  });
+  document.querySelector("#promotion-links").replaceChildren(...links);
 }
 
 async function uploadImage(file) {
@@ -153,5 +173,11 @@ dropZone.addEventListener("drop", (event) => {
   if (event.dataTransfer.files[0]) uploadImage(event.dataTransfer.files[0]);
 });
 
-setFields(null);
-refreshList().catch((error) => showError(error.message));
+async function initialize() {
+  publisherSettings = (await request("/api/settings")).settings;
+  applySettings(publisherSettings);
+  setFields(null);
+  await refreshList();
+}
+
+initialize().catch((error) => showError(error.message));

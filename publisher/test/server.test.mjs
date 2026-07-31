@@ -11,6 +11,7 @@ const fields = {
   description: "Resumen del partido.",
   body: "Texto completo del artículo.",
   category: "Chicago Bears",
+  season: 2026,
   tags: ["NFL"],
   status: "draft",
   featuredImage: {},
@@ -31,6 +32,17 @@ test("health endpoint is available without touching drafts", async (context) => 
   const response = await fetch(`${base}/health`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { status: "ok" });
+});
+
+test("owner defaults are centralized and available to the editor", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const settings = (await (await fetch(`${base}/api/settings`)).json()).settings;
+  assert.equal(settings.author.name, "Antonio Contreras");
+  assert.equal(settings.timezone, "America/Chicago");
+  assert.equal(settings.defaultSeason, 2026);
+  assert.equal(settings.defaultTags.length, 10);
+  assert.equal(settings.promotion.platforms.length, 3);
 });
 
 test("valid image upload can be previewed privately", async (context) => {

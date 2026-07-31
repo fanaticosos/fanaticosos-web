@@ -28,6 +28,11 @@
             <button id="save-draft" class="primary" type="submit" form="article-form">Guardar borrador</button>
           </div>
         </div>
+        <div class="owner-line"><span id="owner-name">Antonio Contreras</span> · <span id="owner-social">@imcontreras</span> · <span id="owner-timezone">America/Chicago</span></div>
+        <section class="notice-panel">
+          <strong>Notificaciones</strong>
+          <span>Los procesos y cualquier error aparecerán aquí y permanecerán hasta ser reconocidos.</span>
+        </section>
         <div id="message" class="message" role="alert" hidden></div>
         <form id="article-form">
           <section class="panel">
@@ -36,9 +41,17 @@
             <label>Resumen para buscadores y redes<textarea name="description" rows="3" maxlength="500" required></textarea></label>
             <div class="two-columns">
               <label>Categoría<input name="category" maxlength="100" placeholder="Chicago Bears" required></label>
-              <label>Etiquetas<input name="tags" placeholder="NFL, Bears, Semana 3"></label>
+              <label>Temporada<input name="season" type="number" min="2000" max="2100" required></label>
             </div>
+            <label>Etiquetas<input name="tags" placeholder="#BearDown, #fanaticosos"></label>
             <label>Texto del artículo<textarea name="body" rows="22" maxlength="100000" required></textarea></label>
+          </section>
+          <section class="panel promotion">
+            <h2>Promoción automática</h2>
+            <p id="promotion-heading">¡Gracias por acompañarnos!</p>
+            <strong id="promotion-label">Nuestras plataformas:</strong>
+            <div id="promotion-links"></div>
+            <small>Este bloque se agregará al publicar; no necesitas escribirlo en cada artículo.</small>
           </section>
           <section class="panel">
             <h2>Imagen destacada <span>opcional</span></h2>

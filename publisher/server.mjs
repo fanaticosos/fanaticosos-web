@@ -9,6 +9,7 @@ import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
@@ -53,12 +54,21 @@ async function requestBuffer(request, maximum) {
   return Buffer.concat(chunks);
 }
 
-export function createPublisherServer({ draftsRoot, uploadsRoot = join(dirname(draftsRoot), "uploads") }) {
+export function createPublisherServer({
+  draftsRoot,
+  uploadsRoot = join(dirname(draftsRoot), "uploads"),
+  settingsPath = DEFAULT_SETTINGS,
+}) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://publisher.local");
       if (request.method === "GET" && url.pathname === "/health") {
         return json(response, 200, { status: "ok" });
+      }
+      if (request.method === "GET" && url.pathname === "/api/settings") {
+        const settings = JSON.parse(await readFile(settingsPath, "utf8"));
+        if (settings.schemaVersion !== 1) throw new Error("publisher settings are invalid");
+        return json(response, 200, { settings });
       }
       if (request.method === "GET" && STATIC_FILES.has(url.pathname)) {
         const [name, contentType] = STATIC_FILES.get(url.pathname);

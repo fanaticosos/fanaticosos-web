@@ -18,6 +18,8 @@ main { width: min(1050px, 100%); margin: 0 auto; padding: 34px 38px 80px; }
 .eyebrow { margin: 0 0 4px; color: #ffb21c; font-weight: 900; font-size: 12px; letter-spacing: .18em; }
 h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); }
 .actions { display: flex; align-items: center; gap: 14px; color: #8fa5b8; font-size: 13px; }
+.owner-line { margin: -16px 0 20px; color: #8fa5b8; font-size: 13px; }
+.notice-panel { display: flex; gap: 12px; margin-bottom: 18px; padding: 13px 16px; border: 1px solid #2f526b; border-radius: 9px; background: #10273a; color: #a9cce0; font-size: 13px; }
 .primary { border: 0; border-radius: 8px; padding: 12px 17px; background: #ff6a13; color: white; font-weight: 850; cursor: pointer; }
 .primary:hover { background: #ff7b2f; }
 .wide { width: 100%; }
@@ -35,6 +37,10 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .drop-zone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .image-preview { display: block; width: min(100%, 540px); max-height: 320px; margin: 0 0 18px; border-radius: 10px; object-fit: cover; }
 .future { opacity: .72; }
+.promotion p { margin-bottom: 8px; font-size: 18px; }
+.promotion small { display: block; margin-top: 14px; color: #8195a7; }
+#promotion-links { display: flex; gap: 14px; margin-top: 10px; }
+#promotion-links a { color: #ff9a55; }
 .future p { color: #9bb0c1; }
 .future-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .future-actions button { padding: 10px 13px; border: 1px solid #32495f; border-radius: 7px; color: #8799a8; background: #152434; }

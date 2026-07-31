@@ -43,11 +43,15 @@ export function validateOwnerFields(value) {
   if (imagePath && (!imageAlt || !imageCredit)) {
     throw new Error("featured images require alternative text and credit");
   }
+  if (!Number.isInteger(value.season) || value.season < 2000 || value.season > 2100) {
+    throw new Error("season is invalid");
+  }
   return {
     title: requiredText(value.title, "title", 300),
     description: requiredText(value.description, "description", 500),
     body: requiredText(value.body, "body", 100_000),
     category: requiredText(value.category, "category", 100),
+    season: value.season,
     tags: normalizedTags,
     status,
     featuredImage: {

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "author": {
+    "name": "Antonio Contreras",
+    "socialLabel": "Twitter",
+    "socialHandle": "@imcontreras",
+    "socialUrl": "https://twitter.com/imcontreras"
+  },
+  "timezone": "America/Chicago",
+  "defaultSeason": 2026,
+  "defaultCategory": "Chicago Bears",
+  "defaultTags": [
+    "#BearDown",
+    "#fanaticosos",
+    "#ChicagoBears",
+    "#podcast",
+    "#Ososchicago",
+    "#calebwilliams",
+    "#benjohnson",
+    "#lavillita",
+    "#pilsen",
+    "#Chicago"
+  ],
+  "promotion": {
+    "enabled": true,
+    "appendAtPublication": true,
+    "heading": "¡Gracias por acompañarnos!",
+    "label": "Nuestras plataformas:",
+    "platforms": [
+      {"name": "Twitter", "url": "https://twitter.com/fanaticososcom"},
+      {"name": "Facebook", "url": "https://facebook.com/fanaticosos"},
+      {"name": "YouTube", "url": "https://youtube.com/@fanaticosos"}
+    ]
+  },
+  "notifications": {
+    "dashboard": true,
+    "persistUntilAcknowledged": true,
+    "email": false
+  }
+}

@@ -11,6 +11,7 @@ const valid = {
   description: "Resumen del partido de Chicago.",
   body: "Contenido periodístico del artículo.",
   category: "Chicago Bears",
+  season: 2026,
   tags: ["NFL", "Bears"],
   status: "draft",
   featuredImage: {},
