@@ -80,6 +80,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-cloudflare-pages-credential",
                 "cloudflare-pages-credential-status",
                 "install-pages-deployment-runtime",
+                "pages-deployment-runtime-status",
                 "verify-cloudflare-pages-token",
                 "deploy-cloudflare-preview",
                 "cloudflare-preview-failure",
@@ -196,6 +197,12 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('node_modules/@esbuild/linux-x64/bin/esbuild', runtime)
         self.assertIn('chmod 0755 "$esbuild_binary"', runtime)
         self.assertIn('== "0.28.1"', runtime)
+
+        status = self.helper.split(
+            "command_pages_deployment_runtime_status()", 1
+        )[1].split("\n}\n", 1)[0]
+        self.assertIn("namei -l", status)
+        self.assertIn("run_as_service", status)
 
         diagnostics = self.helper.split(
             "command_cloudflare_preview_failure()", 1

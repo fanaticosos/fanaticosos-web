@@ -103,6 +103,7 @@ Commands:
   install-cloudflare-pages-credential EXPECTED_COMMIT
   cloudflare-pages-credential-status
   install-pages-deployment-runtime EXPECTED_COMMIT
+  pages-deployment-runtime-status
   verify-cloudflare-pages-token EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   cloudflare-preview-failure RELEASE_JOB_ID
@@ -786,6 +787,18 @@ command_install_pages_deployment_runtime() {
     "$repository/node_modules/.bin/wrangler" --version)" == "4.118.0" ]] || \
     stop "Pinned Wrangler version verification failed."
   echo "PASS: Pinned Wrangler 4.118.0 deployment runtime installed."
+}
+
+command_pages_deployment_runtime_status() {
+  local esbuild_binary="$repository/node_modules/@esbuild/linux-x64/bin/esbuild"
+  local wrangler_binary="$repository/node_modules/.bin/wrangler"
+  [[ -f "$esbuild_binary" ]] || stop "Pinned esbuild binary is missing."
+  [[ -x "$wrangler_binary" ]] || stop "Pinned Wrangler binary is missing."
+  stat -c 'esbuild owner=%U group=%G mode=%a size=%s' "$esbuild_binary"
+  namei -l "$esbuild_binary"
+  run_as_service "$esbuild_binary" --version
+  run_as_service env PATH="/opt/nodejs/current/bin:/usr/bin:/bin" "$wrangler_binary" --version
+  echo "PASS: Deployment runtime is executable by the service account."
 }
 
 command_verify_cloudflare_pages_token() {
@@ -1517,6 +1530,10 @@ case "$command" in
   install-pages-deployment-runtime)
     [[ $# == 1 ]] || stop "install-pages-deployment-runtime requires EXPECTED_COMMIT."
     command_install_pages_deployment_runtime "$1"
+    ;;
+  pages-deployment-runtime-status)
+    [[ $# == 0 ]] || stop "pages-deployment-runtime-status takes no arguments."
+    command_pages_deployment_runtime_status
     ;;
   verify-cloudflare-pages-token)
     [[ $# == 1 ]] || stop "verify-cloudflare-pages-token requires EXPECTED_COMMIT."
