@@ -47,7 +47,7 @@ class PronunciationTests(unittest.TestCase):
     def test_spanish_brand_name_is_preserved_in_english_narration(self):
         written = "Thanks for listening to Fanaticosos."
         spoken = apply_pronunciations(written, "en", self.configuration)
-        self.assertEqual(spoken, "Thanks for listening to Fah-nah-tee-KOH-sohs.")
+        self.assertEqual(spoken, "Thanks for listening to Fanatic Osos.")
         self.assertIn("Fanaticosos", written)
 
     def test_spanish_touchdown_terms_use_one_broadcast_word(self):

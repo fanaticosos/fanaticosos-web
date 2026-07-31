@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "version": 8,
+  "version": 9,
   "overrides": {
     "es": [
       {
@@ -99,7 +99,7 @@
         "category": "term",
         "canonical": "Fanaticosos",
         "aliases": [],
-        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Fah-nah-tee-KOH-sohs"},
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Fanatic Osos"},
         "reason": "Preserve the Spanish compound brand name inside English narration",
         "source": "Fanaticosos owner listening review, 2026-07-31",
         "sourceType": "owner-review",
