@@ -248,6 +248,8 @@ Keep the manually prepared bilingual fixture and remove the unaccepted engine in
 
 ## Phase 5 — TTS benchmark and integration
 
+Status: accepted and verified on Papabear on 2026-07-31. Spanish uses Azure `es-MX-JorgeMultilingualNeural`; English uses local Kokoro `af_heart`.
+
 ### Objective
 
 Select acceptable Spanish and English voices and create reproducible, web-ready article audio.

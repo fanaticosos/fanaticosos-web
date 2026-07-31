@@ -1,6 +1,6 @@
 # Fanaticosos TTS benchmark
 
-Status: Initial Kokoro production voices and broadcast delivery approved
+Status: Phase 5 hybrid production baseline approved and verified on Papabear
 
 ## Candidate
 
@@ -14,17 +14,17 @@ Primary sources:
 
 The official voice inventory warns that non-English support can be thinner than English support. Spanish quality is therefore an acceptance question, not an assumption.
 
-## Owner-approved initial production baseline
+## Owner-approved production baseline
 
-- Latin-American Spanish target: `em_alex`
-- American English target: `af_heart`
-- Delivery profile: `broadcast` for both languages (`1.02` speed, 0.16-second pause)
-- Spanish narration applies centralized Latino sports-broadcast pronunciations without changing visible article text.
+- Latin-American Spanish: Azure `es-MX-JorgeMultilingualNeural` at `1.08×`
+- American English: Kokoro `af_heart` with the broadcast profile
+- Spanish narration applies the versioned Azure NFL entity configuration without changing visible article text.
+- English remains local and offline on Papabear.
 - Configuration status: `approved`
 
-The owner accepted the Latino delivery profile as the initial production baseline after comparing the available Spanish voices. The system may improve recurring NFL pronunciations centrally without requiring article-by-article work.
+The owner accepted English `af_heart` on 2026-07-30. Kokoro, Piper, Supertonic, and Chatterbox Spanish candidates did not consistently meet the required neutral Mexican/Latin-American delivery and NFL pronunciation quality. The owner approved Azure Spanish after two different full articles. The centralized entity configuration is the narration source; articles do not carry routine pronunciation instructions.
 
-The owner accepted the English `af_heart` long-form review on 2026-07-30 and selected `latino-em_alex` for initial Spanish production. The centralized dictionary is the single narration source; articles do not carry routine pronunciation instructions. Canonical NFL names remain separate from engine-specific synthesis instructions, and future corrections increment the pronunciation version without reopening voice selection.
+On 2026-07-31 Papabear completed the approved full `Poking the Bear` Spanish article through the bounded production service in 17 seconds. The normalized result is 246.072 seconds, 3,937,581 bytes, MP3 at 48 kHz mono and 128 kbps, with SHA-256 `25031f65cfba0e8eabd2296f1ee0f667f62739bcc1f0d2d4a0aced9240ef2b28`. FFmpeg decoded the complete result without errors. The service returned to inactive state and no persistent TTS process or listener remains.
 
 ## Version 1 comparison voices
 
