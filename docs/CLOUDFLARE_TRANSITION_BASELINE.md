@@ -84,3 +84,20 @@ This order keeps `fanaticosos.com` unchanged throughout preview validation and p
 - Final production health-check and rollback timing.
 
 These unknowns must be measured only after separate production authorization.
+
+## First controlled production deployment
+
+Completed and verified on 2026-07-31 after explicit owner authorization:
+
+- private release job: `release-30cdf1902d7b4ad0aeaf0a7e767e3461-r1-978c1666`;
+- release commit: `ac1daa235cf9aabc3846c11b10997448ca84f36f`;
+- immutable production deployment: `eba4f720.fanaticosos-web.pages.dev`;
+- rollback deployment: `1e519caa-932c-4e87-8817-f852650c6299`;
+- rollback URL: `https://1e519caa.fanaticosos-web.pages.dev`;
+- `fanaticosos.com`, `www.fanaticosos.com`, and `fanaticosos-web.pages.dev` passed validation;
+- Spanish and English article routes, both MP3 assets, RSS feeds, and the sitemap returned HTTP 200;
+- both MP3 files matched the checksums recorded in the release manifest.
+
+Cloudflare propagation briefly delayed one custom-domain MP3 check. The uploader
+stopped without issuing a duplicate deployment, then resumed validation against the
+same immutable deployment and recorded the successful production receipt.

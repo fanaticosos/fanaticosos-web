@@ -349,7 +349,7 @@ The approved retention job runs daily with no network access. It retains the 10 
 
 ## Phase 8 — Cloudflare deployment transition
 
-Status: in progress. With owner authorization on 2026-07-31, automatic production Git deployments were disabled after automatic preview deployments had already been disabled. The existing production deployment and domains remain unchanged. The first controlled production upload is authorized but blocked until the owner saves the intended public article in the private editor and its bilingual text, audio, preview, and release manifest pass validation.
+Status: completed on 2026-07-31. Automatic Git deployments remain disabled. The first controlled Papabear production upload deployed the validated bilingual article, audio, feeds, sitemap, SEO metadata, sharing controls, homepage discovery card, and related-article support. All production domains and required release assets passed post-deployment validation; the prior production deployment remains retained as the rollback target.
 
 ### Objective
 
