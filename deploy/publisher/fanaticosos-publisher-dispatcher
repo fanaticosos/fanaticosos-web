@@ -81,4 +81,16 @@ for queued in "$queue_root"/release-*-r*-*; do
   systemctl reset-failed "$unit" 2>/dev/null || true
   systemctl start --no-block "$unit"
 done
+for queued in "$queue_root"/deploy-release-*-r*-*; do
+  [[ -d "$queued" && ! -L "$queued" ]] || continue
+  deploy_id="$(basename "$queued")"; job_id="${deploy_id#deploy-}"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || continue
+  [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
+  [[ -f "$queued/request.json" && ! -L "$queued/request.json" && -f "$releases_root/$job_id/release/release-manifest.json" ]] || continue
+  [[ ! -e "$releases_root/$job_id/production-request.json" ]] || continue
+  mv "$queued/request.json" "$releases_root/$job_id/production-request.json"; rm -d "$queued"
+  chown "$service_account:$service_account" "$releases_root/$job_id/production-request.json"; chmod 0600 "$releases_root/$job_id/production-request.json"
+  systemctl reset-failed "fanaticosos-production-deploy@$job_id.service" 2>/dev/null || true
+  systemctl start --no-block "fanaticosos-production-deploy@$job_id.service"
+done
 rm -f -- "$queue_root/.wake"

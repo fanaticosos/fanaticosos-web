@@ -12,6 +12,7 @@ import { queueTranslation, readTranslationState, reconcileTranslations, updateTr
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
+import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
 
@@ -26,6 +27,7 @@ const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
 const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
+const PUBLISH_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/publish$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
@@ -356,6 +358,15 @@ export function createPublisherServer({
         await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
         return json(response, 200, { release: await readReleaseState(statesRoot, releaseMatch[1]) });
       }
+      const publishMatch = PUBLISH_PATH.exec(url.pathname);
+      if (publishMatch && request.method === "POST") {
+        const value = await requestJson(request); const [draft, release, audio] = await Promise.all([readDraft(draftsRoot, publishMatch[1]), readReleaseState(statesRoot, publishMatch[1]), readTtsState(statesRoot, publishMatch[1])]);
+        if (value.expectedRevision !== draft.revision || release.status !== "completed" || release.draftRevision !== draft.revision) throw new Error("La vista previa actual debe validarse antes de publicar.");
+        if (release.manifest?.assets?.esAudio?.sha256 !== audio.jobs?.es?.result?.sha256 || release.manifest?.assets?.enAudio?.sha256 !== audio.jobs?.en?.result?.sha256) throw new Error("Los audios cambiaron; vuelve a crear la vista previa antes de publicar.");
+        const deployment = await queueDeployment({ articleId: draft.articleId, draftRevision: draft.revision, releaseJobId: release.jobId, queueRoot, statesRoot });
+        await createNotification(notificationsRoot, { level: "info", event: "deployment-started", articleId: draft.articleId, message: `Publicación iniciada: ${draft.title}` }); return json(response, 202, { deployment });
+      }
+      if (publishMatch && request.method === "GET") { const state = await readDeploymentState(statesRoot, publishMatch[1]); return json(response, 200, { deployment: await reconcileDeployment({ state, statesRoot, releasesRoot }) }); }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
       if (uploadMatch && request.method === "GET") {
         const contentType = contentTypeForName(uploadMatch[1]);

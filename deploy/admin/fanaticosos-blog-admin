@@ -33,6 +33,8 @@ readonly publisher_music_release_source="$repository/deploy/systemd/fanaticosos-
 readonly publisher_music_release_installed="/etc/systemd/system/fanaticosos-music-release@.service"
 readonly publisher_music_deploy_source="$repository/deploy/systemd/fanaticosos-music-deploy@.service"
 readonly publisher_music_deploy_installed="/etc/systemd/system/fanaticosos-music-deploy@.service"
+readonly publisher_production_deploy_source="$repository/deploy/systemd/fanaticosos-production-deploy@.service"
+readonly publisher_production_deploy_installed="/etc/systemd/system/fanaticosos-production-deploy@.service"
 readonly publisher_retention_source="$repository/deploy/systemd/fanaticosos-release-retention.service"
 readonly publisher_retention_installed="/etc/systemd/system/fanaticosos-release-retention.service"
 readonly publisher_retention_timer_source="$repository/deploy/systemd/fanaticosos-release-retention.timer"
@@ -949,10 +951,11 @@ command_install_publisher() {
   [[ -f "$publisher_release_source" ]] || stop "Release build template is missing."
   [[ -f "$publisher_music_release_source" ]] || stop "Music release template is missing."
   [[ -f "$publisher_music_deploy_source" ]] || stop "Music deploy template is missing."
+  [[ -f "$publisher_production_deploy_source" ]] || stop "Production deploy template is missing."
   [[ -f "$publisher_retention_source" ]] || stop "Release retention service is missing."
   [[ -f "$publisher_retention_timer_source" ]] || stop "Release retention timer is missing."
   install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
-  if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" "$publisher_release_source" "$publisher_music_release_source" "$publisher_music_deploy_source" "$publisher_retention_source" "$publisher_retention_timer_source" 2>&1)"; then
+  if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$publisher_dispatcher_service_source" "$publisher_release_source" "$publisher_music_release_source" "$publisher_music_deploy_source" "$publisher_production_deploy_source" "$publisher_retention_source" "$publisher_retention_timer_source" 2>&1)"; then
     stop "Publisher service units failed verification: $diagnostics"
   fi
   [[ -z "$diagnostics" ]] || stop "Publisher service units produced diagnostics: $diagnostics"
@@ -965,6 +968,7 @@ command_install_publisher() {
   install -o root -g root -m 0644 "$publisher_release_source" "$publisher_release_installed"
   install -o root -g root -m 0644 "$publisher_music_release_source" "$publisher_music_release_installed"
   install -o root -g root -m 0644 "$publisher_music_deploy_source" "$publisher_music_deploy_installed"
+  install -o root -g root -m 0644 "$publisher_production_deploy_source" "$publisher_production_deploy_installed"
   install -o root -g root -m 0644 "$publisher_retention_source" "$publisher_retention_installed"
   install -o root -g root -m 0644 "$publisher_retention_timer_source" "$publisher_retention_timer_installed"
   systemctl daemon-reload
@@ -990,6 +994,8 @@ command_install_publisher() {
     stop "Installed music release template differs from Git."
   cmp -s "$publisher_music_deploy_source" "$publisher_music_deploy_installed" || \
     stop "Installed music deploy template differs from Git."
+  cmp -s "$publisher_production_deploy_source" "$publisher_production_deploy_installed" || \
+    stop "Installed production deploy template differs from Git."
   cmp -s "$publisher_retention_source" "$publisher_retention_installed" || \
     stop "Installed retention service differs from Git."
   cmp -s "$publisher_retention_timer_source" "$publisher_retention_timer_installed" || \

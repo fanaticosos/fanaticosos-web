@@ -21,6 +21,7 @@ const regenerateEnglishAudio = document.querySelector("#regenerate-english-audio
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
+const publishRelease = document.querySelector("#publish-release");
 const musicForm = document.querySelector("#music-form");
 const musicState = document.querySelector("#music-state");
 const articleBody = document.querySelector("#article-body");
@@ -498,8 +499,9 @@ async function pollRelease() {
     if (release.status === "completed") {
       if (releaseTimer) clearInterval(releaseTimer);
       releaseTimer = null;
-      workflowState.textContent = "Compilación privada validada · publicación pública deshabilitada.";
+      workflowState.textContent = "Compilación privada validada · lista para publicar.";
       prepareRelease.disabled = false;
+      publishRelease.disabled = false;
       generateEnglish.disabled = true;
       await refreshNotifications();
     } else if (release.status === "failed") {
@@ -533,6 +535,16 @@ prepareRelease.addEventListener("click", async () => {
     prepareRelease.disabled = false;
     showError(error.message);
   }
+});
+
+publishRelease.addEventListener("click", async () => {
+  if (!current || !window.confirm("¿Publicar ahora las versiones en español e inglés en fanaticosos.com?")) return;
+  publishRelease.disabled = true;
+  try {
+    await request(`/api/drafts/${current.articleId}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: current.revision }) });
+    workflowState.textContent = "Publicación iniciada… el sitio actual permanece activo durante la validación.";
+    const timer = setInterval(async () => { const { deployment } = await request(`/api/drafts/${current.articleId}/publish`); if (deployment.status === "completed") { clearInterval(timer); workflowState.textContent = "Publicado y verificado en fanaticosos.com."; } if (deployment.status === "failed") { clearInterval(timer); publishRelease.disabled = false; showError(deployment.error); } }, 4000);
+  } catch (error) { publishRelease.disabled = false; showError(error.message); }
 });
 
 document.querySelector("#new-draft").addEventListener("click", () => {
