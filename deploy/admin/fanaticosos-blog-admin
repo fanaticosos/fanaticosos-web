@@ -34,6 +34,7 @@ readonly publisher_retention_installed="/etc/systemd/system/fanaticosos-release-
 readonly publisher_retention_timer_source="$repository/deploy/systemd/fanaticosos-release-retention.timer"
 readonly publisher_retention_timer_installed="/etc/systemd/system/fanaticosos-release-retention.timer"
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
+readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
 readonly publisher_data="$data_root/publisher"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
@@ -112,6 +113,9 @@ Commands:
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   cloudflare-preview-status RELEASE_JOB_ID
   cloudflare-preview-failure RELEASE_JOB_ID
+  deploy-cloudflare-production EXPECTED_COMMIT RELEASE_JOB_ID
+  cloudflare-production-status RELEASE_JOB_ID
+  cloudflare-production-failure RELEASE_JOB_ID
   install-publisher EXPECTED_COMMIT
   publisher-status
   latest-private-release
@@ -886,6 +890,48 @@ print(json.dumps(allowed, indent=2))
 PY
   echo "=== Deployment URLs recorded by Wrangler ==="
   grep -Eo 'https://[a-z0-9-]+\.fanaticosos-web\.pages\.dev' "$log_file" | sort -u || true
+}
+
+command_deploy_cloudflare_production() {
+  local expected="$1"
+  local job_id="$2"
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || \
+    stop "Expected a release job ID."
+  [[ -x "$cloudflare_production_script" ]] || stop "Versioned Cloudflare production script is missing."
+  exec "$cloudflare_production_script" "$repository" "$data_root" "$job_id"
+}
+
+command_cloudflare_production_failure() {
+  local job_id="$1"
+  local log_file
+  validate_job_id "$job_id"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || stop "Expected a release job ID."
+  log_file="$publisher_data/releases/$job_id/cloudflare-production.log"
+  [[ -f "$log_file" && ! -L "$log_file" ]] || stop "Cloudflare production failure log is missing."
+  echo "=== Sanitized Cloudflare production diagnostics ==="
+  tail -n 80 "$log_file" | sed -E \
+    -e 's/(Bearer )[A-Za-z0-9_-]+/\1[REDACTED]/g' \
+    -e 's/(CLOUDFLARE_API_TOKEN=)[A-Za-z0-9_-]+/\1[REDACTED]/g'
+}
+
+command_cloudflare_production_status() {
+  local job_id="$1"
+  local receipt="$publisher_data/releases/$job_id/cloudflare-production.json"
+  validate_job_id "$job_id"
+  [[ -f "$receipt" && ! -L "$receipt" ]] || stop "Cloudflare production receipt is missing."
+  python3 - "$receipt" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+allowed = {key: value.get(key) for key in (
+    "schemaVersion", "environment", "jobId", "branch", "url", "commit",
+    "validatedAt", "productionChanged", "rollbackDeploymentId", "rollbackUrl",
+    "domains",
+)}
+print(json.dumps(allowed, indent=2))
+PY
 }
 
 command_install_publisher() {
@@ -1704,6 +1750,18 @@ case "$command" in
   cloudflare-preview-failure)
     [[ $# == 1 ]] || stop "cloudflare-preview-failure requires RELEASE_JOB_ID."
     command_cloudflare_preview_failure "$1"
+    ;;
+  deploy-cloudflare-production)
+    [[ $# == 2 ]] || stop "deploy-cloudflare-production requires EXPECTED_COMMIT RELEASE_JOB_ID."
+    command_deploy_cloudflare_production "$1" "$2"
+    ;;
+  cloudflare-production-status)
+    [[ $# == 1 ]] || stop "cloudflare-production-status requires RELEASE_JOB_ID."
+    command_cloudflare_production_status "$1"
+    ;;
+  cloudflare-production-failure)
+    [[ $# == 1 ]] || stop "cloudflare-production-failure requires RELEASE_JOB_ID."
+    command_cloudflare_production_failure "$1"
     ;;
   install-publisher)
     [[ $# == 1 ]] || stop "install-publisher requires EXPECTED_COMMIT."

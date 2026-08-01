@@ -2,6 +2,7 @@
 
 import re
 import shlex
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -32,6 +33,14 @@ class AdminHelperTests(unittest.TestCase):
                 "/usr/local/sbin/fanaticosos-blog-admin *"
             ],
         )
+
+    def test_helper_and_deployment_scripts_parse_as_bash(self):
+        for path in (
+            HELPER,
+            ROOT / "scripts" / "deployment" / "deploy_cloudflare_preview.sh",
+            ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh",
+        ):
+            subprocess.run(["bash", "-n", str(path)], check=True)
 
     def test_helper_has_no_shell_or_arbitrary_command_subcommand(self):
         case_block = self.helper.split('case "$command" in', 1)[1]
@@ -85,6 +94,9 @@ class AdminHelperTests(unittest.TestCase):
                 "deploy-cloudflare-preview",
                 "cloudflare-preview-status",
                 "cloudflare-preview-failure",
+                "deploy-cloudflare-production",
+                "cloudflare-production-status",
+                "cloudflare-production-failure",
                 "install-publisher",
                 "publisher-status",
                 "latest-private-release",
@@ -197,6 +209,19 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("private diagnostics were preserved", script)
         self.assertIn('chmod 0600 "$log_file"', script)
         self.assertNotIn('--branch "$production_branch"', script)
+        self.assertNotIn("eval ", script)
+
+    def test_cloudflare_production_deployment_is_fixed_validated_and_recoverable(self):
+        script = (ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh").read_text(encoding="utf-8")
+        self.assertIn('readonly project_name="fanaticosos-web" production_branch="main"', script)
+        self.assertIn('--branch "$production_branch"', script)
+        self.assertIn('manifest.get("deployment") != "disabled"', script)
+        self.assertIn('deployments?env=production&per_page=1', script)
+        self.assertIn('"rollbackDeploymentId": rollback_id', script)
+        self.assertIn('"productionChanged": True', script)
+        self.assertIn('https://fanaticosos.com', script)
+        self.assertIn('https://www.fanaticosos.com', script)
+        self.assertIn('sha256sum "$temporary_body"', script)
         self.assertNotIn("eval ", script)
 
         runtime = self.helper.split(
