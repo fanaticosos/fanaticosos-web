@@ -113,6 +113,8 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .english-result { margin-top: 18px; padding-top: 16px; border-top: 1px solid #32495f; }
 .english-result h3 { margin: 0 0 14px; color: #a9e7bd; }
 .english-result audio { display: block; width: 100%; margin-top: 7px; }
+.audiogram-preview { aspect-ratio: 16 / 9; background: #07142f; border: 1px solid #32495f; border-radius: 10px; display: block; height: auto; margin: 14px auto; max-width: 720px; width: 100%; }
+.audiogram-preview[hidden] { display: none; }
 .english-result > button { margin: 14px 0 18px; padding: 9px 12px; border: 1px solid #ff6a13; border-radius: 7px; color: #fff; background: transparent; cursor: pointer; }
 .english-result > button:disabled { border-color: #32495f; color: #8799a8; cursor: wait; }
 @media (max-width: 1050px) { .markdown-workspace { grid-template-columns: 1fr; } .markdown-preview { min-height: 320px; } }

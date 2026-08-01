@@ -26,7 +26,7 @@ const boldFont = (process.env.AUDIOGRAM_BOLD_FONT ?? "/usr/share/fonts/truetype/
 const filter = [
   "color=c=0x07142F:s=1920x1080:r=30[bg]",
   "[1:v]scale=120:120:force_original_aspect_ratio=decrease[logo]",
-  "[0:a]showwaves=s=1760x110:mode=cline:scale=sqrt:draw=full:colors=0xFF7A1A:r=30[wave]",
+  "[0:a]showwaves=s=220x110:mode=cline:scale=sqrt:draw=full:colors=0xFF7A1A:r=30,scale=1760:110:flags=neighbor,drawgrid=w=12:h=110:t=4:c=0x07142F@1[wave]",
   "[bg]drawbox=x=0:y=0:w=1920:h=6:color=0xFF7A1A:t=fill[top]",
   "[top][logo]overlay=80:54[branded]",
   `[branded]drawtext=fontfile='${boldFont}':text='FANATICOSOS BLOG':x=240:y=78:fontsize=30:fontcolor=0xFF7A1A:shadowcolor=black@0.35:shadowx=2:shadowy=2,drawtext=fontfile='${boldFont}':text='#DaBears · #BearDown':x=240:y=120:fontsize=20:fontcolor=0xAEB8CC,drawbox=x=80:y=300:w=1760:h=390:color=0x263150@0.78:t=fill,drawtext=fontfile='${boldFont}':textfile='${escapedTitleFile}':x=140:y=390:fontsize=70:line_spacing=24:fontcolor=white:shadowcolor=black@0.45:shadowx=3:shadowy=3,drawtext=fontfile='${boldFont}':text='fanaticosos.com':x=80:y=865:fontsize=28:fontcolor=white[layout]`,

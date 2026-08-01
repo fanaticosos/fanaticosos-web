@@ -147,6 +147,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /id="regenerate-spanish-audio"/);
   assert.match(html, /id="regenerate-english-audio"/);
   assert.match(html, /id="audiogram-result"/);
+  assert.match(html, /class="audiogram-preview"/);
   assert.match(html, /id="download-audiogram"/);
   assert.match(html, /id="regenerate-audiogram"/);
   assert.match(html, /Copiar título y descripción para YouTube/);
