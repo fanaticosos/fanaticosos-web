@@ -22,5 +22,6 @@ blockquote { border-left: 4px solid #ff6a13; margin-left: 0; padding-left: 22px;
 footer { margin-top: 40px; padding-top: 28px; border-top: 1px solid #29445a; }
 .social-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .social-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border: 1px solid #365269; border-radius: 999px; color: #c7d3dd; text-decoration: none; }
+.social-link svg { width: 16px; height: 16px; fill: currentColor; flex: 0 0 auto; }
 .social-link:hover { border-color: #ff7b2f; color: #fff; background: #ff6a131a; }
 @media (max-width: 600px) { header { align-items: flex-start; } header > span { display: none; } .language-control { align-items: flex-end; flex-direction: column; gap: 4px; } }
