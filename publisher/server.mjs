@@ -212,7 +212,7 @@ export function createPublisherServer({
           "Content-Type": contentType,
           "Content-Length": body.length,
           "Cache-Control": "no-store",
-          "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://music.fanaticosos.com https://musica.fanaticosos.com; media-src https://music.fanaticosos.com https://musica.fanaticosos.com; style-src 'self'; script-src 'self'",
+          "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://music.fanaticosos.com https://musica.fanaticosos.com; media-src 'self' https://music.fanaticosos.com https://musica.fanaticosos.com; style-src 'self'; script-src 'self'",
           "X-Content-Type-Options": "nosniff",
           "X-Frame-Options": "DENY",
         });

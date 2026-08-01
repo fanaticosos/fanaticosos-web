@@ -121,6 +121,7 @@ test("editor shell is served with private security headers", async (context) => 
   const response = await fetch(base);
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
+  assert.match(response.headers.get("content-security-policy"), /media-src 'self'/);
   assert.equal(response.headers.get("x-frame-options"), "DENY");
   const html = await response.text();
   assert.match(html, /Publicador privado/);
