@@ -78,26 +78,57 @@ set +a
 [[ "$CLOUDFLARE_PAGES_PROJECT" == "$project_name" ]] || stop "Cloudflare project mismatch."
 
 readonly api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$project_name"
-readonly before_json="$(curl --fail --silent --show-error --max-time 30 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments?env=production&per_page=1")"
-mapfile -t rollback < <(python3 -c 'import json,sys; r=json.load(sys.stdin)["result"][0]; print(r["id"]); print(r["url"])' <<<"$before_json")
-[[ ${#rollback[@]} == 2 ]] || stop "Could not record the current production rollback target."
+readonly before_json="$(curl --fail --silent --show-error --max-time 30 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments?env=production&per_page=10")"
+mapfile -t deployment_state < <(python3 - "$commit" "$before_json" <<'PY'
+import json, sys
+expected = sys.argv[1]
+results = json.loads(sys.argv[2]).get("result", [])
+if not results:
+    raise SystemExit("no production deployments returned")
+current = results[0]
+current_commit = ((current.get("source") or {}).get("config") or {}).get("commit_hash", "")
+rollback = next((item for item in results if (((item.get("source") or {}).get("config") or {}).get("commit_hash", "") != expected)), None)
+if rollback is None:
+    raise SystemExit("no distinct rollback deployment returned")
+print(current.get("id", ""))
+print(current.get("url", ""))
+print(current_commit)
+print(rollback.get("id", ""))
+print(rollback.get("url", ""))
+PY
+)
+[[ ${#deployment_state[@]} == 5 ]] || stop "Could not resolve current and rollback production deployments."
 
 umask 0077
-readonly temporary_log="$job_root/.cloudflare-production.log.$$"
+shopt -s nullglob
+temporary_logs=("$job_root"/.cloudflare-production.log.*)
+shopt -u nullglob
+deployment_url=""
+if [[ ${#temporary_logs[@]} == 1 && "${deployment_state[2]}" == "$commit" ]]; then
+  temporary_log="${temporary_logs[0]}"
+  deployment_url="${deployment_state[1]}"
+  echo "Resuming validation of the already-uploaded production deployment."
+elif [[ ${#temporary_logs[@]} == 0 ]]; then
+  temporary_log="$job_root/.cloudflare-production.log.$$"
+else
+  stop "Production recovery state is ambiguous; refusing another upload."
+fi
 cd "$release_root"
-if ! timeout 5m runuser -u "$service_account" -- env \
-  HOME="$data_root" PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
-  CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" \
-  "$wrangler" pages deploy "$dist_root" --project-name "$project_name" \
-    --branch "$production_branch" --commit-hash "$commit" \
-    --commit-message "Validated Papabear production $job_id" --commit-dirty=false >"$temporary_log" 2>&1; then
-  unset CLOUDFLARE_API_TOKEN
-  mv "$temporary_log" "$log_file"; chown "$service_account:$service_account" "$log_file"; chmod 0600 "$log_file"
-  stop "Wrangler production upload failed; private diagnostics were preserved."
+if [[ -z "$deployment_url" ]]; then
+  if ! timeout 5m runuser -u "$service_account" -- env \
+    HOME="$data_root" PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
+    CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" \
+    "$wrangler" pages deploy "$dist_root" --project-name "$project_name" \
+      --branch "$production_branch" --commit-hash "$commit" \
+      --commit-message "Validated Papabear production $job_id" --commit-dirty=false >"$temporary_log" 2>&1; then
+    unset CLOUDFLARE_API_TOKEN
+    mv "$temporary_log" "$log_file"; chown "$service_account:$service_account" "$log_file"; chmod 0600 "$log_file"
+    stop "Wrangler production upload failed; private diagnostics were preserved."
+  fi
+  deployment_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"
 fi
 unset CLOUDFLARE_API_TOKEN
 
-readonly deployment_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"
 [[ "$deployment_url" =~ ^https://[a-zA-Z0-9.-]+\.pages\.dev$ ]] || stop "Wrangler did not return a valid deployment URL."
 readonly domains=("https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
 for domain in "${domains[@]}"; do
@@ -118,7 +149,7 @@ for domain in "${domains[@]}"; do
 done
 
 mv "$temporary_log" "$log_file"; chown "$service_account:$service_account" "$log_file"; chmod 0600 "$log_file"
-python3 - "$receipt" "$job_id" "$deployment_url" "$commit" "${rollback[0]}" "${rollback[1]}" <<'PY'
+python3 - "$receipt" "$job_id" "$deployment_url" "$commit" "${deployment_state[3]}" "${deployment_state[4]}" <<'PY'
 import json, os, sys, tempfile
 from datetime import datetime, timezone
 path, job_id, url, commit, rollback_id, rollback_url = sys.argv[1:]
@@ -137,4 +168,4 @@ finally:
 PY
 echo "PASS: Validated Cloudflare production deployment completed."
 echo "Deployment URL: $deployment_url"
-echo "Rollback deployment: ${rollback[0]}"
+echo "Rollback deployment: ${deployment_state[3]}"
