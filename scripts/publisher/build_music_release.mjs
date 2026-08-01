@@ -22,7 +22,13 @@ async function main() {
   if (!current) throw new Error("a validated selected release is required");
   const temporary = `${output}.building`;
   await lstat(output).then(() => { throw new Error("music release output already exists"); }, (e) => { if (e.code !== "ENOENT") throw e; });
-  await cp(join(releasesRoot, "current"), temporary, { recursive: true, dereference: true, filter: (source) => !["node_modules", ".astro", "dist"].includes(basename(source)) });
+  await cp(repository, temporary, { recursive: true, filter: (source) => ![".git", "node_modules", ".astro", "dist"].includes(basename(source)) });
+  const selected = join(releasesRoot, "current");
+  for (const relative of ["src/content/articles", "public/audio", "public/uploads"]) {
+    const source = join(selected, relative);
+    const exists = await lstat(source).then(() => true).catch((error) => { if (error.code === "ENOENT") return false; throw error; });
+    if (exists) await cp(source, join(temporary, relative), { recursive: true, force: true });
+  }
   const modules = join(temporary, "node_modules");
   await mkdir(modules, { mode: 0o700 });
   for (const entry of await readdir(join(repository, "node_modules"))) {
