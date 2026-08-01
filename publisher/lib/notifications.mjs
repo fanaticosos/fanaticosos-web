@@ -20,6 +20,14 @@ export async function createNotification(root, value, now = new Date()) {
     throw new Error("notification message is required");
   }
   await mkdir(root, { recursive: true, mode: 0o700 });
+  if (value.replacePending) {
+    const pending = (await listNotifications(root)).filter((item) => (
+      !item.acknowledgedAt
+      && item.event === value.event
+      && item.articleId === (value.articleId ?? null)
+    ));
+    await Promise.all(pending.map((item) => acknowledgeNotification(root, item.id, now)));
+  }
   const notification = {
     schemaVersion: 1,
     id: randomUUID(),

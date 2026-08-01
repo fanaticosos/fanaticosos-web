@@ -158,3 +158,23 @@ test("Spanish regeneration preserves completed English audio", async () => {
   assert.match(state.jobs.es.jobId, /^tts-es-/);
   assert.equal(state.regeneratedLocale, "es");
 });
+
+test("English regeneration preserves completed Spanish audio", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-tts-en-only-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
+  await mkdir(statesRoot, { recursive: true });
+  const requests = ttsRequestsForDraft(draft, translation);
+  await writeFile(statePath, JSON.stringify({
+    schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, status: "completed",
+    policyRevision: "a".repeat(64), sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
+    jobs: { es: { jobId: "old-es", status: "completed", result: { file: "old-es.mp3" } }, en: { jobId: "old-en", status: "completed", result: { file: "old-en.mp3" } } },
+  }));
+  const state = await queueTtsLocale({ draft, translation, locale: "en", queueRoot, statesRoot, policyRevision });
+  assert.equal(state.status, "queued");
+  assert.equal(state.jobs.es.jobId, "old-es");
+  assert.equal(state.jobs.es.status, "completed");
+  assert.match(state.jobs.en.jobId, /^tts-en-/);
+  assert.equal(state.regeneratedLocale, "en");
+});

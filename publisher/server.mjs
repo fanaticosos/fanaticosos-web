@@ -121,13 +121,15 @@ export function createPublisherServer({
     });
   }
   async function audioCompleted(state) {
+    const regeneratedLanguage = state.regeneratedLocale === "en" ? "inglés" : "español";
     await createNotification(notificationsRoot, {
-      level: "success", event: "audio-completed", articleId: state.articleId,
+      level: "success", event: state.workflow === "audio-regeneration" ? `audio-${state.regeneratedLocale}-regeneration` : "audio-completed", articleId: state.articleId,
       message: state.workflow === "preview"
         ? "Los audios están listos; la vista previa se valida automáticamente."
-        : state.workflow === "spanish-regeneration"
-          ? "El audio en español regenerado está listo para escuchar."
+        : state.workflow === "audio-regeneration"
+          ? `El audio en ${regeneratedLanguage} regenerado está listo en el reproductor de este borrador.`
           : "Los audios en español e inglés están listos para escuchar.",
+      replacePending: state.workflow === "audio-regeneration",
     });
     if (state.workflow !== "preview") return;
     const draft = await readDraft(draftsRoot, state.articleId);
@@ -139,9 +141,11 @@ export function createPublisherServer({
     return release;
   }
   async function audioFailed(state) {
+    const regeneratedLanguage = state.regeneratedLocale === "en" ? "inglés" : "español";
     await createNotification(notificationsRoot, {
-      level: "error", event: "audio-failed", articleId: state.articleId,
-      message: `${state.workflow === "spanish-regeneration" ? "La regeneración del audio en español" : "La generación de audio"} se detuvo: ${state.error}`,
+      level: "error", event: state.workflow === "audio-regeneration" ? `audio-${state.regeneratedLocale}-regeneration` : "audio-failed", articleId: state.articleId,
+      message: `${state.workflow === "audio-regeneration" ? `La regeneración del audio en ${regeneratedLanguage}` : "La generación de audio"} se detuvo: ${state.error}`,
+      replacePending: state.workflow === "audio-regeneration",
     });
   }
   async function releaseCompleted(state) {
@@ -279,13 +283,19 @@ export function createPublisherServer({
         return json(response, 200, { translation });
       }
       const audioMatch = AUDIO_PATH.exec(url.pathname);
-      if (audioMatch && request.method === "POST" && audioMatch[2] === "es") {
+      if (audioMatch && request.method === "POST" && ["es", "en"].includes(audioMatch[2])) {
         const value = await requestJson(request);
         const draft = await readDraft(draftsRoot, audioMatch[1]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before regenerating Spanish audio");
         const translation = await readTranslationState(statesRoot, draft.articleId);
-        const audio = await queueTtsLocale({ draft, translation, locale: "es", queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
-        await createNotification(notificationsRoot, { level: "info", event: "spanish-audio-started", articleId: draft.articleId, message: `Regeneración del audio en español iniciada: ${draft.title}` });
+        const locale = audioMatch[2];
+        const language = locale === "en" ? "inglés" : "español";
+        const audio = await queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
+        await createNotification(notificationsRoot, {
+          level: "info", event: `audio-${locale}-regeneration`, articleId: draft.articleId,
+          message: `Regenerando el audio en ${language}: ${draft.title}`,
+          replacePending: true,
+        });
         return json(response, 202, { audio });
       }
       if (audioMatch && request.method === "POST" && !audioMatch[2]) {
