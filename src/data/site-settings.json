@@ -2,6 +2,14 @@
   "version": 1,
   "music": {
     "playlistUrl": "https://musica.fanaticosos.com/share/Z0fkSBCxiJ#/",
-    "weeklySongUrl": "https://musica.fanaticosos.com/share/SfOyZvz9ag"
+    "weeklySongUrl": "https://musica.fanaticosos.com/share/SfOyZvz9ag",
+    "weeklySong": {
+      "title": "Send Me An Angel",
+      "artist": "Real Life",
+      "album": "Heartland",
+      "duration": 232.7,
+      "coverUrl": "https://musica.fanaticosos.com/share/img/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im1mLWR5N2pkY2ttNzczOVBaN1lSZFpyNjRfNmE2M2E1MTUiLCJpc3MiOiJORCJ9.7mVuBltVmQR141B5Z5fg_ZCsL1BwSrvTUHDf8ZddTz0?size=300",
+      "streamUrl": "https://musica.fanaticosos.com/share/s/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE4MTY0NTEzMjksImlkIjoiZHk3amRja203NzM5UFo3WVJkWnI2NCIsImlzcyI6Ik5EIiwic2lkIjoiU2ZPeVp2ejlhZyJ9.JUAjNIHe_EkFMTzvCekLJB4-7-lYDtFmW5kPiu0pjAU"
+    }
   }
 }

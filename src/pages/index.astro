@@ -40,7 +40,11 @@ const structuredData = {
     <PodcastEmbed />
 
     <div class="cards-grid">
-      <MusicCard playlistUrl={siteSettings.music.playlistUrl} weeklySongUrl={siteSettings.music.weeklySongUrl} />
+      <MusicCard
+        playlistUrl={siteSettings.music.playlistUrl}
+        weeklySongUrl={siteSettings.music.weeklySongUrl}
+        weeklySong={siteSettings.music.weeklySong}
+      />
       <LatestArticleCard article={latestArticle} />
     </div>
   </section>

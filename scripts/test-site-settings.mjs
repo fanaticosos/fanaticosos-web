@@ -6,6 +6,14 @@ const validSettings = {
   music: {
     playlistUrl: "https://musica.fanaticosos.com/share/playlist",
     weeklySongUrl: "https://musica.fanaticosos.com/share/song",
+    weeklySong: {
+      title: "Send Me An Angel",
+      artist: "Real Life",
+      album: "Heartland",
+      duration: 232.7,
+      coverUrl: "https://musica.fanaticosos.com/share/img/cover-token",
+      streamUrl: "https://musica.fanaticosos.com/share/s/stream-token",
+    },
   },
 };
 
@@ -21,6 +29,7 @@ const invalidSettings = [
   { ...validSettings, music: { ...validSettings.music, weeklySongUrl: "https://musica.fanaticosos.com/not-shared/song" } },
   { ...validSettings, music: { ...validSettings.music, weeklySongUrl: "https://musica.fanaticosos.com/share/" } },
   { version: 1, music: { playlistUrl: validSettings.music.playlistUrl } },
+  { ...validSettings, music: { ...validSettings.music, weeklySong: { ...validSettings.music.weeklySong, title: "" } } },
 ];
 
 for (const settings of invalidSettings) {
