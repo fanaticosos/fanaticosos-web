@@ -3,6 +3,7 @@ const list = document.querySelector("#draft-list");
 const message = document.querySelector("#message");
 const saveState = document.querySelector("#save-state");
 const pageTitle = document.querySelector("#page-title");
+const articleTitle = document.querySelector("#article-title");
 let current = null;
 let publisherSettings = null;
 const dropZone = document.querySelector("#drop-zone");
@@ -390,6 +391,8 @@ document.querySelector("#new-draft").addEventListener("click", () => {
   setFields(null);
   message.hidden = true;
   refreshList().catch((error) => showError(error.message));
+  articleTitle.scrollIntoView({ behavior: "smooth", block: "center" });
+  articleTitle.focus({ preventScroll: true });
 });
 
 imageFile.addEventListener("change", () => {

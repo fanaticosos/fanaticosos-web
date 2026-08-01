@@ -80,7 +80,16 @@ test("editor shell is served with private security headers", async (context) => 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
   assert.equal(response.headers.get("x-frame-options"), "DENY");
-  assert.match(await response.text(), /Publicador privado/);
+  const html = await response.text();
+  assert.match(html, /Publicador privado/);
+  assert.match(html, /id="article-title"/);
+
+  const app = await (await fetch(`${base}/app.js`)).text();
+  assert.match(app, /articleTitle\.scrollIntoView/);
+  assert.match(app, /articleTitle\.focus/);
+
+  const styles = await (await fetch(`${base}/styles.css`)).text();
+  assert.match(styles, /#notification-list[^}]*max-height:[^}]*overflow-y: auto/);
 });
 
 test("draft can be created, listed, reopened, and updated", async (context) => {

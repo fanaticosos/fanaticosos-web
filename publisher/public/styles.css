@@ -20,6 +20,7 @@ h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); }
 .actions { display: flex; align-items: center; gap: 14px; color: #8fa5b8; font-size: 13px; }
 .owner-line { margin: -16px 0 20px; color: #8fa5b8; font-size: 13px; }
 .notice-panel { display: grid; gap: 10px; margin-bottom: 18px; padding: 13px 16px; border: 1px solid #2f526b; border-radius: 9px; background: #10273a; color: #a9cce0; font-size: 13px; }
+#notification-list { max-height: 210px; overflow-y: auto; padding-right: 5px; scrollbar-color: #45627a #10273a; }
 .notification { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 9px; border-top: 1px solid #29445a; }
 .notification.error { color: #ffb3b3; }
 .notification.success { color: #a9e7bd; }
@@ -33,6 +34,7 @@ h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); }
 label { display: grid; gap: 8px; margin-bottom: 18px; color: #a9bbca; font-size: 13px; font-weight: 700; }
 input, textarea { width: 100%; border: 1px solid #2b435b; border-radius: 8px; padding: 12px 13px; color: #f4f8fb; background: #07121d; outline: none; resize: vertical; }
 input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a1322; }
+#article-title { scroll-margin-block: 28px; }
 .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .message { margin-bottom: 18px; padding: 13px 16px; border: 1px solid #c44; border-radius: 8px; background: #451a1a; }
 .drop-zone { place-items: center; padding: 28px; border: 1px dashed #42617d; border-radius: 10px; color: #b9cad7; background: #0a1622; cursor: pointer; }
