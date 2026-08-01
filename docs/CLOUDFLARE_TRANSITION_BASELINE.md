@@ -12,7 +12,7 @@ This document contains no API token, secret, or credential.
 - Project type: Cloudflare Pages with GitHub integration.
 - Repository: `fanaticosos/fanaticosos-web`.
 - Production branch: `main`.
-- Automatic production deployments: enabled.
+- Automatic production deployments: disabled with owner authorization on 2026-07-31.
 - Automatic preview deployments: disabled with owner authorization on 2026-07-31.
 - Current production commit: `13bd722929a16e794cfe73e2f542b29b2bb07ef8`.
 - Current production deployment: `https://1e519caa.fanaticosos-web.pages.dev`.
@@ -73,10 +73,10 @@ Sources:
 3. Store the token outside Git on `papabear` with root-only permissions.
 4. Upload the already validated private release to a non-production Wrangler branch.
 5. Validate both languages, MP3s, metadata, feeds, sitemap, and asset checksums on that preview URL.
-6. After preview acceptance, request owner authorization to disable automatic production builds.
+6. After preview acceptance, request owner authorization to disable automatic production builds. Completed and verified on 2026-07-31.
 7. Require a separate owner authorization before the first Wrangler production deployment.
 
-This order keeps `fanaticosos.com` unchanged throughout preview validation and preserves the recorded rollback deployment.
+This order keeps `fanaticosos.com` unchanged throughout preview validation and preserves the recorded rollback deployment. Git pushes can no longer trigger production or preview builds; validated Wrangler uploads from Papabear are now the only enabled deployment path.
 
 ## Remaining production unknowns
 

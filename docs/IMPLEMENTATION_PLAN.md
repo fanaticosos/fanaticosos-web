@@ -349,6 +349,8 @@ The approved retention job runs daily with no network access. It retains the 10 
 
 ## Phase 8 — Cloudflare deployment transition
 
+Status: in progress. With owner authorization on 2026-07-31, automatic production Git deployments were disabled after automatic preview deployments had already been disabled. The existing production deployment and domains remain unchanged. The first controlled production upload is authorized but blocked until the owner saves the intended public article in the private editor and its bilingual text, audio, preview, and release manifest pass validation.
+
 ### Objective
 
 Transition the existing Pages project from automatic production builds to validated complete-build uploads without changing domains.
