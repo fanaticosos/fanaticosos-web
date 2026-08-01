@@ -1,8 +1,9 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import BlogArticleCard from "../../components/BlogArticleCard.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
-import { articlePath, categoryPath, isBuildEligible } from "../../lib/articles";
+import { isBuildEligible } from "../../lib/articles";
 import "../../styles/article.css";
 
 const articles = (await getCollection("articles"))
@@ -30,12 +31,8 @@ const articles = (await getCollection("articles"))
     {
       articles.length > 0 ? (
         <div class="article-list">
-          {articles.map((article) => (
-            <article>
-              <p class="article-category"><a href={categoryPath("es", article.data.category)}>{article.data.category}</a></p>
-              <h2><a href={articlePath(article)}>{article.data.title}</a></h2>
-              <p>{article.data.description}</p>
-            </article>
+          {articles.map((article, index) => (
+            <BlogArticleCard article={article} locale="es" featured={index === 0} />
           ))}
         </div>
       ) : (

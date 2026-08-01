@@ -1,0 +1,38 @@
+---
+import type { Article, ArticleLocale } from "../lib/articles";
+import { articlePath, categoryPath } from "../lib/articles";
+
+interface Props {
+  article: Article;
+  locale: ArticleLocale;
+  featured?: boolean;
+}
+
+const { article, locale, featured = false } = Astro.props;
+const publishedLabel = new Intl.DateTimeFormat(locale === "es" ? "es-MX" : "en-US", {
+  dateStyle: "long",
+  timeZone: "America/Chicago",
+}).format(article.data.publishedAt);
+const readLabel = locale === "es" ? "Leer artículo" : "Read article";
+const newestLabel = locale === "es" ? "Último artículo" : "Latest article";
+---
+
+<article class:list={["blog-feed-card", { featured, "has-image": article.data.featuredImage }]}>
+  {
+    article.data.featuredImage && (
+      <a class="blog-feed-image" href={articlePath(article)} aria-label={`${readLabel}: ${article.data.title}`}>
+        <img src={article.data.featuredImage.src} alt={article.data.featuredImage.alt} loading={featured ? "eager" : "lazy"} />
+      </a>
+    )
+  }
+  <div class="blog-feed-copy">
+    <div class="blog-feed-meta">
+      {featured && <span class="newest-label">{newestLabel}</span>}
+      <a href={categoryPath(locale, article.data.category)}>{article.data.category}</a>
+      <time datetime={article.data.publishedAt.toISOString()}>{publishedLabel}</time>
+    </div>
+    <h2><a href={articlePath(article)}>{article.data.title}</a></h2>
+    <p>{article.data.description}</p>
+    <a class="blog-feed-cta" href={articlePath(article)}>{readLabel} →</a>
+  </div>
+</article>
