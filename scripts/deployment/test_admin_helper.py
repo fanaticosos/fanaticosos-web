@@ -213,7 +213,8 @@ class AdminHelperTests(unittest.TestCase):
 
     def test_cloudflare_production_deployment_is_fixed_validated_and_recoverable(self):
         script = (ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh").read_text(encoding="utf-8")
-        self.assertIn('readonly project_name="fanaticosos-web" production_branch="main"', script)
+        self.assertIn('readonly project_name="fanaticosos-web"', script)
+        self.assertIn('readonly production_branch="main"', script)
         self.assertIn('--branch "$production_branch"', script)
         self.assertIn('manifest.get("deployment") != "disabled"', script)
         self.assertIn('deployments?env=production&per_page=1', script)
@@ -223,6 +224,9 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('https://www.fanaticosos.com', script)
         self.assertIn('sha256sum "$temporary_body"', script)
         self.assertNotIn("eval ", script)
+
+        self.assertNotIn('readonly release_root="$job_root/release" dist_root=', script)
+        self.assertNotIn('readonly repository="$1" data_root=', script)
 
         runtime = self.helper.split(
             "command_install_pages_deployment_runtime()", 1
