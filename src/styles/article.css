@@ -29,6 +29,9 @@
   text-decoration: none;
 }
 
+.language-control { align-items: flex-end; display: flex; flex-direction: column; gap: 4px; }
+.language-control > span { color: var(--gray); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+
 .language-switch:hover,
 .language-switch:focus-visible {
   background: var(--orange);
@@ -112,6 +115,10 @@
 .article-body {
   font-size: 18px;
 }
+
+.article-community { margin: 0 auto 64px; max-width: 800px; padding: 28px 24px; text-align: center; }
+.article-community h2 { margin: 0 0 6px; }
+.article-community p { color: var(--gray); margin: 0 0 18px; }
 
 .article-body p + p {
   margin-top: 1.4em;

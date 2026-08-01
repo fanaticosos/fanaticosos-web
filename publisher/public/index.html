@@ -29,10 +29,10 @@
           </div>
         </div>
         <div class="owner-line"><span id="owner-name">Antonio Contreras</span> · <span id="owner-social">@imcontreras</span> · <span id="owner-timezone">America/Chicago</span></div>
-        <section class="notice-panel" aria-live="polite">
-          <strong>Notificaciones</strong>
+        <details class="activity-panel">
+          <summary><span>Actividad</span><span id="notification-count">Sin avisos</span></summary>
           <div id="notification-list">No hay notificaciones pendientes.</div>
-        </section>
+        </details>
         <div id="message" class="message" role="alert" hidden></div>
         <form id="article-form">
           <section class="panel">
@@ -46,13 +46,6 @@
             <label>Etiquetas<input name="tags" placeholder="#BearDown, #fanaticosos"></label>
             <label>Texto del artículo<textarea name="body" rows="22" maxlength="100000" required></textarea></label>
           </section>
-          <section class="panel promotion">
-            <h2>Promoción automática</h2>
-            <p id="promotion-heading">¡Gracias por acompañarnos!</p>
-            <strong id="promotion-label">Nuestras plataformas:</strong>
-            <div id="promotion-links"></div>
-            <small>Este bloque se agregará al publicar; no necesitas escribirlo en cada artículo.</small>
-          </section>
           <section class="panel">
             <h2>Imagen destacada <span>opcional</span></h2>
             <label id="drop-zone" class="drop-zone">
@@ -61,20 +54,21 @@
               <input id="image-file" type="file" accept="image/jpeg,image/png,image/webp">
             </label>
             <img id="image-preview" class="image-preview" alt="" hidden>
-            <label>Ruta o nombre del archivo<input name="imagePath" maxlength="500"></label>
-            <div class="two-columns">
-              <label>Descripción accesible<input name="imageAlt" maxlength="500"></label>
-              <label>Crédito de la imagen<input name="imageCredit" maxlength="500"></label>
-            </div>
-            <label>Pie de foto<input name="imageCaption" maxlength="500"></label>
+            <input name="imagePath" type="hidden">
+            <label>Descripción accesible <span>opcional</span><input name="imageAlt" maxlength="500" placeholder="Si la dejas vacía, usaremos el título del artículo"></label>
+            <label>Crédito o pie de foto <span>opcional</span><input name="imageCredit" maxlength="500" placeholder="Ejemplo: Bailey Black/Chicago Bears"></label>
           </section>
           <section class="panel future">
-            <h2>Traducción, audio y publicación</h2>
+            <h2>Crear versiones y vista previa</h2>
+            <p class="workflow-explanation">Un solo clic genera la traducción, los dos audios y una vista previa privada. No publica el artículo.</p>
+            <ol class="workflow-steps" aria-label="Pasos automáticos">
+              <li>Traducción</li><li>Audios</li><li>Vista previa</li>
+            </ol>
             <p id="workflow-state">Guarda un borrador válido para comenzar.</p>
             <div class="future-actions">
-              <button id="generate-english" disabled type="button">Preparar todo</button>
+              <button id="generate-english" class="workflow-primary" disabled type="button">Crear traducción, audios y vista previa</button>
               <button id="generate-audio" disabled hidden type="button">Generar audios</button>
-              <button id="open-preview" disabled type="button">Vista previa</button>
+              <button id="open-preview" disabled type="button">Revisar vista previa</button>
               <button id="prepare-release" disabled hidden type="button">Preparar publicación</button>
               <button disabled type="button">Publicar</button>
             </div>

@@ -24,11 +24,18 @@ export function previewPage({ draft, translation, audio, locale, settings }) {
   const alternate = english ? "es" : "en";
   const promoHeading = english ? settings.promotion.headingEn : settings.promotion.heading;
   const promoLabel = english ? settings.promotion.labelEn : settings.promotion.label;
-  const platforms = settings.promotion.platforms.map((item) => `<a href="${escapeHtml(item.url)}" rel="noopener noreferrer">${escapeHtml(item.name)}</a>`).join(" · ");
+  const platforms = [
+    ["YouTube", "https://www.youtube.com/@fanaticosos", "▶"],
+    ["Twitch", "https://www.twitch.tv/fanaticosos", "▣"],
+    ["Twitter", "https://x.com/fanaticososcom", "𝕏"],
+    ["Facebook", "https://www.facebook.com/fanaticosos", "f"],
+    ["Discord", "https://discord.gg/dRKEhxvsjH", "◉"],
+  ].map(([name, url, icon]) => `<a class="social-link" href="${url}" rel="noopener noreferrer"><span aria-hidden="true">${icon}</span>${name}</a>`).join("");
   const tags = draft.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join(" ");
-  const image = draft.featuredImage.path ? `<figure><img src="${escapeHtml(draft.featuredImage.path)}" alt="${escapeHtml(draft.featuredImage.alt)}"><figcaption>${escapeHtml(draft.featuredImage.caption)} · ${escapeHtml(draft.featuredImage.credit)}</figcaption></figure>` : "";
+  const imageCredit = draft.featuredImage.caption || draft.featuredImage.credit;
+  const image = draft.featuredImage.path ? `<figure><img src="${escapeHtml(draft.featuredImage.path)}" alt="${escapeHtml(draft.featuredImage.alt || draft.title)}">${imageCredit ? `<figcaption>${escapeHtml(imageCredit)}</figcaption>` : ""}</figure>` : "";
   return `<!doctype html>
 <html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(content.title)} · Vista previa</title><link rel="stylesheet" href="/preview.css"></head>
-<body><header><a class="brand" href="/">FANATICOSOS</a><span>Vista previa privada</span><a href="/preview/${draft.articleId}/${alternate}">${english ? "Español" : "English"}</a></header>
-<main><article><p class="eyebrow">${escapeHtml(draft.category)} · ${draft.season}</p><h1>${escapeHtml(content.title)}</h1><p class="description">${escapeHtml(content.description)}</p><p class="byline">${escapeHtml(settings.author.name)} · ${escapeHtml(settings.author.socialHandle)}</p>${image}<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/${locale}"></audio><div class="story">${renderMarkdown(content.body)}</div><div class="tags">${tags}</div><footer><strong>${escapeHtml(promoHeading)}</strong><p>${escapeHtml(promoLabel)}</p><p>${platforms}</p></footer></article></main></body></html>`;
+<body><header><a class="brand" href="/">FANATICOSOS</a><span>Vista previa privada</span><div class="language-control"><small>${english ? "Language" : "Idioma"}</small><a href="/preview/${draft.articleId}/${alternate}">${english ? "← Versión en español" : "English version →"}</a></div></header>
+<main><article><p class="eyebrow">${escapeHtml(draft.category)} · ${draft.season}</p><h1>${escapeHtml(content.title)}</h1><p class="description">${escapeHtml(content.description)}</p><p class="byline">${escapeHtml(settings.author.name)} · ${escapeHtml(settings.author.socialHandle)}</p>${image}<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/${locale}"></audio><div class="story">${renderMarkdown(content.body)}</div><div class="tags">${tags}</div><footer><strong>${escapeHtml(promoHeading)}</strong><p>${escapeHtml(promoLabel)}</p><nav class="social-bar" aria-label="${english ? "Social media" : "Redes sociales"}">${platforms}</nav></footer></article></main></body></html>`;
 }

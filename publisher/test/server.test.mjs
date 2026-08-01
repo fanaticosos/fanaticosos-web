@@ -83,7 +83,10 @@ test("editor shell is served with private security headers", async (context) => 
   const html = await response.text();
   assert.match(html, /Publicador privado/);
   assert.match(html, /id="article-title"/);
-  assert.match(html, />Preparar todo</);
+  assert.match(html, />Crear traducción, audios y vista previa</);
+  assert.match(html, /<details class="activity-panel">/);
+  assert.doesNotMatch(html, /name="imageCaption"/);
+  assert.match(html, /Crédito o pie de foto/);
   assert.match(html, /id="generate-audio" disabled hidden/);
   assert.match(html, /id="prepare-release" disabled hidden/);
 

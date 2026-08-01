@@ -40,9 +40,6 @@ export function validateOwnerFields(value) {
   const imagePath = optionalText(featuredImage.path, "featuredImage.path", 500);
   const imageAlt = optionalText(featuredImage.alt, "featuredImage.alt", 500);
   const imageCredit = optionalText(featuredImage.credit, "featuredImage.credit", 500);
-  if (imagePath && (!imageAlt || !imageCredit)) {
-    throw new Error("featured images require alternative text and credit");
-  }
   if (!Number.isInteger(value.season) || value.season < 2000 || value.season > 2100) {
     throw new Error("season is invalid");
   }
@@ -57,7 +54,7 @@ export function validateOwnerFields(value) {
     featuredImage: {
       path: imagePath,
       alt: imageAlt,
-      caption: optionalText(featuredImage.caption, "featuredImage.caption", 500),
+      caption: "",
       credit: imageCredit,
     },
   };

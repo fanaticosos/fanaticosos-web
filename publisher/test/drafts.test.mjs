@@ -17,11 +17,15 @@ const valid = {
   featuredImage: {},
 };
 
-test("owner fields reject incomplete image attribution", () => {
-  assert.throws(
-    () => validateOwnerFields({ ...valid, featuredImage: { path: "photo.jpg" } }),
-    /alternative text and credit/,
-  );
+test("image accessibility and attribution fields are optional for the owner", () => {
+  const fields = validateOwnerFields({ ...valid, featuredImage: { path: "photo.jpg" } });
+  assert.deepEqual(fields.featuredImage, { path: "photo.jpg", alt: "", caption: "", credit: "" });
+  const legacy = validateOwnerFields({
+    ...valid,
+    featuredImage: { path: "photo.jpg", alt: "Practice", caption: "Old caption", credit: "Photographer" },
+  });
+  assert.equal(legacy.featuredImage.caption, "");
+  assert.equal(legacy.featuredImage.credit, "Photographer");
 });
 
 test("draft survives a complete save and reload", async () => {

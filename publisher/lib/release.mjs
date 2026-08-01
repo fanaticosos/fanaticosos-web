@@ -5,14 +5,6 @@ export function slugify(value) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function promotion(settings, locale) {
-  const english = locale === "en";
-  const heading = english ? settings.promotion.headingEn : settings.promotion.heading;
-  const label = english ? settings.promotion.labelEn : settings.promotion.label;
-  const links = settings.promotion.platforms.map((item) => `[${item.name}](${item.url})`).join(" · ");
-  return `\n\n---\n\n**${heading}**\n\n${label}\n\n${links}\n`;
-}
-
 function frontmatter(data) {
   return `---\n${yaml.dump(data, { lineWidth: -1, noRefs: true, sortKeys: false }).trimEnd()}\n---\n`;
 }
@@ -33,9 +25,8 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
     tags: draft.tags,
     sourceRevision: translation.sourceRevision,
     ...(imagePath ? { featuredImage: {
-      src: imagePath, alt: draft.featuredImage.alt,
-      ...(draft.featuredImage.caption ? { caption: draft.featuredImage.caption } : {}),
-      ...(draft.featuredImage.credit ? { credit: draft.featuredImage.credit } : {}),
+      src: imagePath, alt: draft.featuredImage.alt || draft.title,
+      ...((draft.featuredImage.caption || draft.featuredImage.credit) ? { credit: draft.featuredImage.caption || draft.featuredImage.credit } : {}),
     } } : {}),
   };
   const esAudio = audio.jobs.es.result;
@@ -60,8 +51,8 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
   };
   return {
     files: {
-      [`src/content/articles/es/${draft.articleId}.md`]: `${frontmatter(es)}\n${draft.body.trim()}${promotion(settings, "es")}`,
-      [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${translation.result.body.trim()}${promotion(settings, "en")}`,
+      [`src/content/articles/es/${draft.articleId}.md`]: `${frontmatter(es)}\n${draft.body.trim()}\n`,
+      [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${translation.result.body.trim()}\n`,
     },
     assets: {
       esAudio: { sourceJobId: audio.jobs.es.jobId, file: esAudio.file, publicPath: `public/audio/${esAudio.file}` },

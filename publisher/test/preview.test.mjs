@@ -22,8 +22,11 @@ test("private preview switches the complete article and escapes owner text", () 
   assert.match(spanish, /Los Bears &lt;ganan&gt;/);
   assert.doesNotMatch(spanish, /<script>/);
   assert.match(spanish, /¡Gracias por acompañarnos!/);
+  assert.match(spanish, /class="social-bar"/);
+  assert.match(spanish, /English version →/);
   assert.match(english, /lang="en"/);
   assert.match(english, /The Bears win/);
   assert.match(english, /Thank you for joining us!/);
+  assert.match(english, /← Versión en español/);
   assert.match(english, /audio\/en/);
 });

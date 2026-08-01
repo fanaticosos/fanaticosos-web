@@ -3,6 +3,7 @@ import type { Article } from "../lib/articles";
 import { articlePath, categoryPath, indexPath } from "../lib/articles";
 import BaseLayout from "./BaseLayout.astro";
 import SiteFooter from "../components/SiteFooter.astro";
+import SocialLinks from "../components/SocialLinks.astro";
 import "../styles/article.css";
 
 interface Props {
@@ -51,9 +52,12 @@ const structuredData = {
     <a class="brand-link" href={indexPath(locale)} aria-label={locale === "es" ? "Volver al blog" : "Back to the blog"}>
       <img src="/logo.png" alt="FanaticOSOS" />
     </a>
-    <a class="language-switch" href={alternatePath} lang={alternate.data.locale} hreflang={alternate.data.locale}>
-      {locale === "es" ? "Read in English" : "Leer en español"}
-    </a>
+    <div class="language-control">
+      <span>{locale === "es" ? "Idioma" : "Language"}</span>
+      <a class="language-switch" href={alternatePath} lang={alternate.data.locale} hreflang={alternate.data.locale}>
+        {locale === "es" ? "English version →" : "← Versión en español"}
+      </a>
+    </div>
   </header>
 
   <main class="article-shell">
@@ -78,18 +82,19 @@ const structuredData = {
         article.data.featuredImage && (
           <figure>
             <img src={article.data.featuredImage.src} alt={article.data.featuredImage.alt} />
-            {(article.data.featuredImage.caption || article.data.featuredImage.credit) && (
-              <figcaption>
-                {article.data.featuredImage.caption}
-                {article.data.featuredImage.credit && ` — ${article.data.featuredImage.credit}`}
-              </figcaption>
-            )}
+            {article.data.featuredImage.credit && <figcaption>{article.data.featuredImage.credit}</figcaption>}
           </figure>
         )
       }
       <div class="article-body"><slot /></div>
     </article>
   </main>
+
+  <section class="article-community" aria-labelledby="community-title">
+    <h2 id="community-title">{locale === "es" ? "¡Gracias por acompañarnos!" : "Thank you for joining us!"}</h2>
+    <p>{locale === "es" ? "Sigue a Fanaticosos" : "Follow Fanaticosos"}</p>
+    <SocialLinks />
+  </section>
 
   <SiteFooter locale={locale} />
 </BaseLayout>

@@ -104,47 +104,6 @@
   transform: translate(-50%, -50%);
 }
 
-.social-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: center;
-  margin-top: 8px;
-  padding: 0 24px;
-  position: relative;
-  z-index: 1;
-}
-
-.social-link {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 40px;
-  color: var(--gray-light);
-  display: flex;
-  font-size: 13px;
-  font-weight: 500;
-  gap: 8px;
-  letter-spacing: 0.02em;
-  padding: 10px 18px;
-  text-decoration: none;
-  transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.2s;
-}
-
-.social-link:hover {
-  background: rgba(240, 120, 32, 0.12);
-  border-color: var(--orange);
-  color: var(--white);
-  transform: translateY(-2px);
-}
-
-.social-link svg {
-  fill: currentColor;
-  flex-shrink: 0;
-  height: 16px;
-  width: 16px;
-}
-
 .content-section {
   margin: 48px auto 0;
   max-width: 860px;

@@ -34,7 +34,7 @@ function fields() {
     featuredImage: {
       path: data.get("imagePath"),
       alt: data.get("imageAlt"),
-      caption: data.get("imageCaption"),
+      caption: "",
       credit: data.get("imageCredit"),
     },
   };
@@ -55,8 +55,7 @@ function setFields(draft) {
   form.elements.tags.value = draft?.tags?.join(", ") ?? publisherSettings?.defaultTags?.join(", ") ?? "";
   form.elements.imagePath.value = draft?.featuredImage?.path ?? "";
   form.elements.imageAlt.value = draft?.featuredImage?.alt ?? "";
-  form.elements.imageCaption.value = draft?.featuredImage?.caption ?? "";
-  form.elements.imageCredit.value = draft?.featuredImage?.credit ?? "";
+  form.elements.imageCredit.value = draft?.featuredImage?.caption || draft?.featuredImage?.credit || "";
   imagePreview.src = draft?.featuredImage?.path ?? "";
   imagePreview.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
@@ -74,23 +73,17 @@ function applySettings(settings) {
   document.querySelector("#owner-name").textContent = settings.author.name;
   document.querySelector("#owner-social").textContent = settings.author.socialHandle;
   document.querySelector("#owner-timezone").textContent = settings.timezone;
-  document.querySelector("#promotion-heading").textContent = settings.promotion.heading;
-  document.querySelector("#promotion-label").textContent = settings.promotion.label;
-  const links = settings.promotion.platforms.map((platform) => {
-    const anchor = document.createElement("a");
-    anchor.href = platform.url;
-    anchor.target = "_blank";
-    anchor.rel = "noopener noreferrer";
-    anchor.textContent = platform.name;
-    return anchor;
-  });
-  document.querySelector("#promotion-links").replaceChildren(...links);
 }
 
 async function refreshNotifications() {
   const { notifications } = await request("/api/notifications");
   const pending = notifications.filter((item) => !item.acknowledgedAt);
   const container = document.querySelector("#notification-list");
+  const count = document.querySelector("#notification-count");
+  const activity = document.querySelector(".activity-panel");
+  const errorCount = pending.filter((item) => item.level === "error").length;
+  count.textContent = !pending.length ? "Sin avisos" : errorCount ? `${errorCount} error${errorCount === 1 ? "" : "es"} · ${pending.length} en total` : `${pending.length} aviso${pending.length === 1 ? "" : "s"}`;
+  activity.classList.toggle("has-error", errorCount > 0);
   if (!pending.length) {
     container.textContent = "No hay notificaciones pendientes.";
     return;
@@ -351,6 +344,7 @@ async function pollRelease() {
       releaseTimer = null;
       workflowState.textContent = "Compilación privada validada · publicación pública deshabilitada.";
       prepareRelease.disabled = false;
+      generateEnglish.disabled = true;
       await refreshNotifications();
     } else if (release.status === "failed") {
       if (releaseTimer) clearInterval(releaseTimer);
