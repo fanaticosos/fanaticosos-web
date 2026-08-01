@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -58,25 +59,33 @@ def build_ssml(text: str, configuration: dict) -> bytes:
 
 
 def synthesize(ssml: bytes, key: str, region: str) -> bytes:
-    request = urllib.request.Request(
-        f"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
-        data=ssml,
-        method="POST",
-        headers={
-            "Ocp-Apim-Subscription-Key": key,
-            "Content-Type": "application/ssml+xml",
-            "X-Microsoft-OutputFormat": "audio-24khz-160kbitrate-mono-mp3",
-            "User-Agent": "FanaticososBlogTTS",
-        },
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return response.read()
-    except urllib.error.HTTPError as error:
-        details = error.read().decode("utf-8", errors="replace").strip()
-        raise RuntimeError(
-            f"Azure Speech returned HTTP {error.code}: {details or 'no response details'}"
-        ) from error
+    endpoint = f"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1"
+    for attempt in range(1, 4):
+        request = urllib.request.Request(
+            endpoint,
+            data=ssml,
+            method="POST",
+            headers={
+                "Ocp-Apim-Subscription-Key": key,
+                "Content-Type": "application/ssml+xml",
+                "X-Microsoft-OutputFormat": "audio-24khz-160kbitrate-mono-mp3",
+                "User-Agent": "FanaticososBlogTTS",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            details = error.read().decode("utf-8", errors="replace").strip()
+            if error.code < 500 or attempt == 3:
+                raise RuntimeError(
+                    f"Azure Speech returned HTTP {error.code}: {details or 'no response details'}"
+                ) from error
+        except (TimeoutError, urllib.error.URLError) as error:
+            if attempt == 3:
+                raise RuntimeError("Azure Speech remained unavailable after three attempts") from error
+        time.sleep(attempt * 2)
+    raise RuntimeError("Azure Speech synthesis retry loop ended unexpectedly")
 
 
 def render(request_path: Path, configuration_path: Path, output_path: Path) -> dict:
