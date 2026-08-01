@@ -31,10 +31,14 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
   };
   const esAudio = audio.jobs.es.result;
   const enAudio = audio.jobs.en.result;
+  const versionedAudioPath = (result) => {
+    if (!/^[0-9a-f]{64}$/.test(result.sha256 ?? "")) throw new Error("release audio checksum is invalid");
+    return `/audio/${result.file}?v=${result.sha256.slice(0, 16)}`;
+  };
   const es = {
     ...shared, locale: "es", slug: slugify(draft.title), title: draft.title,
     description: draft.description, category: draft.category,
-    audio: { path: `/audio/${esAudio.file}`, durationSeconds: esAudio.durationSeconds, voice: esAudio.voice, engine: esAudio.engine, textHash: esAudio.textHash, generatedAt: esAudio.generatedAt },
+    audio: { path: versionedAudioPath(esAudio), durationSeconds: esAudio.durationSeconds, voice: esAudio.voice, engine: esAudio.engine, textHash: esAudio.textHash, generatedAt: esAudio.generatedAt },
   };
   const en = {
     ...shared, locale: "en", slug: slugify(translation.result.title), title: translation.result.title,
@@ -47,7 +51,7 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
       glossaryVersion: String(translation.provenance.glossaryVersion),
       generatedAt: translation.provenance.generatedAt,
     },
-    audio: { path: `/audio/${enAudio.file}`, durationSeconds: enAudio.durationSeconds, voice: enAudio.voice, engine: enAudio.engine, textHash: enAudio.textHash, generatedAt: enAudio.generatedAt },
+    audio: { path: versionedAudioPath(enAudio), durationSeconds: enAudio.durationSeconds, voice: enAudio.voice, engine: enAudio.engine, textHash: enAudio.textHash, generatedAt: enAudio.generatedAt },
   };
   return {
     files: {

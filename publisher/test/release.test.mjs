@@ -15,7 +15,7 @@ const translation = {
   result: { title: "The Bears win in Chicago", description: "Summary", body: "Content." },
   provenance: { engine: "llama.cpp", model: "Qwen", configurationVersion: "6", glossaryVersion: 5, generatedAt: "2026-07-31T12:00:00Z" },
 };
-const audioResult = (locale) => ({ file: `${locale}-${draft.articleId}.mp3`, durationSeconds: 10, voice: locale === "es" ? "Jorge" : "af_heart", engine: locale === "es" ? "Azure Speech" : "Kokoro", textHash: "b".repeat(64), generatedAt: "2026-07-31T12:01:00Z" });
+const audioResult = (locale) => ({ file: `${locale}-${draft.articleId}.mp3`, sha256: (locale === "es" ? "c" : "d").repeat(64), durationSeconds: 10, voice: locale === "es" ? "Jorge" : "af_heart", engine: locale === "es" ? "Azure Speech" : "Kokoro", textHash: "b".repeat(64), generatedAt: "2026-07-31T12:01:00Z" });
 const audio = { status: "completed", draftRevision: 2, jobs: { es: { jobId: "tts-es-test", result: audioResult("es") }, en: { jobId: "tts-en-test", result: audioResult("en") } } };
 
 test("accepted draft serializes as a bilingual publishable pair", () => {
@@ -26,6 +26,7 @@ test("accepted draft serializes as a bilingual publishable pair", () => {
   const data = yaml.load(spanish.match(/^---\n([\s\S]*?)\n---/)[1]);
   assert.equal(data.status, "published");
   assert.equal(data.audio.voice, "Jorge");
+  assert.equal(data.audio.path, `/audio/es-${draft.articleId}.mp3?v=${"c".repeat(16)}`);
   assert.doesNotMatch(spanish, /¡Gracias por acompañarnos!/);
   assert.doesNotMatch(english, /Thank you for joining us!/);
   assert.match(english, /translation:/);
