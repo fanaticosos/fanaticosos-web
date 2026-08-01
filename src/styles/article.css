@@ -19,6 +19,24 @@
   width: auto;
 }
 
+.brand-navigation {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.home-link {
+  color: var(--gray-light);
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.home-link:hover,
+.home-link:focus-visible {
+  color: var(--orange);
+}
+
 .language-switch {
   border: 1px solid var(--orange);
   border-radius: 999px;

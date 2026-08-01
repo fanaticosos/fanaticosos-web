@@ -57,9 +57,12 @@ const structuredData = {
   contentType="article"
 >
   <header class="article-header">
-    <a class="brand-link" href={indexPath(locale)} aria-label={locale === "es" ? "Volver al blog" : "Back to the blog"}>
-      <img src="/logo.png" alt="FanaticOSOS" />
-    </a>
+    <div class="brand-navigation">
+      <a class="brand-link" href="/" aria-label={locale === "es" ? "Inicio de FanaticOSOS" : "FanaticOSOS home"}>
+        <img src="/logo.png" alt="FanaticOSOS" />
+      </a>
+      <a class="home-link" href="/">{locale === "es" ? "Inicio" : "Home"}</a>
+    </div>
     <div class="language-control">
       <span>{locale === "es" ? "Idioma" : "Language"}</span>
       <a class="language-switch" href={alternatePath} lang={alternate.data.locale} hreflang={alternate.data.locale}>

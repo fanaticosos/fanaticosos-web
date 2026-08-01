@@ -1,6 +1,6 @@
 ---
 import type { Article, ArticleLocale } from "../lib/articles";
-import { articlePath, categoryPath, indexPath } from "../lib/articles";
+import { articlePath, categoryPath } from "../lib/articles";
 import BaseLayout from "./BaseLayout.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import "../styles/article.css";
@@ -29,9 +29,12 @@ const englishPath = locale === "en" ? canonicalPath : alternatePath;
   alternatePaths={{ es: spanishPath, en: englishPath, "x-default": spanishPath }}
 >
   <header class="article-header">
-    <a class="brand-link" href={indexPath(locale)} aria-label={locale === "es" ? "Volver al blog" : "Back to the blog"}>
-      <img src="/logo.png" alt="FanaticOSOS" />
-    </a>
+    <div class="brand-navigation">
+      <a class="brand-link" href="/" aria-label={locale === "es" ? "Inicio de FanaticOSOS" : "FanaticOSOS home"}>
+        <img src="/logo.png" alt="FanaticOSOS" />
+      </a>
+      <a class="home-link" href="/">{locale === "es" ? "Inicio" : "Home"}</a>
+    </div>
     <a class="language-switch" href={alternatePath} lang={alternateLocale} hreflang={alternateLocale}>
       {locale === "es" ? "Read in English" : "Leer en español"}
     </a>

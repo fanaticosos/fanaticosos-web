@@ -19,7 +19,10 @@ const articles = (await getCollection("articles"))
   alternatePaths={{ es: "/blog/", en: "/en/blog/", "x-default": "/blog/" }}
 >
   <header class="article-header">
-    <a class="brand-link" href="/" aria-label="Home"><img src="/logo.png" alt="FanaticOSOS" /></a>
+    <div class="brand-navigation">
+      <a class="brand-link" href="/" aria-label="FanaticOSOS home"><img src="/logo.png" alt="FanaticOSOS" /></a>
+      <a class="home-link" href="/">Home</a>
+    </div>
     <a class="language-switch" href="/blog/" lang="es" hreflang="es">Leer en español</a>
   </header>
   <main class="article-shell blog-index">
