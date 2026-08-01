@@ -19,7 +19,7 @@ const translationMetadata = z.object({
 });
 
 const audioMetadata = z.object({
-  path: z.string().startsWith("/").endsWith(".mp3"),
+  path: z.string().regex(/^\/audio\/[A-Za-z0-9._-]+\.mp3(?:\?v=[0-9a-f]{16})?$/),
   durationSeconds: z.number().positive(),
   voice: z.string().min(1),
   engine: z.string().min(1),
