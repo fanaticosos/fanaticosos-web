@@ -16,6 +16,7 @@ const workflowState = document.querySelector("#workflow-state");
 const englishResult = document.querySelector("#english-result");
 const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
+const regenerateSpanishAudio = document.querySelector("#regenerate-spanish-audio");
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
@@ -382,9 +383,11 @@ async function pollAudio() {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
       workflowState.textContent = "Audios en español e inglés listos.";
-      document.querySelector("#audio-es").src = `/api/drafts/${current.articleId}/audio/es`;
-      document.querySelector("#audio-en").src = `/api/drafts/${current.articleId}/audio/en`;
+      const cacheRevision = encodeURIComponent(`${audio.updatedAt}-${audio.jobs.es.jobId}`);
+      document.querySelector("#audio-es").src = `/api/drafts/${current.articleId}/audio/es?v=${cacheRevision}`;
+      document.querySelector("#audio-en").src = `/api/drafts/${current.articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
       audioResult.hidden = false;
+      regenerateSpanishAudio.disabled = false;
       generateAudio.disabled = false;
       openPreview.disabled = false;
       prepareRelease.disabled = false;
@@ -399,6 +402,7 @@ async function pollAudio() {
       await refreshNotifications();
     } else {
       workflowState.textContent = audio.status === "queued" ? "Audios en cola…" : "Generando audios…";
+      regenerateSpanishAudio.disabled = true;
     }
     return audio.status;
   } catch (error) {
@@ -422,6 +426,26 @@ generateAudio.addEventListener("click", async () => {
   } catch (error) {
     generateAudio.disabled = false;
     workflowState.textContent = "No se inició la generación de audio.";
+    showError(error.message);
+  }
+});
+
+regenerateSpanishAudio.addEventListener("click", async () => {
+  if (!current) return;
+  regenerateSpanishAudio.disabled = true;
+  message.hidden = true;
+  workflowState.textContent = "Regenerando únicamente el audio en español…";
+  try {
+    await request(`/api/drafts/${current.articleId}/audio/es`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedRevision: current.revision }),
+    });
+    await refreshNotifications();
+    const audioStatus = await pollAudio();
+    if (["queued", "running"].includes(audioStatus)) audioTimer = setInterval(pollAudio, 5000);
+  } catch (error) {
+    regenerateSpanishAudio.disabled = false;
+    workflowState.textContent = "No se inició la regeneración del audio en español.";
     showError(error.message);
   }
 });

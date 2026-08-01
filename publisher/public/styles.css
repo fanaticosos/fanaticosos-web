@@ -113,5 +113,7 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .english-result { margin-top: 18px; padding-top: 16px; border-top: 1px solid #32495f; }
 .english-result h3 { margin: 0 0 14px; color: #a9e7bd; }
 .english-result audio { display: block; width: 100%; margin-top: 7px; }
+.english-result > button { margin: 14px 0 18px; padding: 9px 12px; border: 1px solid #ff6a13; border-radius: 7px; color: #fff; background: transparent; cursor: pointer; }
+.english-result > button:disabled { border-color: #32495f; color: #8799a8; cursor: wait; }
 @media (max-width: 1050px) { .markdown-workspace { grid-template-columns: 1fr; } .markdown-preview { min-height: 320px; } }
 @media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid #24364a; } main { padding: 26px 18px 60px; } .editor-header, .actions { align-items: flex-start; flex-direction: column; } .two-columns, .seo-preview-grid { grid-template-columns: 1fr; } }

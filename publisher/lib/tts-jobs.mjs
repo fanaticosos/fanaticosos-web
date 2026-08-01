@@ -102,6 +102,36 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   return state;
 }
 
+export async function queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision, now = new Date() }) {
+  if (locale !== "es") throw new Error("only Spanish audio can be regenerated independently");
+  if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
+  await mkdir(queueRoot, { recursive: true, mode: 0o700 });
+  await mkdir(statesRoot, { recursive: true, mode: 0o700 });
+  const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
+  const existing = JSON.parse(await readFile(statePath, "utf8"));
+  if (existing.status !== "completed" || existing.draftRevision !== draft.revision || existing.jobs?.en?.status !== "completed") {
+    throw new Error("completed bilingual audio is required before regenerating Spanish");
+  }
+  const requests = ttsRequestsForDraft(draft, translation);
+  if (existing.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("the English audio is stale; regenerate both audios");
+  const jobId = `tts-es-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
+  if (!JOB_ID.test(jobId)) throw new Error("TTS job identity is invalid");
+  const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
+  await mkdir(temporary, { mode: 0o700 });
+  await atomicJson(join(temporary, "request.json"), requests.es);
+  await rename(temporary, join(queueRoot, jobId));
+  const state = {
+    ...existing,
+    status: "queued", workflow: "spanish-regeneration", regeneratedLocale: "es",
+    createdAt: now.toISOString(), updatedAt: now.toISOString(), policyRevision,
+    sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
+    jobs: { ...existing.jobs, es: { jobId, status: "queued" } },
+  };
+  await atomicJson(statePath, state);
+  await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
+  return state;
+}
+
 export async function readTtsState(statesRoot, articleId) {
   return JSON.parse(await readFile(join(statesRoot, `audio-${articleId}.json`), "utf8"));
 }

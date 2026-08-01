@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioFileForState, narrationText, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { audioFileForState, narrationText, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -137,4 +137,24 @@ test("audio queue preserves the automatic preview workflow", async () => {
     workflow: "preview",
   });
   assert.equal(state.workflow, "preview");
+});
+
+test("Spanish regeneration preserves completed English audio", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-tts-es-only-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
+  await mkdir(statesRoot, { recursive: true });
+  const requests = ttsRequestsForDraft(draft, translation);
+  await writeFile(statePath, JSON.stringify({
+    schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, status: "completed",
+    policyRevision: "a".repeat(64), sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
+    jobs: { es: { jobId: "old-es", status: "completed", result: { file: "old-es.mp3" } }, en: { jobId: "old-en", status: "completed", result: { file: "old-en.mp3" } } },
+  }));
+  const state = await queueTtsLocale({ draft, translation, locale: "es", queueRoot, statesRoot, policyRevision });
+  assert.equal(state.status, "queued");
+  assert.equal(state.jobs.en.jobId, "old-en");
+  assert.equal(state.jobs.en.status, "completed");
+  assert.match(state.jobs.es.jobId, /^tts-es-/);
+  assert.equal(state.regeneratedLocale, "es");
 });

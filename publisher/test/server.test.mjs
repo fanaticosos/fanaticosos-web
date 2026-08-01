@@ -136,6 +136,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Canción de la semana/);
   assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
+  assert.match(html, /id="regenerate-spanish-audio"/);
   assert.match(html, /id="prepare-release" disabled hidden/);
 
   const app = await (await fetch(`${base}/app.js`)).text();
