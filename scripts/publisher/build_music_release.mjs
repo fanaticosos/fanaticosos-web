@@ -24,6 +24,7 @@ async function main() {
   await lstat(output).then(() => { throw new Error("music release output already exists"); }, (e) => { if (e.code !== "ENOENT") throw e; });
   await cp(repository, temporary, { recursive: true, filter: (source) => ![".git", "node_modules", ".astro", "dist"].includes(basename(source)) });
   const selected = join(releasesRoot, "current");
+  const manifest = JSON.parse(await readFile(join(selected, "release-manifest.json"), "utf8"));
   for (const relative of ["src/content/articles", "public/audio", "public/uploads"]) {
     const source = join(selected, relative);
     const exists = await lstat(source).then(() => true).catch((error) => { if (error.code === "ENOENT") return false; throw error; });
@@ -36,12 +37,11 @@ async function main() {
   }
   await writeFile(join(temporary, "src/data/site-settings.json"), `${JSON.stringify(settings, null, 2)}\n`, { mode: 0o600 });
   await rm(join(temporary, "release-manifest.json"), { force: true });
-  await execute("/opt/nodejs/current/bin/npm", ["run", "build"], { cwd: temporary, env: { ...process.env, NODE_ENV: "production" }, maxBuffer: 10_000_000 });
+  await execute("/opt/nodejs/current/bin/npm", ["run", "build"], { cwd: temporary, env: { ...process.env, NODE_ENV: "production", FANATICOSOS_PRIVATE_RELEASE_BUILD: "1", FANATICOSOS_RELEASE_ARTICLE_ID: manifest.articleId }, maxBuffer: 10_000_000 });
   const homepage = await readFile(join(temporary, "dist/index.html"), "utf8");
   for (const expected of [settings.music.weeklySong.title, settings.music.weeklySong.streamUrl, settings.music.weeklySongUrl]) {
     if (!homepage.includes(expected.replaceAll("&", "&amp;")) && !homepage.includes(expected)) throw new Error(`homepage is missing weekly-song value: ${expected}`);
   }
-  const manifest = JSON.parse(await readFile(join(releasesRoot, "current/release-manifest.json"), "utf8"));
   const { stdout: commit } = await execute("git", ["-C", repository, "rev-parse", "HEAD"]);
   Object.assign(manifest, { commit: commit.trim(), releaseKind: "music", musicUpdatedAt: new Date().toISOString(), homepageSha256: createHash("sha256").update(homepage).digest("hex"), deployment: "disabled" });
   await writeFile(join(temporary, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });

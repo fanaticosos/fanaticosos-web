@@ -6,6 +6,7 @@ import { validateGeneratedMedia } from "./build-media-policy.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(projectRoot, "dist");
+const siteSettings = JSON.parse(await readFile(path.join(projectRoot, "src", "data", "site-settings.json"), "utf8"));
 
 const routes = [
   {
@@ -17,8 +18,8 @@ const routes = [
     requiredLinks: [
       "/pages/contact",
       "/pages/terms",
-      "https://musica.fanaticosos.com/share/Z0fkSBCxiJ#/",
-      "https://musica.fanaticosos.com/share/SfOyZvz9ag",
+      siteSettings.music.playlistUrl,
+      siteSettings.music.weeklySongUrl,
     ],
     requiredScripts: [
       "https://api.podcache.net/embedded-show-player/sh/5a9a1f60-f1a6-4463-8714-1de495d92428?theme=dark&bgColor=%231A3558",
