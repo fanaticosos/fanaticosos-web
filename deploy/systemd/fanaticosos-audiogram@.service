@@ -1,0 +1,18 @@
+[Unit]
+Description=Fanaticosos full-length Spanish audiogram %i
+After=network.target
+
+[Service]
+Type=oneshot
+User=fanaticosos-blog
+Group=fanaticosos-blog
+WorkingDirectory=/opt/fanaticosos-blog/repository
+ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/render_audiogram.mjs /opt/fanaticosos-blog/jobs/%i/request.json /opt/fanaticosos-blog/jobs /opt/fanaticosos-blog/publisher /opt/fanaticosos-blog/repository/assets/audiogram/fanaticosos-logo-transparent.png /opt/fanaticosos-blog/jobs/%i/video
+RuntimeMaxSec=30min
+MemoryMax=4G
+MemorySwapMax=1G
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/fanaticosos-blog/jobs/%i

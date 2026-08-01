@@ -18,6 +18,13 @@ const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
 const regenerateSpanishAudio = document.querySelector("#regenerate-spanish-audio");
 const regenerateEnglishAudio = document.querySelector("#regenerate-english-audio");
+const audiogramResult = document.querySelector("#audiogram-result");
+const audiogramVideo = document.querySelector("#audiogram-video");
+const audiogramStatus = document.querySelector("#audiogram-status");
+const downloadAudiogram = document.querySelector("#download-audiogram");
+const copyYoutube = document.querySelector("#copy-youtube");
+const copyArticleLink = document.querySelector("#copy-article-link");
+let audiogramMetadata = null;
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
@@ -151,6 +158,7 @@ function setFields(draft) {
   workflowState.textContent = draft ? "Listo para preparar traducción, audios y vista previa con un solo clic." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
   audioResult.hidden = true;
+  audiogramResult.hidden = true;
   generateAudio.disabled = true;
   openPreview.disabled = true;
   prepareRelease.disabled = true;
@@ -289,6 +297,7 @@ form.addEventListener("input", (event) => {
     openPreview.disabled = true;
     prepareRelease.disabled = true;
     audioResult.hidden = true;
+    audiogramResult.hidden = true;
     return;
   }
   saveState.textContent = "Cambios sin guardar";
@@ -393,6 +402,7 @@ async function pollAudio() {
       spanishPlayer.load();
       englishPlayer.load();
       audioResult.hidden = false;
+      pollAudiogram();
       regenerateSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
       generateAudio.disabled = false;
@@ -418,6 +428,25 @@ async function pollAudio() {
     return null;
   }
 }
+
+async function pollAudiogram() {
+  if (!current) return;
+  try {
+    const { audiogram } = await request(`/api/drafts/${current.articleId}/audiogram`);
+    audiogramResult.hidden = false;
+    if (audiogram.status === "completed") {
+      audiogramMetadata = audiogram.result;
+      audiogramStatus.textContent = "Video completo listo para revisar y descargar.";
+      audiogramVideo.src = `/api/drafts/${current.articleId}/audiogram/video?v=${encodeURIComponent(audiogram.updatedAt)}`;
+      audiogramVideo.hidden = false; downloadAudiogram.hidden = false; copyYoutube.hidden = false; copyArticleLink.hidden = false;
+      downloadAudiogram.href = `/api/drafts/${current.articleId}/audiogram/video?download=1`;
+      downloadAudiogram.download = `${current.title || "fanaticosos-blog"}.mp4`;
+    } else { audiogramStatus.textContent = audiogram.status === "failed" ? audiogram.error : "Preparando video completo para YouTube…"; setTimeout(pollAudiogram, 5000); }
+  } catch (error) { if (!/not found/i.test(error.message)) audiogramStatus.textContent = error.message; }
+}
+
+copyYoutube.addEventListener("click", async () => { if (audiogramMetadata) await navigator.clipboard.writeText(`${audiogramMetadata.youtubeTitle}\n\n${audiogramMetadata.youtubeDescription}`); });
+copyArticleLink.addEventListener("click", async () => { if (audiogramMetadata) await navigator.clipboard.writeText(audiogramMetadata.canonicalUrl); });
 
 generateAudio.addEventListener("click", async () => {
   if (!current) return;
@@ -484,6 +513,7 @@ saveEnglish.addEventListener("click", async () => {
     openPreview.disabled = true;
     prepareRelease.disabled = true;
     audioResult.hidden = true;
+    audiogramResult.hidden = true;
     await refreshNotifications();
   } catch (error) {
     showError(error.message);

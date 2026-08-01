@@ -15,6 +15,7 @@ import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release
 import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
+import { audiogramFileForState, queueAudiogram, readAudiogramState, reconcileAudiograms } from "./lib/audiogram-jobs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
@@ -26,6 +27,7 @@ const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.jso
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
+const AUDIOGRAM_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audiogram(?:\/(video))?$/;
 const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
 const PUBLISH_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/publish$/;
 const STATIC_FILES = new Map([
@@ -145,6 +147,11 @@ export function createPublisherServer({
           : "Los audios en español e inglés están listos para escuchar.",
       replacePending: state.workflow === "audio-regeneration",
     });
+    if (state.workflow !== "audio-regeneration" || state.regeneratedLocale === "es") {
+      const draft = await readDraft(draftsRoot, state.articleId);
+      await queueAudiogram({ draft, audio: state, queueRoot, statesRoot });
+      await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: state.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
+    }
     if (state.workflow !== "preview") return;
     const draft = await readDraft(draftsRoot, state.articleId);
     const release = await queueRelease({ draft, queueRoot, statesRoot });
@@ -153,6 +160,12 @@ export function createPublisherServer({
       message: `Validación privada iniciada automáticamente: ${draft.title}`,
     });
     return release;
+  }
+  async function audiogramCompleted(state) {
+    await createNotification(notificationsRoot, { level: "success", event: "audiogram-completed", articleId: state.articleId, message: "El video completo para YouTube está listo para revisar y descargar.", replacePending: true });
+  }
+  async function audiogramFailed(state) {
+    await createNotification(notificationsRoot, { level: "error", event: "audiogram-failed", articleId: state.articleId, message: `El video para YouTube se detuvo: ${state.error}`, replacePending: true });
   }
   async function audioFailed(state) {
     const regeneratedLanguage = state.regeneratedLocale === "en" ? "inglés" : "español";
@@ -177,6 +190,7 @@ export function createPublisherServer({
   async function reconcilePublisherJobs() {
     await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
     await reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed });
+    await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
     await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
   }
   const server = createServer(async (request, response) => {
@@ -337,6 +351,24 @@ export function createPublisherServer({
           "Content-Type": "audio/mpeg", "Content-Length": payload.length,
           "Accept-Ranges": "bytes",
           ...(range ? { "Content-Range": `bytes ${range.start}-${range.end}/${body.length}` } : {}),
+          "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+        });
+        return response.end(payload);
+      }
+      const audiogramMatch = AUDIOGRAM_PATH.exec(url.pathname);
+      if (audiogramMatch && request.method === "GET" && !audiogramMatch[2]) {
+        await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
+        return json(response, 200, { audiogram: await readAudiogramState(statesRoot, audiogramMatch[1]) });
+      }
+      if (audiogramMatch && request.method === "GET" && audiogramMatch[2] === "video") {
+        const state = await readAudiogramState(statesRoot, audiogramMatch[1]);
+        const body = await readFile(audiogramFileForState(state, jobsRoot));
+        const range = audioByteRange(request.headers.range, body.length);
+        const payload = range ? body.subarray(range.start, range.end + 1) : body;
+        response.writeHead(range ? 206 : 200, {
+          "Content-Type": "video/mp4", "Content-Length": payload.length, "Accept-Ranges": "bytes",
+          ...(range ? { "Content-Range": `bytes ${range.start}-${range.end}/${body.length}` } : {}),
+          ...(url.searchParams.get("download") === "1" ? { "Content-Disposition": `attachment; filename="fanaticosos-${state.articleId}.mp4"` } : {}),
           "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
         });
         return response.end(payload);

@@ -59,6 +59,17 @@ PY
   systemctl reset-failed "fanaticosos-tts@$job_id.service" 2>/dev/null || true
   systemctl start --no-block "fanaticosos-tts@$job_id.service"
 done
+for queued in "$queue_root"/audiogram-es-*-r*-*; do
+  [[ -d "$queued" && ! -L "$queued" ]] || continue
+  job_id="$(basename "$queued")"
+  [[ "$job_id" =~ ^audiogram-es-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || continue
+  [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
+  [[ -f "$queued/request.json" && ! -L "$queued/request.json" && ! -e "$jobs_root/$job_id" ]] || continue
+  mv "$queued" "$jobs_root/$job_id"
+  chown -R "$service_account:$service_account" "$jobs_root/$job_id"; chmod 0700 "$jobs_root/$job_id"; chmod 0600 "$jobs_root/$job_id/request.json"
+  systemctl reset-failed "fanaticosos-audiogram@$job_id.service" 2>/dev/null || true
+  systemctl start --no-block "fanaticosos-audiogram@$job_id.service"
+done
 for queued in "$queue_root"/release-*-r*-*; do
   [[ -d "$queued" && ! -L "$queued" ]] || continue
   job_id="$(basename "$queued")"
