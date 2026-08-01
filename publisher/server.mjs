@@ -10,7 +10,7 @@ import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mj
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
-import { previewPage } from "./lib/preview.mjs";
+import { previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 
@@ -163,6 +163,11 @@ export function createPublisherServer({
       }
       if (request.method === "GET" && url.pathname === "/api/music") {
         return json(response, 200, { settings: await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath) });
+      }
+      if (request.method === "POST" && url.pathname === "/api/markdown-preview") {
+        const value = await requestJson(request);
+        if (typeof value.markdown !== "string") throw new Error("El texto del artículo es obligatorio.");
+        return json(response, 200, { html: renderMarkdown(value.markdown) });
       }
       if (request.method === "PUT" && url.pathname === "/api/music") {
         const value = await requestJson(request);

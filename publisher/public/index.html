@@ -63,7 +63,23 @@
               <label>Temporada<input name="season" type="number" min="2000" max="2100" required></label>
             </div>
             <label>Etiquetas<input name="tags" placeholder="#BearDown, #fanaticosos"></label>
-            <label>Texto del artículo<textarea name="body" rows="22" maxlength="100000" required></textarea></label>
+            <div class="markdown-editor">
+              <div class="markdown-toolbar" role="toolbar" aria-label="Formato del artículo">
+                <span>Texto del artículo</span>
+                <button type="button" data-markdown-action="heading">Título de sección</button>
+                <button type="button" data-markdown-action="bold"><strong>Negrita</strong></button>
+                <button type="button" data-markdown-action="quote">Cita</button>
+                <button type="button" data-markdown-action="list">Lista</button>
+              </div>
+              <div class="markdown-workspace">
+                <label class="markdown-source"><span>Escribir</span><textarea id="article-body" name="body" rows="22" maxlength="100000" required></textarea></label>
+                <section class="markdown-preview" aria-label="Vista previa del artículo">
+                  <header><span>Vista previa</span><small>Así se verá el formato</small></header>
+                  <div id="body-preview" class="story"><p>Comienza a escribir para ver el artículo.</p></div>
+                </section>
+              </div>
+              <p class="markdown-help">Usa los botones de formato o Markdown. La vista previa no publica ni guarda cambios.</p>
+            </div>
           </section>
           <section class="panel">
             <h2>Imagen destacada <span>opcional</span></h2>

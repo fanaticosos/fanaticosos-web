@@ -82,6 +82,21 @@ test("weekly song can be resolved, previewed, and persisted", async (context) =>
   assert.equal(JSON.parse(await readFile(siteSettingsPath, "utf8")).music.weeklySongUrl, "https://music.fanaticosos.com/share/new-song");
 });
 
+test("Markdown preview renders article structure without executing owner HTML", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const response = await fetch(`${base}/api/markdown-preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ markdown: "## Sección\n\nTexto **importante**.\n\n<script>alert(1)</script>" }),
+  });
+  assert.equal(response.status, 200);
+  const { html } = await response.json();
+  assert.match(html, /<h2>Sección<\/h2>/);
+  assert.match(html, /<strong>importante<\/strong>/);
+  assert.doesNotMatch(html, /<script>/);
+});
+
 test("valid image upload can be previewed privately", async (context) => {
   const { server, base } = await fixture();
   context.after(() => server.close());
@@ -114,6 +129,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Crédito o pie de foto/);
   assert.match(html, /SEO y apariencia al compartir/);
   assert.match(html, /id="music-form"/);
+  assert.match(html, /id="body-preview"/);
+  assert.match(html, /data-markdown-action="heading"/);
   assert.match(html, /Canción de la semana/);
   assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
@@ -125,6 +142,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /workflow: "preview"/);
   assert.match(app, /generateSeoPreview/);
   assert.match(app, /\/api\/music/);
+  assert.match(app, /\/api\/markdown-preview/);
 
   const seo = await (await fetch(`${base}/seo.js`)).text();
   assert.match(seo, /canonicalUrl/);

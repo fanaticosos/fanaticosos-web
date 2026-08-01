@@ -21,9 +21,55 @@ const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
 const musicForm = document.querySelector("#music-form");
 const musicState = document.querySelector("#music-state");
+const articleBody = document.querySelector("#article-body");
+const bodyPreview = document.querySelector("#body-preview");
 let translationTimer = null;
 let audioTimer = null;
 let releaseTimer = null;
+let markdownPreviewTimer = null;
+
+async function renderBodyPreview() {
+  const markdown = articleBody.value;
+  if (!markdown.trim()) {
+    bodyPreview.innerHTML = "<p>Comienza a escribir para ver el artículo.</p>";
+    return;
+  }
+  try {
+    const { html } = await request("/api/markdown-preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markdown }),
+    });
+    bodyPreview.innerHTML = html;
+  } catch {
+    bodyPreview.textContent = "La vista previa no pudo actualizarse.";
+  }
+}
+
+function scheduleBodyPreview() {
+  clearTimeout(markdownPreviewTimer);
+  markdownPreviewTimer = setTimeout(renderBodyPreview, 180);
+}
+
+function formatSelection(action) {
+  const start = articleBody.selectionStart;
+  const end = articleBody.selectionEnd;
+  const selected = articleBody.value.slice(start, end);
+  const formats = {
+    heading: ["## ", "Título de sección", ""],
+    bold: ["**", "texto importante", "**"],
+    quote: ["> ", "Cita", ""],
+    list: ["- ", "Elemento de la lista", ""],
+  };
+  const [prefix, placeholder, suffix] = formats[action];
+  articleBody.setRangeText(`${prefix}${selected || placeholder}${suffix}`, start, end, "end");
+  articleBody.focus();
+  articleBody.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+document.querySelectorAll("[data-markdown-action]").forEach((button) => {
+  button.addEventListener("click", () => formatSelection(button.dataset.markdownAction));
+});
 
 function renderMusic(settings) {
   const song = settings.music.weeklySong;
@@ -106,6 +152,7 @@ function setFields(draft) {
   openPreview.disabled = true;
   prepareRelease.disabled = true;
   renderSeoPreview();
+  scheduleBodyPreview();
 }
 
 function applySettings(settings) {
@@ -223,6 +270,7 @@ async function refreshList() {
 }
 
 form.addEventListener("input", (event) => {
+  if (event.target === articleBody) scheduleBodyPreview();
   if (event.target.closest("#english-result")) {
     workflowState.textContent = "Corrección en inglés sin guardar.";
     generateAudio.disabled = true;

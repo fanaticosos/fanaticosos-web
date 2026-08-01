@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import settings from "../../config/publisher/defaults.json" with { type: "json" };
-import { previewPage } from "../lib/preview.mjs";
+import { previewPage, renderMarkdown } from "../lib/preview.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 1,
@@ -29,4 +29,14 @@ test("private preview switches the complete article and escapes owner text", () 
   assert.match(english, /Thank you for joining us!/);
   assert.match(english, /← Versión en español/);
   assert.match(english, /audio\/en/);
+});
+
+test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes safely", () => {
+  const html = renderMarkdown("## Una defensa\n\nPrimer párrafo.\n\n**Importante**\n\n- Uno\n- Dos\n\n> Una cita\n\n<script>alert(1)</script>");
+  assert.match(html, /<h2>Una defensa<\/h2>/);
+  assert.match(html, /<p>Primer párrafo\.<\/p>/);
+  assert.match(html, /<strong>Importante<\/strong>/);
+  assert.match(html, /<ul><li>Uno<\/li><li>Dos<\/li><\/ul>/);
+  assert.match(html, /<blockquote><p>Una cita<\/p><\/blockquote>/);
+  assert.doesNotMatch(html, /<script>/);
 });

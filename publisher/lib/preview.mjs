@@ -2,17 +2,33 @@ function escapeHtml(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function renderMarkdown(source) {
-  return source.split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
-    const text = escapeHtml(part.trim()).replaceAll("\n", "<br>");
-    const heading = /^(#{1,6})\s+/.exec(part.trim());
+function renderInline(source) {
+  return escapeHtml(source)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_]+)__/g, "<strong>$1</strong>")
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
+}
+
+export function renderMarkdown(source) {
+  return source.replaceAll("\r\n", "\n").split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
+    const block = part.trim();
+    const heading = /^(#{1,6})\s+/.exec(block);
     if (heading) {
-      const level = Math.min(heading[1].length + 1, 6);
-      return `<h${level}>${text.slice(heading[0].length)}</h${level}>`;
+      const level = Math.min(heading[1].length, 6);
+      return `<h${level}>${renderInline(block.slice(heading[0].length))}</h${level}>`;
     }
-    if (/^>\s+/.test(part.trim())) return `<blockquote>${text.replace(/^&gt;\s+/, "")}</blockquote>`;
-    if (/^[-*+]\s+/.test(part.trim())) return `<ul><li>${text.replace(/^[-*+]\s+/, "")}</li></ul>`;
-    return `<p>${text}</p>`;
+    const lines = block.split("\n").map((line) => line.trim());
+    if (lines.every((line) => /^>\s+/.test(line))) {
+      return `<blockquote><p>${renderInline(lines.map((line) => line.replace(/^>\s+/, "")).join(" "))}</p></blockquote>`;
+    }
+    if (lines.every((line) => /^[-*+]\s+/.test(line))) {
+      return `<ul>${lines.map((line) => `<li>${renderInline(line.replace(/^[-*+]\s+/, ""))}</li>`).join("")}</ul>`;
+    }
+    if (lines.every((line) => /^\d+\.\s+/.test(line))) {
+      return `<ol>${lines.map((line) => `<li>${renderInline(line.replace(/^\d+\.\s+/, ""))}</li>`).join("")}</ol>`;
+    }
+    return `<p>${renderInline(lines.join(" "))}</p>`;
   }).join("\n");
 }
 
