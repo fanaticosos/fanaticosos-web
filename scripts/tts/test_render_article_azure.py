@@ -53,7 +53,11 @@ class AzureArticleRendererTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, text)
-        self.assertIn('<voice name="en-US-GuyNeural">', text)
+        self.assertEqual(text.count("<voice "), 1)
+        self.assertIn('<voice name="es-MX-JorgeMultilingualNeural">', text)
+        self.assertIn('<sub alias="tái-den">tight end</sub>', text)
+        self.assertIn('<sub alias="Lúther Bérden de térd">Luther Burden III</sub>', text)
+        self.assertNotIn("en-US-GuyNeural", text)
         self.assertNotIn('<lang xml:lang="en-US">', text)
 
 

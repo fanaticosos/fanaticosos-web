@@ -115,16 +115,16 @@
     {"canonical":"yellow flag","preferredSpanish":"pañuelo amarillo","acceptedSpanish":["yellow flag","pañuelo amarillo"]}
   ],
   "ttsEntries": [
-    {"grapheme":"safety","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"safeties","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"linebacker","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"linebackers","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"fumble","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"fumbles","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"handoff","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"handoffs","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"play call","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"play calls","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
-    {"grapheme":"playcall","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"}
+    {"grapheme":"safety","mode":"spanish-broadcast","alias":"séifti","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"safeties","mode":"spanish-broadcast","alias":"séiftis","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"linebacker","mode":"spanish-broadcast","alias":"láinbáker","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"linebackers","mode":"spanish-broadcast","alias":"láinbákers","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"fumble","mode":"spanish-broadcast","alias":"fámbol","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"fumbles","mode":"spanish-broadcast","alias":"fámbols","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"handoff","mode":"spanish-broadcast","alias":"hándof","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"handoffs","mode":"spanish-broadcast","alias":"hándofs","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"play call","mode":"spanish-broadcast","alias":"pléi kol","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"play calls","mode":"spanish-broadcast","alias":"pléi kols","status":"approved","sourceType":"owner-review"},
+    {"grapheme":"playcall","mode":"spanish-broadcast","alias":"pléi kol","status":"approved","sourceType":"owner-review"}
   ]
 }

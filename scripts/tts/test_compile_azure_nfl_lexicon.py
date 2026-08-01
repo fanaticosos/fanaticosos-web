@@ -57,7 +57,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         entries = {item["grapheme"]: item for item in pronunciation_entries(self.configuration)}
         self.assertEqual(entries["Bears"]["phoneme"], "ˈbeɾs")
         self.assertEqual(entries["Vikings"]["phoneme"], "ˈbaikɪŋs")
-        self.assertEqual(entries["Justin"]["language"], "en-US")
+        self.assertEqual(entries["Justin"]["alias"], "Yástin")
         self.assertEqual(entries["Halas Hall"]["phoneme"], "ˈhalas.ˈhol")
 
     def test_team_city_and_nickname_are_not_wrapped_as_one_phrase(self):
@@ -75,22 +75,21 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Justin Jefferson habló con Justin & Caleb Williams.",
             self.configuration,
         )
-        self.assertIn('xml:lang="en-US"', output)
-        self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
+        self.assertIn('<sub alias="Yástin Yéferson">Justin Jefferson</sub>', output)
         self.assertIn("&amp;", output)
-        self.assertIn('<lang xml:lang="en-US">Caleb Williams</lang>', output)
+        self.assertIn('<sub alias="Kéileb Uíliams">Caleb Williams</sub>', output)
 
     def test_owner_requested_english_names_and_td_delivery(self):
         output = apply_inline_ssml(
             "J.J. McCarthy lanzó un TD a Justin Jefferson y habló con Aaron Jones.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">J.J. McCarthy</lang>', output)
-        self.assertIn('alias="touchdown">TD</sub>', output)
-        self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Aaron Jones</lang>', output)
+        self.assertIn('<sub alias="Yéi Yéi Makárthi">J.J. McCarthy</sub>', output)
+        self.assertIn('alias="tóchdaun">TD</sub>', output)
+        self.assertIn('<sub alias="Yástin Yéferson">Justin Jefferson</sub>', output)
+        self.assertIn('<sub alias="Éron Yóuns">Aaron Jones</sub>', output)
 
-    def test_reported_bears_names_and_defensive_terms_use_english_delivery(self):
+    def test_reported_bears_names_and_defensive_terms_use_spanish_broadcast_aliases(self):
         phrases = [
             "Luther Burden III", "Rome Odunze", "Colston Loveland",
             "Jahdae Walker", "Kyle DeVan", "safety", "safeties",
@@ -99,8 +98,8 @@ class AzureNflLexiconTests(unittest.TestCase):
         entries = {item["grapheme"]: item for item in self.configuration["entities"]}
         for phrase in phrases:
             with self.subTest(phrase=phrase):
-                self.assertIn(entries[phrase]["mode"], {"english-low", "english-voice"})
-                self.assertEqual(entries[phrase]["language"], "en-US")
+                self.assertEqual(entries[phrase]["mode"], "spanish-broadcast")
+                self.assertIn("alias", entries[phrase])
 
         output = apply_inline_ssml(
             "Luther Burden III, Rome Odunze, Colston Loveland, Jahdae Walker y "
@@ -116,39 +115,32 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertIn("la offseason mejoró", output)
         self.assertNotIn("óf síson", output)
 
-    def test_names_and_retained_terms_are_assigned_to_a_real_english_voice(self):
+    def test_names_and_retained_terms_stay_in_one_spanish_voice(self):
         segments = voice_segments(
             "Luther Burden III, Rome Odunze y el tight end hablaron con Caleb Williams.",
             self.configuration,
         )
-        english = [item["markup"] for item in segments if item["voice"] == "en-US-GuyNeural"]
-        english_text = "".join(english)
-        self.assertTrue(any(
-            '<sub alias="Luther Burden the Third">Luther Burden III</sub>' in item
-            for item in english
-        ))
-        self.assertIn("Rome Odunze", english_text)
-        self.assertIn("tight end", english_text)
-        self.assertIn("Caleb Williams", english_text)
-        self.assertTrue(any(item["voice"] == "es-MX-JorgeMultilingualNeural" for item in segments))
-        for item in segments:
-            self.assertRegex(item["markup"], r"[\wáéíóúñ]", msg=item)
+        self.assertEqual(len(segments), 1)
+        self.assertEqual(segments[0]["voice"], "es-MX-JorgeMultilingualNeural")
+        markup = segments[0]["markup"]
+        self.assertIn('<sub alias="Lúther Bérden de térd">Luther Burden III</sub>', markup)
+        self.assertIn('<sub alias="Róum Odúnzei">Rome Odunze</sub>', markup)
+        self.assertIn('<sub alias="tái-den">tight end</sub>', markup)
+        self.assertIn('<sub alias="Kéileb Uíliams">Caleb Williams</sub>', markup)
+        self.assertNotIn("en-US", markup)
 
-    def test_owner_reviewed_english_game_terms_are_not_hispanicized(self):
+    def test_owner_reviewed_english_game_terms_use_latino_phonetic_aliases(self):
         output = apply_inline_ssml(
             "Dos fumbles tras varios handoffs obligaron a cambiar el play call.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">fumbles</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">handoffs</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">play call</lang>', output)
+        self.assertIn('<sub alias="fámbols">fumbles</sub>', output)
+        self.assertIn('<sub alias="hándofs">handoffs</sub>', output)
+        self.assertIn('<sub alias="pléi kol">play call</sub>', output)
 
     def test_owner_handle_has_a_stable_spoken_form(self):
         output = apply_inline_ssml("En Twitter: @imcontreras", self.configuration)
-        self.assertIn(
-            '<lang xml:lang="en-US"><sub alias="I\'m Contreras">@imcontreras</sub></lang>',
-            output,
-        )
+        self.assertIn('<sub alias="arroba, Aim Contreras">@imcontreras</sub>', output)
 
 
 if __name__ == "__main__":

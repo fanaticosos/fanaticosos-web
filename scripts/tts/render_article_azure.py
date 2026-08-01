@@ -41,16 +41,13 @@ def build_chunks(segments: list[dict[str, str]], maximum_characters: int = 2600)
 
 
 def build_ssml(text: str, configuration: dict) -> bytes:
-    voices: list[str] = []
-    for segment in voice_segments(text, configuration):
-        voices.append(
-            f'<voice name="{segment["voice"]}">'
-            f'{segment["markup"]}</voice>'
-        )
+    segments = voice_segments(text, configuration)
+    if len(segments) != 1 or segments[0]["voice"] != configuration["voice"]:
+        raise ValueError("Spanish narration must use exactly one configured voice")
     ssml = (
         '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         f'xml:lang="{configuration["locale"]}">'
-        f'{"".join(voices)}</speak>'
+        f'<voice name="{configuration["voice"]}">{segments[0]["markup"]}</voice></speak>'
     )
     ET.fromstring(ssml)
     return ssml.encode("utf-8")
