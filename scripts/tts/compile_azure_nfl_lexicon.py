@@ -34,6 +34,31 @@ def load_configuration(path: Path) -> dict[str, Any]:
         "AFC North", "AFC East", "AFC South", "AFC West",
     }:
         raise ValueError("NFL team divisions are incomplete")
+    reference_name = value.get("termReference")
+    if not isinstance(reference_name, str) or not reference_name:
+        raise ValueError("Azure NFL lexicon must define a term reference")
+    reference_path = path.parent / reference_name
+    reference = json.loads(reference_path.read_text(encoding="utf-8"))
+    if reference.get("schemaVersion") != 1 or reference.get("locale") != "es-MX":
+        raise ValueError("Spanish NFL term reference is invalid")
+    terms = reference.get("terms")
+    if not isinstance(terms, list) or not terms:
+        raise ValueError("Spanish NFL term reference has no terms")
+    canonicals = [term.get("canonical") for term in terms]
+    if any(not isinstance(term, str) or not term for term in canonicals):
+        raise ValueError("Spanish NFL canonical terms must be non-empty strings")
+    if len({term.casefold() for term in canonicals}) != len(canonicals):
+        raise ValueError("Spanish NFL canonical terms must be unique")
+    for term in terms:
+        if not isinstance(term.get("preferredSpanish"), str):
+            raise ValueError(f"Spanish NFL term has no preferred usage: {term.get('canonical')}")
+        variants = term.get("acceptedSpanish")
+        if not isinstance(variants, list) or not variants or any(not isinstance(item, str) for item in variants):
+            raise ValueError(f"Spanish NFL term has invalid accepted variants: {term.get('canonical')}")
+    tts_entries = reference.get("ttsEntries")
+    if not isinstance(tts_entries, list):
+        raise ValueError("Spanish NFL term reference has invalid TTS entries")
+    value["termReferenceData"] = reference
     return value
 
 
@@ -48,7 +73,8 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
         entries.append(entry)
         for written_market in team.get("writtenMarkets", []):
             entries.append({"grapheme": written_market, "alias": team["market"]})
-    for item in configuration["entities"]:
+    referenced_terms = configuration["termReferenceData"]["ttsEntries"]
+    for item in [*configuration["entities"], *referenced_terms]:
         if item.get("status") not in {"approved", "provisional"}:
             continue
         entry = {"grapheme": item["grapheme"]}

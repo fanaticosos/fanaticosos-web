@@ -35,6 +35,17 @@ class AzureNflLexiconTests(unittest.TestCase):
             },
         )
 
+    def test_spanish_reference_is_loaded_and_normalized(self):
+        reference = self.configuration["termReferenceData"]
+        terms = {item["canonical"]: item for item in reference["terms"]}
+        self.assertGreaterEqual(len(terms), 75)
+        self.assertEqual(terms["linebacker"]["preferredSpanish"], "linebacker")
+        self.assertIn("apoyador", terms["linebacker"]["acceptedSpanish"])
+        self.assertEqual(terms["safety"]["preferredSpanish"], "safety")
+        self.assertIn("profundo", terms["safety"]["acceptedSpanish"])
+        self.assertEqual(terms["overtime"]["preferredSpanish"], "tiempo extra")
+        self.assertEqual(terms["turnover"]["preferredSpanish"], "pérdida de balón")
+
     def test_compiled_pls_is_valid_xml_under_azure_size_limit(self):
         output = compile_pls(self.configuration)
         root = ET.fromstring(output)
@@ -77,6 +88,27 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertIn('alias="touchdown">TD</sub>', output)
         self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
         self.assertIn('<lang xml:lang="en-US">Aaron Jones</lang>', output)
+
+    def test_reported_bears_names_and_defensive_terms_use_english_delivery(self):
+        phrases = [
+            "Luther Burden III", "Rome Odunze", "Colston Loveland",
+            "Jahdae Walker", "Kyle DeVan", "safety", "safeties",
+            "linebacker", "linebackers",
+        ]
+        entries = {item["grapheme"]: item for item in self.configuration["entities"]}
+        for phrase in phrases:
+            with self.subTest(phrase=phrase):
+                self.assertEqual(entries[phrase]["mode"], "english-low")
+                self.assertEqual(entries[phrase]["language"], "en-US")
+
+        output = apply_inline_ssml(
+            "Luther Burden III, Rome Odunze, Colston Loveland, Jahdae Walker y "
+            "Kyle DeVan hablaron con los safeties y linebackers.",
+            self.configuration,
+        )
+        for phrase in phrases[:5] + ["safeties", "linebackers"]:
+            with self.subTest(rendered_phrase=phrase):
+                self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', output)
 
     def test_offseason_has_no_forced_pronunciation(self):
         output = apply_inline_ssml("Durante la offseason mejoró el equipo.", self.configuration)

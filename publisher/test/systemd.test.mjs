@@ -35,7 +35,19 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(dispatcher, /systemctl start --no-block/);
   assert.match(dispatcher, /fanaticosos-tts@\$job_id\.service/);
   assert.match(dispatcher, /fanaticosos-release@\$job_id\.service/);
+  assert.match(dispatcher, /fanaticosos-music-release@\$job_id\.service/);
   assert.doesNotMatch(dispatcher, /eval /);
+});
+
+test("music publication builds privately then deploys through a root-only unit", async () => {
+  const build = await readFile(new URL("../../deploy/systemd/fanaticosos-music-release@.service", import.meta.url), "utf8");
+  const deploy = await readFile(new URL("../../deploy/systemd/fanaticosos-music-deploy@.service", import.meta.url), "utf8");
+  assert.match(build, /User=fanaticosos-blog/);
+  assert.match(build, /PrivateNetwork=yes/);
+  assert.match(build, /OnSuccess=fanaticosos-music-deploy@%i\.service/);
+  assert.match(deploy, /deploy_music_release\.sh/);
+  assert.match(deploy, /record_music_deploy_exit\.mjs/);
+  assert.doesNotMatch(deploy, /User=fanaticosos-blog/);
 });
 
 test("release retention is fixed, private, and bounded by the approved policy", async () => {

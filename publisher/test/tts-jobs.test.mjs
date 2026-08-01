@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { audioFileForState, narrationText, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -25,6 +25,30 @@ test("TTS policy revision changes when pronunciation policy changes", () => {
   assert.notEqual(first, second);
 });
 
+test("TTS policy revision changes when Azure entity pronunciations change", () => {
+  const production = { configurationVersion: 5 };
+  const pronunciations = { version: 8 };
+  const first = ttsPolicyRevision(production, pronunciations, { version: 4 });
+  const second = ttsPolicyRevision(production, pronunciations, { version: 5 });
+  assert.notEqual(first, second);
+});
+
+test("TTS policy revision changes when the Spanish NFL reference changes", () => {
+  const production = { configurationVersion: 5 };
+  const pronunciations = { version: 8 };
+  const entities = { version: 5 };
+  const first = ttsPolicyRevision(production, pronunciations, entities, { version: 1 });
+  const second = ttsPolicyRevision(production, pronunciations, entities, { version: 2 });
+  assert.notEqual(first, second);
+});
+
+test("narration text removes Markdown without removing its spoken words", () => {
+  assert.equal(narrationText("**necesitan un quarterback**."), "necesitan un quarterback.");
+  assert.equal(narrationText("**Go Bears!**"), "Go Bears!");
+  assert.equal(narrationText("Un [enlace](https://example.com) y `código`."), "Un enlace y código.");
+  assert.equal(narrationText("~~tachado~~ y *énfasis*."), "tachado y énfasis.");
+});
+
 test("TTS requests bind approved Spanish and English text to one revision", () => {
   const requests = ttsRequestsForDraft(draft, translation);
   assert.equal(requests.es.locale, "es");
@@ -36,6 +60,35 @@ test("TTS requests bind approved Spanish and English text to one revision", () =
   const corrected = structuredClone(translation);
   corrected.result.body += " Correction.";
   assert.notEqual(ttsRequestsForDraft(draft, corrected).en.sourceRevision, requests.en.sourceRevision);
+});
+
+test("TTS requests never send inline Markdown to either narrator", () => {
+  const formattedDraft = {
+    ...draft,
+    description: "Resumen con **énfasis**.",
+    body: "Porque los Bears **necesitan un quarterback**.\n\n**Go Bears!**",
+  };
+  const formattedTranslation = {
+    ...translation,
+    result: {
+      ...translation.result,
+      description: "Summary with **emphasis**.",
+      body: "The Bears **need a quarterback**.\n\n**Go Bears!**",
+    },
+  };
+  const requests = ttsRequestsForDraft(formattedDraft, formattedTranslation);
+  assert.deepEqual(requests.es.segments.map(({ text }) => text), [
+    "Resumen con énfasis.",
+    "Porque los Bears necesitan un quarterback.",
+    "Go Bears!",
+  ]);
+  assert.deepEqual(requests.en.segments.map(({ text }) => text), [
+    "Summary with emphasis.",
+    "The Bears need a quarterback.",
+    "Go Bears!",
+  ]);
+  assert.equal(requests.es.segments.some(({ text }) => text.includes("*")), false);
+  assert.equal(requests.en.segments.some(({ text }) => text.includes("*")), false);
 });
 
 test("two private TTS jobs reconcile only after both MP3 files validate", async () => {

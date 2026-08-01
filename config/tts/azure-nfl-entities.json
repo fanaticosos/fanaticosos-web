@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": 4,
+  "version": 5,
   "locale": "es-MX",
   "voice": "es-MX-JorgeMultilingualNeural",
   "broadcastRate": "+8%",
+  "termReference": "spanish-nfl-terms.json",
   "policy": {
     "description": "Neutral Latin-American Spanish sports-broadcast delivery",
     "establishedSpanish": "Use the established Spanish pronunciation.",
@@ -15,6 +16,11 @@
       "name": "NFL teams",
       "url": "https://www.nfl.com/teams/",
       "type": "official"
+    },
+    {
+      "name": "Fanaticosos Spanish NFL terms",
+      "path": "config/tts/spanish-nfl-terms.json",
+      "type": "versioned-reference"
     },
     {
       "name": "Primero y Diez NFL en Español",
@@ -67,6 +73,11 @@
     {"category":"player","grapheme":"Justin","mode":"english-sensitive","phoneme":"ˈʝastin","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Justin Jefferson","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Caleb Williams","mode":"english-sensitive","alias":"Kéileb Uíliams","status":"provisional","sourceType":"official"},
+    {"category":"player","grapheme":"Luther Burden III","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"player","grapheme":"Rome Odunze","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"player","grapheme":"Colston Loveland","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"player","grapheme":"Jahdae Walker","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"coach","grapheme":"Kyle DeVan","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"J.J. McCarthy","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Aaron Jones","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Jonathan Taylor","mode":"english-low","language":"en-US","volume":"-2dB","status":"provisional","sourceType":"official"},
@@ -78,6 +89,10 @@
     {"category":"term","grapheme":"touchdown","mode":"spanish-broadcast","alias":"tóchdaun","status":"approved","sourceType":"owner-review"},
     {"category":"term","grapheme":"touchdowns","mode":"spanish-broadcast","alias":"tóchdauns","status":"approved","sourceType":"owner-review"},
     {"category":"term","grapheme":"quarterback","mode":"spanish-broadcast","alias":"cuórterbac","status":"provisional","sourceType":"mexican-broadcast"},
+    {"category":"term","grapheme":"safety","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"term","grapheme":"safeties","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"term","grapheme":"linebacker","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
+    {"category":"term","grapheme":"linebackers","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
     {"category":"term","grapheme":"head coach","mode":"english-low","language":"en-US","volume":"-2dB","status":"approved","sourceType":"owner-review"},
     {"category":"term","grapheme":"third down","mode":"spanish-broadcast","alias":"tercer daun","status":"provisional","sourceType":"mexican-broadcast"},
     {"category":"term","grapheme":"TD","mode":"english-low","language":"en-US","volume":"-2dB","alias":"touchdown","status":"approved","sourceType":"owner-review"},

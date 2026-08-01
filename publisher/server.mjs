@@ -13,11 +13,14 @@ import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsPolicyRevis
 import { previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
+import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
 const DEFAULT_TTS_PRODUCTION = join(HERE, "..", "config", "tts", "production.json");
 const DEFAULT_TTS_PRONUNCIATIONS = join(HERE, "..", "config", "tts", "pronunciations.json");
+const DEFAULT_TTS_AZURE_ENTITIES = join(HERE, "..", "config", "tts", "azure-nfl-entities.json");
+const DEFAULT_TTS_SPANISH_TERMS = join(HERE, "..", "config", "tts", "spanish-nfl-terms.json");
 const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
@@ -79,16 +82,20 @@ export function createPublisherServer({
   releasesRoot = join(dirname(draftsRoot), "releases"),
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
+  ttsAzureEntitiesPath = DEFAULT_TTS_AZURE_ENTITIES,
+  ttsSpanishTermsPath = DEFAULT_TTS_SPANISH_TERMS,
   siteSettingsPath = join(draftsRoot, "site-settings.json"),
   siteSettingsFallbackPath = DEFAULT_SITE_SETTINGS,
   musicResolver = resolveWeeklySong,
 }) {
   async function currentTtsPolicyRevision() {
-    const [production, pronunciations] = await Promise.all([
+    const [production, pronunciations, azureEntities, spanishTerms] = await Promise.all([
       readFile(ttsProductionPath, "utf8").then(JSON.parse),
       readFile(ttsPronunciationsPath, "utf8").then(JSON.parse),
+      readFile(ttsAzureEntitiesPath, "utf8").then(JSON.parse),
+      readFile(ttsSpanishTermsPath, "utf8").then(JSON.parse),
     ]);
-    return ttsPolicyRevision(production, pronunciations);
+    return ttsPolicyRevision(production, pronunciations, azureEntities, spanishTerms);
   }
   async function translationCompleted(state) {
     await createNotification(notificationsRoot, {
@@ -162,7 +169,7 @@ export function createPublisherServer({
         return json(response, 200, { settings });
       }
       if (request.method === "GET" && url.pathname === "/api/music") {
-        return json(response, 200, { settings: await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath) });
+        return json(response, 200, { settings: await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath), publication: await readMusicPublication(statesRoot, releasesRoot) });
       }
       if (request.method === "POST" && url.pathname === "/api/markdown-preview") {
         const value = await requestJson(request);
@@ -178,7 +185,9 @@ export function createPublisherServer({
           weeklySongUrl: value.weeklySongUrl,
           resolver: musicResolver,
         });
-        return json(response, 200, { settings });
+        const publication = await queueMusicPublication({ settings, queueRoot, statesRoot });
+        await createNotification(notificationsRoot, { level: "info", event: "music-publication-started", message: `Publicación de la canción iniciada: ${settings.music.weeklySong.title}` });
+        return json(response, 202, { settings, publication });
       }
       if (request.method === "GET" && url.pathname === "/api/notifications") {
         return json(response, 200, { notifications: await listNotifications(notificationsRoot) });

@@ -40,6 +40,21 @@ class AzureArticleRendererTests(unittest.TestCase):
         self.assertIn('ph="ˈbeɾs"', text)
         self.assertIn('ph="ˈhalas.ˈhol"', text)
 
+    def test_article_ssml_contains_no_markdown_and_wraps_reported_terms(self):
+        narration = (
+            "Los safeties y linebackers hablaron con Luther Burden III, "
+            "Rome Odunze, Colston Loveland, Jahdae Walker y Kyle DeVan. "
+            "Necesitan un quarterback. Go Bears!"
+        )
+        text = build_ssml(narration, self.configuration).decode("utf-8")
+        self.assertNotIn("*", text)
+        for phrase in (
+            "safeties", "linebackers", "Luther Burden III", "Rome Odunze",
+            "Colston Loveland", "Jahdae Walker", "Kyle DeVan",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', text)
+
 
 if __name__ == "__main__":
     unittest.main()

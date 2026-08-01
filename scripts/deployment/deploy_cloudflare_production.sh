@@ -42,6 +42,11 @@ if len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
 routes = manifest.get("routes", {})
 assets = manifest.get("assets", {})
 items = [(routes.get("es"), ""), (routes.get("en"), "")]
+if manifest.get("releaseKind") == "music":
+    checksum = manifest.get("homepageSha256", "")
+    if len(checksum) != 64:
+        raise SystemExit("music release homepage checksum is invalid")
+    items.append(("/", checksum))
 for key in ("esAudio", "enAudio"):
     asset = assets.get(key, {})
     path = asset.get("path", "")
@@ -67,7 +72,7 @@ for path, checksum in items:
     print(f"{path}\t{checksum}")
 PY
 )
-[[ ${#manifest_values[@]} == 5 ]] || stop "Release manifest validation did not return five values."
+[[ ${#manifest_values[@]} -ge 5 ]] || stop "Release manifest validation returned too few values."
 readonly commit="${manifest_values[0]}"
 
 set -a

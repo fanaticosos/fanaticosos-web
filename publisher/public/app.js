@@ -238,7 +238,16 @@ musicForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({ weeklySongUrl: document.querySelector("#weekly-song-url").value.trim() }),
     });
     renderMusic(settings);
-    musicState.textContent = "Guardada · aparecerá en la próxima publicación";
+    musicState.textContent = "Publicando en la página principal…";
+    const started = Date.now();
+    let completed = false;
+    while (Date.now() - started < 10 * 60 * 1000) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const { publication } = await request("/api/music");
+      if (publication?.status === "completed") { musicState.textContent = "Publicada en la página principal"; completed = true; break; }
+      if (publication?.status === "failed") throw new Error(publication.error || "La publicación de música no pudo completarse.");
+    }
+    if (!completed) throw new Error("La publicación sigue en curso. Puedes cerrar esta pantalla; el proceso continuará automáticamente.");
   } catch (error) {
     musicState.textContent = "No guardada";
     showError(error.message);

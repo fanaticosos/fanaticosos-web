@@ -1,6 +1,8 @@
 .DS_Store
 *.psd
 node_modules/
+__pycache__/
+*.pyc
 .astro/
 .vite/
 dist/

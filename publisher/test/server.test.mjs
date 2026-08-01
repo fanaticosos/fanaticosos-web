@@ -76,9 +76,11 @@ test("weekly song can be resolved, previewed, and persisted", async (context) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ weeklySongUrl: "https://music.fanaticosos.com/share/new-song" }),
   });
-  assert.equal(response.status, 200);
-  const saved = (await response.json()).settings;
+  assert.equal(response.status, 202);
+  const result = await response.json();
+  const saved = result.settings;
   assert.equal(saved.music.weeklySong.title, "Bear Down, Chicago Bears");
+  assert.equal(result.publication.status, "queued");
   assert.equal(JSON.parse(await readFile(siteSettingsPath, "utf8")).music.weeklySongUrl, "https://music.fanaticosos.com/share/new-song");
 });
 

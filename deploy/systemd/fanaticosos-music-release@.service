@@ -1,0 +1,29 @@
+[Unit]
+Description=Fanaticosos music-only release build %i
+After=local-fs.target
+ConditionPathExists=/opt/fanaticosos-blog/publisher/releases/%i/request.json
+OnSuccess=fanaticosos-music-deploy@%i.service
+
+[Service]
+Type=exec
+User=fanaticosos-blog
+Group=fanaticosos-blog
+WorkingDirectory=/opt/fanaticosos-blog/repository
+Environment=HOME=/opt/fanaticosos-blog
+Environment=NODE_ENV=production
+Environment=PATH=/opt/nodejs/current/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/build_music_release.mjs --request /opt/fanaticosos-blog/publisher/releases/%i/request.json --repository /opt/fanaticosos-blog/repository --releases-root /opt/fanaticosos-blog/publisher/releases --output /opt/fanaticosos-blog/publisher/releases/%i/release
+ExecStopPost=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/record_release_exit.mjs --release-root /opt/fanaticosos-blog/publisher/releases/%i --service-result ${SERVICE_RESULT} --exit-status ${EXIT_STATUS}
+RuntimeMaxSec=10min
+MemoryMax=4G
+MemorySwapMax=512M
+KillMode=control-group
+Restart=no
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/fanaticosos-blog/publisher/releases/%i
+UMask=0077

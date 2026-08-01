@@ -66,16 +66,19 @@ for queued in "$queue_root"/release-*-r*-*; do
   [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
   [[ -f "$queued/request.json" && ! -L "$queued/request.json" ]] || continue
   [[ ! -e "$releases_root/$job_id" ]] || continue
-  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
-    "$repository/scripts/publisher/build_release.mjs" \
-    --request "$queued/request.json" --repository "$repository" \
-    --publisher-root /opt/fanaticosos-blog/publisher --jobs-root "$jobs_root" \
-    --output "$releases_root/$job_id/release" --validate-only
+  release_kind="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("releaseKind", "article"))' "$queued/request.json")"
+  if [[ "$release_kind" == "music" ]]; then
+    runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_music_release.mjs" --request "$queued/request.json" --repository "$repository" --releases-root "$releases_root" --output "$releases_root/$job_id/release" --validate-only
+  else
+    runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_release.mjs" --request "$queued/request.json" --repository "$repository" --publisher-root /opt/fanaticosos-blog/publisher --jobs-root "$jobs_root" --output "$releases_root/$job_id/release" --validate-only
+  fi
   mv "$queued" "$releases_root/$job_id"
   chown -R "$service_account:$service_account" "$releases_root/$job_id"
   chmod 0700 "$releases_root/$job_id"
   chmod 0600 "$releases_root/$job_id/request.json"
-  systemctl reset-failed "fanaticosos-release@$job_id.service" 2>/dev/null || true
-  systemctl start --no-block "fanaticosos-release@$job_id.service"
+  unit="fanaticosos-release@$job_id.service"
+  [[ "$release_kind" == "music" ]] && unit="fanaticosos-music-release@$job_id.service"
+  systemctl reset-failed "$unit" 2>/dev/null || true
+  systemctl start --no-block "$unit"
 done
 rm -f -- "$queue_root/.wake"

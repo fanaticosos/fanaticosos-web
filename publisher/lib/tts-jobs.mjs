@@ -15,18 +15,33 @@ function digest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-export function ttsPolicyRevision(production, pronunciations) {
-  return digest({ production, pronunciations });
+export function ttsPolicyRevision(production, pronunciations, azureEntities = {}, spanishTerms = {}) {
+  return digest({ production, pronunciations, azureEntities, spanishTerms });
+}
+
+export function narrationText(markdown) {
+  return markdown
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(\*|_)(.*?)\1/g, "$2")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/\\([\\`*{}\[\]()#+.!_>-])/g, "$1")
+    .trim();
 }
 
 function narrationSegments(description, body) {
-  const segments = [{ id: "description", text: description }];
+  const segments = [{ id: "description", text: narrationText(description) }];
   let sequence = 0;
   for (const part of body.split(/\n\s*\n/)) {
     if (!part.trim()) continue;
     sequence += 1;
     const marker = /^(#{1,6}\s+|>\s*|(?:[-*+]\s+)|(?:\d+[.)]\s+))/.exec(part);
-    segments.push({ id: `body-${String(sequence).padStart(3, "0")}`, text: part.slice(marker?.[0]?.length ?? 0).trim() });
+    segments.push({
+      id: `body-${String(sequence).padStart(3, "0")}`,
+      text: narrationText(part.slice(marker?.[0]?.length ?? 0)),
+    });
   }
   if (segments.length > 250) throw new Error("the article has too many audio segments");
   if (segments.some((segment) => segment.text.length > 8_000)) throw new Error("an article paragraph is too long for audio generation");
