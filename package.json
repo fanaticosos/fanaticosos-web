@@ -10,6 +10,7 @@
     "validate:content": "node scripts/validate-content.mjs",
     "test:content-validation": "node scripts/test-content-validation.mjs",
     "test:article-routes": "node scripts/test-article-routes.mjs",
+    "test:article-discovery": "node scripts/test-article-discovery.mjs",
     "validate:settings": "node scripts/validate-site-settings.mjs",
     "test:site-settings": "node scripts/test-site-settings.mjs",
     "test:build-media-policy": "node scripts/test-build-media-policy.mjs",

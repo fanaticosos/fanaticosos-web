@@ -233,6 +233,29 @@
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 
+.latest-article-card {
+  background: var(--navy-card);
+  border: 1.5px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  display: grid;
+  grid-template-rows: 1fr;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+.latest-article-card.has-image { grid-template-rows: 150px 1fr; }
+
+.latest-article-card::before { background: linear-gradient(90deg,var(--orange),var(--orange-dim)); content: ""; height: 3px; inset: 0 0 auto; position: absolute; z-index: 1; }
+.latest-article-card > img { height: 100%; object-fit: cover; width: 100%; }
+.latest-article-copy { display: flex; flex-direction: column; gap: 11px; padding: 22px 24px 24px; }
+.latest-article-copy .card-title { color: var(--white); text-decoration: none; }
+.latest-article-copy .card-title:hover { color: var(--orange); }
+.latest-article-copy .card-desc { margin: 0; }
+.latest-article-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; }
+.latest-article-actions a { text-decoration: none; }
+.all-articles-link { color: var(--gray-light); font-size: 12px; }
+.all-articles-link:hover { color: var(--white); }
+
 .card::before {
   background: linear-gradient(90deg, var(--orange), var(--orange-dim));
   content: "";

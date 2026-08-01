@@ -24,6 +24,7 @@ const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/seo.js", ["seo.js", "text/javascript; charset=utf-8"]],
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
   ["/preview.css", ["preview.css", "text/css; charset=utf-8"]],
 ]);

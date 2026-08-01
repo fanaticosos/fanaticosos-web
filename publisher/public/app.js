@@ -1,3 +1,5 @@
+import { generateSeoPreview } from "/seo.js";
+
 const form = document.querySelector("#article-form");
 const list = document.querySelector("#draft-list");
 const message = document.querySelector("#message");
@@ -20,6 +22,28 @@ const prepareRelease = document.querySelector("#prepare-release");
 let translationTimer = null;
 let audioTimer = null;
 let releaseTimer = null;
+
+function renderSeoPreview() {
+  const seo = generateSeoPreview(fields());
+  document.querySelector("#seo-url").textContent = seo.canonicalUrl;
+  document.querySelector("#seo-search-title").textContent = seo.title || "Título del artículo";
+  document.querySelector("#seo-search-description").textContent = seo.description || "El resumen aparecerá aquí.";
+  document.querySelector("#seo-social-title").textContent = seo.title || "Título del artículo";
+  document.querySelector("#seo-social-description").textContent = seo.description || "El resumen aparecerá aquí.";
+  document.querySelector("#seo-title-length").textContent = `${seo.lengths.title} caracteres`;
+  document.querySelector("#seo-description-length").textContent = `${seo.lengths.description} caracteres`;
+  document.querySelector("#seo-keywords").textContent = seo.keywords.join(" · ") || "Se generarán desde la categoría y etiquetas";
+  const seoImage = document.querySelector("#seo-social-image");
+  seoImage.src = seo.imagePath;
+  seoImage.hidden = !seo.imagePath;
+  const warnings = document.querySelector("#seo-warnings");
+  warnings.replaceChildren(...(seo.warnings.length ? seo.warnings : ["SEO listo para publicar."]).map((warning) => {
+    const item = document.createElement("li");
+    item.textContent = warning;
+    return item;
+  }));
+  warnings.classList.toggle("ready", !seo.warnings.length);
+}
 
 function fields() {
   const data = new FormData(form);
@@ -67,6 +91,7 @@ function setFields(draft) {
   generateAudio.disabled = true;
   openPreview.disabled = true;
   prepareRelease.disabled = true;
+  renderSeoPreview();
 }
 
 function applySettings(settings) {
@@ -119,6 +144,7 @@ async function uploadImage(file) {
     form.elements.imagePath.value = value.upload.path;
     imagePreview.src = value.upload.path;
     imagePreview.hidden = false;
+    renderSeoPreview();
     saveState.textContent = "Imagen lista · guarda el borrador";
   } catch (error) {
     saveState.textContent = "Imagen no guardada";
@@ -174,6 +200,7 @@ form.addEventListener("input", (event) => {
   generateAudio.disabled = true;
   prepareRelease.disabled = true;
   message.hidden = true;
+  renderSeoPreview();
 });
 
 form.addEventListener("submit", async (event) => {

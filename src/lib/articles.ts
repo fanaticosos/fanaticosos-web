@@ -5,7 +5,7 @@ export type ArticleLocale = "es" | "en";
 
 export function isBuildEligible(article: Article): boolean {
   if (article.data.status === "published") return true;
-  return import.meta.env.INCLUDE_DRAFT_FIXTURES === "true" && article.data.fixture === true;
+  return import.meta.env?.INCLUDE_DRAFT_FIXTURES === "true" && article.data.fixture === true;
 }
 
 export function articlePath(article: Article): string {
@@ -39,4 +39,17 @@ export function pairedArticle(article: Article, articles: Article[]): Article {
   );
   if (!pair) throw new Error(`Missing ${alternateLocale} pair for article ${article.data.articleId}`);
   return pair;
+}
+
+export function latestArticleForLocale(articles: Article[], locale: ArticleLocale): Article | undefined {
+  return articles
+    .filter((article) => article.data.locale === locale && isBuildEligible(article))
+    .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf())[0];
+}
+
+export function relatedArticlesFor(article: Article, articles: Article[], limit = 3): Article[] {
+  return articles
+    .filter((candidate) => candidate.data.locale === article.data.locale && candidate.data.articleId !== article.data.articleId && isBuildEligible(candidate))
+    .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf())
+    .slice(0, limit);
 }

@@ -37,9 +37,13 @@ async function verifyPage({ file, lang, canonical, alternate, alternateLang, tit
   const jsonLd = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
   assert.ok(jsonLd, `${file} is missing JSON-LD`);
   const structuredData = JSON.parse(jsonLd);
-  assert.equal(structuredData["@type"], "NewsArticle");
-  assert.equal(structuredData.inLanguage, lang);
-  assert.equal(structuredData.mainEntityOfPage, canonical);
+  const newsArticle = structuredData["@graph"].find((item) => item["@type"] === "NewsArticle");
+  const breadcrumbs = structuredData["@graph"].find((item) => item["@type"] === "BreadcrumbList");
+  assert.equal(newsArticle.inLanguage, lang);
+  assert.equal(newsArticle.mainEntityOfPage, canonical);
+  assert.equal(breadcrumbs.itemListElement.length, 3);
+  assert.match(html, /data-share-controls/);
+  assert.match(html, /property="og:type" content="article"/);
 }
 
 let failure;

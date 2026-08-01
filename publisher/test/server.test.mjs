@@ -87,6 +87,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /<details class="activity-panel">/);
   assert.doesNotMatch(html, /name="imageCaption"/);
   assert.match(html, /Crédito o pie de foto/);
+  assert.match(html, /SEO y apariencia al compartir/);
+  assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
   assert.match(html, /id="prepare-release" disabled hidden/);
 
@@ -94,6 +96,10 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /workflow: "preview"/);
+  assert.match(app, /generateSeoPreview/);
+
+  const seo = await (await fetch(`${base}/seo.js`)).text();
+  assert.match(seo, /canonicalUrl/);
 
   const styles = await (await fetch(`${base}/styles.css`)).text();
   assert.match(styles, /#notification-list[^}]*max-height:[^}]*overflow-y: auto/);

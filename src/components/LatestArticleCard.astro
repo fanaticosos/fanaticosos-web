@@ -1,0 +1,31 @@
+---
+import type { Article } from "../lib/articles";
+import { articlePath } from "../lib/articles";
+
+interface Props { article?: Article; }
+const { article } = Astro.props;
+---
+
+{
+  article ? (
+    <article class:list={["latest-article-card", { "has-image": article.data.featuredImage }]}>
+      {article.data.featuredImage && <img src={article.data.featuredImage.src} alt={article.data.featuredImage.alt} />}
+      <div class="latest-article-copy">
+        <span class="card-eyebrow">Último artículo · {article.data.category}</span>
+        <a class="card-title" href={articlePath(article)}>{article.data.title}</a>
+        <p class="card-desc">{article.data.description}</p>
+        <div class="latest-article-actions">
+          <a class="card-cta" href={articlePath(article)}>Leer artículo →</a>
+          <a class="all-articles-link" href="/blog/">Ver todos los artículos</a>
+        </div>
+      </div>
+    </article>
+  ) : (
+    <a class="card" href="/blog/">
+      <span class="card-eyebrow">Leer</span>
+      <span class="card-title">Blog</span>
+      <p class="card-desc">Artículos, análisis profundos y la perspectiva en español de FanaticOSOS.</p>
+      <span class="card-cta">Ver el blog →</span>
+    </a>
+  )
+}

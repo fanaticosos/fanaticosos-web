@@ -58,6 +58,27 @@
             <label>Descripción accesible <span>opcional</span><input name="imageAlt" maxlength="500" placeholder="Si la dejas vacía, usaremos el título del artículo"></label>
             <label>Crédito o pie de foto <span>opcional</span><input name="imageCredit" maxlength="500" placeholder="Ejemplo: Bailey Black/Chicago Bears"></label>
           </section>
+          <details class="panel seo-panel" open>
+            <summary><span>SEO y apariencia al compartir</span><small>Generado automáticamente</small></summary>
+            <p class="seo-help">Se actualiza con el título, resumen, categoría, etiquetas e imagen. Para corregirlo, edita esos campos arriba.</p>
+            <div class="seo-preview-grid">
+              <section class="search-preview" aria-label="Vista previa aproximada en buscadores">
+                <span id="seo-url">https://fanaticosos.com/blog/nuevo-articulo/</span>
+                <strong id="seo-search-title">Título del artículo</strong>
+                <p id="seo-search-description">El resumen aparecerá aquí.</p>
+              </section>
+              <section class="social-preview" aria-label="Vista previa aproximada en redes y WhatsApp">
+                <img id="seo-social-image" alt="" hidden>
+                <div><small>fanaticosos.com</small><strong id="seo-social-title">Título del artículo</strong><p id="seo-social-description">El resumen aparecerá aquí.</p></div>
+              </section>
+            </div>
+            <div class="seo-metrics">
+              <span>Título: <strong id="seo-title-length">0 caracteres</strong></span>
+              <span>Resumen: <strong id="seo-description-length">0 caracteres</strong></span>
+            </div>
+            <p class="seo-keywords"><strong>Temas detectados:</strong> <span id="seo-keywords"></span></p>
+            <ul id="seo-warnings" class="seo-warnings"></ul>
+          </details>
           <section class="panel future">
             <h2>Crear versiones y vista previa</h2>
             <p class="workflow-explanation">Un solo clic genera la traducción, los dos audios y una vista previa privada. No publica el artículo.</p>

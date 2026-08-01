@@ -12,6 +12,7 @@ interface Props {
   alternatePaths?: Partial<Record<"es" | "en" | "x-default", string>>;
   structuredData?: Record<string, unknown>;
   feedPath?: string;
+  contentType?: "website" | "article";
 }
 
 const {
@@ -25,6 +26,7 @@ const {
   alternatePaths = {},
   structuredData,
   feedPath = lang === "es" ? "/rss.xml" : "/en/rss.xml",
+  contentType = "website",
 } = Astro.props;
 
 const canonicalUrl = new URL(canonicalPath, Astro.site);
@@ -42,10 +44,15 @@ const serializedStructuredData = structuredData
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
     <meta property="og:title" content={title} />
+    <meta property="og:site_name" content="FanaticOSOS" />
+    <meta property="og:type" content={contentType} />
     {ogDescription && <meta property="og:description" content={ogDescription} />}
     <meta property="og:image" content={imageUrl} />
     <meta property="og:url" content={canonicalUrl} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    {ogDescription && <meta name="twitter:description" content={ogDescription} />}
+    <meta name="twitter:image" content={imageUrl} />
     <link rel="canonical" href={canonicalUrl} />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="alternate" type="application/rss+xml" title="FanaticOSOS" href={new URL(feedPath, Astro.site)} />
