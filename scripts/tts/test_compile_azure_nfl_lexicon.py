@@ -122,14 +122,17 @@ class AzureNflLexiconTests(unittest.TestCase):
             self.configuration,
         )
         english = [item["markup"] for item in segments if item["voice"] == "en-US-GuyNeural"]
-        self.assertIn(
-            '<sub alias="Luther Burden the Third">Luther Burden III</sub>',
-            english,
-        )
-        self.assertIn("Rome Odunze", english)
-        self.assertIn("tight end", english)
-        self.assertIn("Caleb Williams", english)
+        english_text = "".join(english)
+        self.assertTrue(any(
+            '<sub alias="Luther Burden the Third">Luther Burden III</sub>' in item
+            for item in english
+        ))
+        self.assertIn("Rome Odunze", english_text)
+        self.assertIn("tight end", english_text)
+        self.assertIn("Caleb Williams", english_text)
         self.assertTrue(any(item["voice"] == "es-MX-JorgeMultilingualNeural" for item in segments))
+        for item in segments:
+            self.assertRegex(item["markup"], r"[\wáéíóúñ]", msg=item)
 
     def test_owner_reviewed_english_game_terms_are_not_hispanicized(self):
         output = apply_inline_ssml(

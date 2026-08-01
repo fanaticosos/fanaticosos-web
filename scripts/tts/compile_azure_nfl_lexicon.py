@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import unicodedata
@@ -222,7 +223,26 @@ def voice_segments(text: str, configuration: dict[str, Any]) -> list[dict[str, s
             append(configuration["voice"], spoken)
         cursor = match.end()
     append(configuration["voice"], escape(text[cursor:]))
-    return fragments
+
+    # Azure rejects voice elements that contain only whitespace or punctuation.
+    # Keep those separators, but attach them to a neighboring spoken fragment.
+    spoken_fragments: list[dict[str, str]] = []
+    pending_prefix = ""
+    for fragment in fragments:
+        plain = html.unescape(re.sub(r"<[^>]+>", "", fragment["markup"]))
+        if not re.search(r"\w", plain, flags=re.UNICODE):
+            if spoken_fragments:
+                spoken_fragments[-1]["markup"] += fragment["markup"]
+            else:
+                pending_prefix += fragment["markup"]
+            continue
+        if pending_prefix:
+            fragment = {**fragment, "markup": pending_prefix + fragment["markup"]}
+            pending_prefix = ""
+        spoken_fragments.append(fragment)
+    if pending_prefix and spoken_fragments:
+        spoken_fragments[-1]["markup"] += pending_prefix
+    return spoken_fragments
 
 
 def write_outputs(configuration_path: Path, output_path: Path) -> None:
