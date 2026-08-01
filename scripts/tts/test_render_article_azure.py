@@ -36,7 +36,6 @@ class AzureArticleRendererTests(unittest.TestCase):
         ET.fromstring(ssml)
         text = ssml.decode("utf-8")
         self.assertIn('name="es-MX-JorgeMultilingualNeural"', text)
-        self.assertIn('rate="+8%"', text)
         self.assertIn('ph="ˈbeɾs"', text)
         self.assertIn('ph="ˈhalas.ˈhol"', text)
 

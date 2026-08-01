@@ -43,11 +43,9 @@ def build_chunks(segments: list[dict[str, str]], maximum_characters: int = 2600)
 def build_ssml(text: str, configuration: dict) -> bytes:
     voices: list[str] = []
     for segment in voice_segments(text, configuration):
-        volume = f' volume="{segment["volume"]}"' if segment.get("volume") else ""
         voices.append(
             f'<voice name="{segment["voice"]}">'
-            f'<prosody rate="{configuration["broadcastRate"]}"{volume}>'
-            f'{segment["markup"]}</prosody></voice>'
+            f'{segment["markup"]}</voice>'
         )
     ssml = (
         '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '

@@ -27,7 +27,7 @@ def normalize_mp3(source: Path, destination: Path) -> None:
     subprocess.run(
         [
             "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
-            "-i", str(source), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+            "-i", str(source), "-af", "atempo=1.08,loudnorm=I=-16:TP=-1.5:LRA=11",
             "-ar", "48000", "-ac", "1", "-b:a", "128k", str(destination),
         ],
         check=True,
