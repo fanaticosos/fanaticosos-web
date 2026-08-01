@@ -45,6 +45,18 @@ function json(response, status, value) {
   response.end(body);
 }
 
+export function audioByteRange(value, size) {
+  if (!value) return null;
+  const match = /^bytes=(\d+)-(\d*)$/.exec(value);
+  if (!match) throw new Error("audio byte range is invalid");
+  const start = Number(match[1]);
+  const requestedEnd = match[2] ? Number(match[2]) : size - 1;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(requestedEnd) || start >= size || requestedEnd < start) {
+    throw new Error("audio byte range is unsatisfiable");
+  }
+  return { start, end: Math.min(requestedEnd, size - 1) };
+}
+
 async function requestJson(request) {
   const chunks = [];
   let size = 0;
@@ -317,11 +329,15 @@ export function createPublisherServer({
       if (audioMatch && request.method === "GET" && audioMatch[2]) {
         const state = await readTtsState(statesRoot, audioMatch[1]);
         const body = await readFile(audioFileForState(state, audioMatch[2], jobsRoot));
-        response.writeHead(200, {
-          "Content-Type": "audio/mpeg", "Content-Length": body.length,
+        const range = audioByteRange(request.headers.range, body.length);
+        const payload = range ? body.subarray(range.start, range.end + 1) : body;
+        response.writeHead(range ? 206 : 200, {
+          "Content-Type": "audio/mpeg", "Content-Length": payload.length,
+          "Accept-Ranges": "bytes",
+          ...(range ? { "Content-Range": `bytes ${range.start}-${range.end}/${body.length}` } : {}),
           "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
         });
-        return response.end(body);
+        return response.end(payload);
       }
       const releaseMatch = RELEASE_PATH.exec(url.pathname);
       if (releaseMatch && request.method === "POST") {

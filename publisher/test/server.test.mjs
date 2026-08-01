@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createPublisherServer } from "../server.mjs";
+import { audioByteRange, createPublisherServer } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -16,6 +16,13 @@ const fields = {
   status: "draft",
   featuredImage: {},
 };
+
+test("audio byte ranges support browser metadata and seeking requests", () => {
+  assert.deepEqual(audioByteRange("bytes=0-", 1000), { start: 0, end: 999 });
+  assert.deepEqual(audioByteRange("bytes=100-199", 1000), { start: 100, end: 199 });
+  assert.equal(audioByteRange(undefined, 1000), null);
+  assert.throws(() => audioByteRange("bytes=1000-", 1000), /unsatisfiable/);
+});
 
 async function fixture() {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
