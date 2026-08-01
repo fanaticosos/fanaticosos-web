@@ -38,6 +38,7 @@ RestrictRealtime=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 IPAddressDeny=any
 IPAddressAllow=100.64.0.0/10
+IPAddressAllow=192.168.1.10/32
 ReadWritePaths=/opt/fanaticosos-blog/publisher
 UMask=0077
 

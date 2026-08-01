@@ -36,13 +36,13 @@ test("weekly song resolution uses the private Navidrome route and publishes publ
   const share = JSON.stringify(JSON.stringify({
     tracks: [{ id: "stream-token", title: "Song", artist: "Artist", album: "Album", duration: 120 }],
   }));
-  const html = `<meta property="og:image" content="http://100.121.55.59:4533/share/img/cover-token?size=300"><script>window.__SHARE_INFO__ = ${share}</script>`;
+  const html = `<meta property="og:image" content="http://192.168.1.10:4533/share/img/cover-token?size=300"><script>window.__SHARE_INFO__ = ${share}</script>`;
   const song = await resolveWeeklySong("https://music.fanaticosos.com/share/public-token", async (url, options) => {
     requestedUrl = url.href;
     requestedOptions = options;
     return new Response(html);
   });
-  assert.equal(requestedUrl, "http://100.121.55.59:4533/share/public-token");
+  assert.equal(requestedUrl, "http://192.168.1.10:4533/share/public-token");
   assert.equal(requestedOptions.headers["x-forwarded-host"], "music.fanaticosos.com");
   assert.equal(song.coverUrl, "https://music.fanaticosos.com/share/img/cover-token?size=300");
   assert.equal(song.streamUrl, "https://music.fanaticosos.com/share/s/stream-token");

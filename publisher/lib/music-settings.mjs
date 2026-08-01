@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import { parseNavidromeShare } from "../../src/lib/navidromeShare.mjs";
 import { siteSettingsSchema } from "../../src/lib/siteSettingsSchema.mjs";
 
-const PRIVATE_NAVIDROME = "http://100.121.55.59:4533";
+const PRIVATE_NAVIDROME = "http://192.168.1.10:4533";
 
 export async function readMusicSettings(path, fallbackPath) {
   const contents = await readFile(path, "utf8").catch((error) => {

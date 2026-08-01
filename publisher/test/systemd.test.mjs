@@ -11,6 +11,7 @@ test("publisher binds only to the Papabear NetBird address", () => {
   assert.match(unit, /Environment=PUBLISHER_HOST=100\.121\.48\.92/);
   assert.doesNotMatch(unit, /PUBLISHER_HOST=0\.0\.0\.0/);
   assert.match(unit, /IPAddressAllow=100\.64\.0\.0\/10/);
+  assert.match(unit, /IPAddressAllow=192\.168\.1\.10\/32/);
   assert.match(unit, /IPAddressDeny=any/);
 });
 
