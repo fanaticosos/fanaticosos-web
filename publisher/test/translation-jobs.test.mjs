@@ -51,3 +51,23 @@ test("translation queue and completed result remain private and reconstruct Mark
   assert.equal(corrected.ownerRevision, 1);
   assert.ok(corrected.ownerReviewedAt);
 });
+
+test("translation queue records the requested automatic preview workflow", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-translation-workflow-"));
+  const state = await queueTranslation({
+    draft,
+    queueRoot: join(root, "queue"),
+    statesRoot: join(root, "states"),
+    workflow: "preview",
+  });
+  assert.equal(state.workflow, "preview");
+  await assert.rejects(
+    queueTranslation({
+      draft: { ...draft, articleId: "00000000-0000-4000-8000-000000000002" },
+      queueRoot: join(root, "queue"),
+      statesRoot: join(root, "states"),
+      workflow: "publish",
+    }),
+    /workflow is invalid/,
+  );
+});

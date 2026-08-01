@@ -30,7 +30,7 @@ ExecStart=/usr/bin/python3 /opt/fanaticosos-blog/repository/scripts/translation/
   --threads 12 \
   --context 8192 \
   --output-tokens 2048 \
-  --max-batch-characters 700
+  --max-batch-characters 3500
 
 Restart=no
 RuntimeMaxSec=5min

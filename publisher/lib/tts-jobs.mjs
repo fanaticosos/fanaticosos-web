@@ -53,7 +53,8 @@ export function ttsRequestsForDraft(draft, translation) {
   };
 }
 
-export async function queueTts({ draft, translation, queueRoot, statesRoot, policyRevision, now = new Date() }) {
+export async function queueTts({ draft, translation, queueRoot, statesRoot, policyRevision, workflow = "manual", now = new Date() }) {
+  if (!["manual", "preview"].includes(workflow)) throw new Error("audio workflow is invalid");
   if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
@@ -79,7 +80,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   }
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
-    status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions, policyRevision, jobs,
+    status: "queued", workflow, createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions, policyRevision, jobs,
   };
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });

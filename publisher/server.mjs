@@ -84,7 +84,67 @@ export function createPublisherServer({
     ]);
     return ttsPolicyRevision(production, pronunciations);
   }
-  return createServer(async (request, response) => {
+  async function translationCompleted(state) {
+    await createNotification(notificationsRoot, {
+      level: "success", event: "translation-completed", articleId: state.articleId,
+      message: state.workflow === "preview" ? "La versión en inglés está lista; los audios se preparan automáticamente." : "La versión en inglés está lista para revisión.",
+    });
+    if (state.workflow !== "preview") return;
+    const draft = await readDraft(draftsRoot, state.articleId);
+    const audio = await queueTts({
+      draft, translation: state, queueRoot, statesRoot,
+      policyRevision: await currentTtsPolicyRevision(), workflow: "preview",
+    });
+    await createNotification(notificationsRoot, {
+      level: "info", event: "audio-started", articleId: state.articleId,
+      message: `Audios en español e inglés iniciados automáticamente: ${draft.title}`,
+    });
+    return audio;
+  }
+  async function translationFailed(state) {
+    await createNotification(notificationsRoot, {
+      level: "error", event: "translation-failed", articleId: state.articleId,
+      message: `La traducción se detuvo: ${state.error}`,
+    });
+  }
+  async function audioCompleted(state) {
+    await createNotification(notificationsRoot, {
+      level: "success", event: "audio-completed", articleId: state.articleId,
+      message: state.workflow === "preview" ? "Los audios están listos; la vista previa se valida automáticamente." : "Los audios en español e inglés están listos para escuchar.",
+    });
+    if (state.workflow !== "preview") return;
+    const draft = await readDraft(draftsRoot, state.articleId);
+    const release = await queueRelease({ draft, queueRoot, statesRoot });
+    await createNotification(notificationsRoot, {
+      level: "info", event: "release-started", articleId: state.articleId,
+      message: `Validación privada iniciada automáticamente: ${draft.title}`,
+    });
+    return release;
+  }
+  async function audioFailed(state) {
+    await createNotification(notificationsRoot, {
+      level: "error", event: "audio-failed", articleId: state.articleId,
+      message: `La generación de audio se detuvo: ${state.error}`,
+    });
+  }
+  async function releaseCompleted(state) {
+    await createNotification(notificationsRoot, {
+      level: "success", event: "release-completed", articleId: state.articleId,
+      message: "La vista previa privada está lista para revisar; todavía no está publicada.",
+    });
+  }
+  async function releaseFailed(state) {
+    await createNotification(notificationsRoot, {
+      level: "error", event: "release-failed", articleId: state.articleId,
+      message: `La preparación privada se detuvo: ${state.error}`,
+    });
+  }
+  async function reconcilePublisherJobs() {
+    await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
+    await reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed });
+    await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
+  }
+  const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://publisher.local");
       if (request.method === "GET" && url.pathname === "/health") {
@@ -158,7 +218,7 @@ export function createPublisherServer({
         if (value.expectedRevision !== draft.revision) {
           throw new Error("save the current draft revision before translation");
         }
-        const translation = await queueTranslation({ draft, queueRoot, statesRoot });
+        const translation = await queueTranslation({ draft, queueRoot, statesRoot, workflow: value.workflow ?? "manual" });
         await createNotification(notificationsRoot, {
           level: "info", event: "translation-started", articleId: draft.articleId,
           message: `Traducción iniciada: ${draft.title}`,
@@ -166,17 +226,7 @@ export function createPublisherServer({
         return json(response, 202, { translation });
       }
       if (translationMatch && request.method === "GET") {
-        await reconcileTranslations({
-          statesRoot, jobsRoot,
-          onComplete: (state) => createNotification(notificationsRoot, {
-            level: "success", event: "translation-completed", articleId: state.articleId,
-            message: "La versión en inglés está lista para revisión.",
-          }),
-          onFailure: (state) => createNotification(notificationsRoot, {
-            level: "error", event: "translation-failed", articleId: state.articleId,
-            message: `La traducción se detuvo: ${state.error}`,
-          }),
-        });
+        await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
         return json(response, 200, { translation: await readTranslationState(statesRoot, translationMatch[1]) });
       }
       if (translationMatch && request.method === "PUT") {
@@ -196,7 +246,7 @@ export function createPublisherServer({
         const draft = await readDraft(draftsRoot, audioMatch[1]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
         const translation = await readTranslationState(statesRoot, draft.articleId);
-        const audio = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
+        const audio = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision(), workflow: value.workflow ?? "manual" });
         await createNotification(notificationsRoot, {
           level: "info", event: "audio-started", articleId: draft.articleId,
           message: `Audios en español e inglés iniciados: ${draft.title}`,
@@ -204,17 +254,7 @@ export function createPublisherServer({
         return json(response, 202, { audio });
       }
       if (audioMatch && request.method === "GET" && !audioMatch[2]) {
-        await reconcileTts({
-          statesRoot, jobsRoot,
-          onComplete: (state) => createNotification(notificationsRoot, {
-            level: "success", event: "audio-completed", articleId: state.articleId,
-            message: "Los audios en español e inglés están listos para escuchar.",
-          }),
-          onFailure: (state) => createNotification(notificationsRoot, {
-            level: "error", event: "audio-failed", articleId: state.articleId,
-            message: `La generación de audio se detuvo: ${state.error}`,
-          }),
-        });
+        await reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed });
         return json(response, 200, { audio: await readTtsState(statesRoot, audioMatch[1]) });
       }
       if (audioMatch && request.method === "GET" && audioMatch[2]) {
@@ -240,11 +280,7 @@ export function createPublisherServer({
         return json(response, 202, { release });
       }
       if (releaseMatch && request.method === "GET") {
-        await reconcileReleases({
-          statesRoot, releasesRoot,
-          onComplete: (state) => createNotification(notificationsRoot, { level: "success", event: "release-completed", articleId: state.articleId, message: "La compilación privada pasó todas las validaciones; todavía no está publicada." }),
-          onFailure: (state) => createNotification(notificationsRoot, { level: "error", event: "release-failed", articleId: state.articleId, message: `La preparación privada se detuvo: ${state.error}` }),
-        });
+        await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
         return json(response, 200, { release: await readReleaseState(statesRoot, releaseMatch[1]) });
       }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
@@ -281,6 +317,8 @@ export function createPublisherServer({
       return json(response, status, { error: error.message });
     }
   });
+  server.reconcilePublisherJobs = reconcilePublisherJobs;
+  return server;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -294,40 +332,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const jobsRoot = process.env.PUBLISHER_JOBS_ROOT ?? join(HERE, ".local-jobs");
   const releasesRoot = process.env.PUBLISHER_RELEASES_ROOT ?? join(HERE, ".local-releases");
   const options = { draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, releasesRoot };
-  const reconcile = () => reconcileTranslations({
-    statesRoot, jobsRoot,
-    onComplete: (state) => createNotification(notificationsRoot, {
-      level: "success", event: "translation-completed", articleId: state.articleId,
-      message: "La versión en inglés está lista para revisión.",
-    }),
-    onFailure: (state) => createNotification(notificationsRoot, {
-      level: "error", event: "translation-failed", articleId: state.articleId,
-      message: `La traducción se detuvo: ${state.error}`,
-    }),
-  }).catch((error) => console.error("translation reconciliation failed", error));
-  const reconcileAudio = () => reconcileTts({
-    statesRoot, jobsRoot,
-    onComplete: (state) => createNotification(notificationsRoot, {
-      level: "success", event: "audio-completed", articleId: state.articleId,
-      message: "Los audios en español e inglés están listos para escuchar.",
-    }),
-    onFailure: (state) => createNotification(notificationsRoot, {
-      level: "error", event: "audio-failed", articleId: state.articleId,
-      message: `La generación de audio se detuvo: ${state.error}`,
-    }),
-  }).catch((error) => console.error("audio reconciliation failed", error));
-  const reconcileRelease = () => reconcileReleases({
-    statesRoot, releasesRoot,
-    onComplete: (state) => createNotification(notificationsRoot, { level: "success", event: "release-completed", articleId: state.articleId, message: "La compilación privada pasó todas las validaciones; todavía no está publicada." }),
-    onFailure: (state) => createNotification(notificationsRoot, { level: "error", event: "release-failed", articleId: state.articleId, message: `La preparación privada se detuvo: ${state.error}` }),
-  }).catch((error) => console.error("release reconciliation failed", error));
+  const server = createPublisherServer(options);
+  const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));
   setInterval(reconcile, 10_000).unref();
-  setInterval(reconcileAudio, 10_000).unref();
-  setInterval(reconcileRelease, 10_000).unref();
   reconcile();
-  reconcileAudio();
-  reconcileRelease();
-  createPublisherServer(options).listen(port, host, () => {
+  server.listen(port, host, () => {
     console.log(`Fanaticosos publisher listening on http://${host}:${port}`);
   });
 }

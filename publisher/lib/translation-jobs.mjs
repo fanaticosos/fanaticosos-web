@@ -55,7 +55,8 @@ export function translationRequestForDraft(draft) {
   };
 }
 
-export async function queueTranslation({ draft, queueRoot, statesRoot, now = new Date() }) {
+export async function queueTranslation({ draft, queueRoot, statesRoot, workflow = "manual", now = new Date() }) {
+  if (!["manual", "preview"].includes(workflow)) throw new Error("translation workflow is invalid");
   const jobId = `translation-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
   if (!JOB_ID.test(jobId)) throw new Error("translation job identity is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
@@ -76,7 +77,7 @@ export async function queueTranslation({ draft, queueRoot, statesRoot, now = new
   await rename(temporary, target);
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
-    jobId, status: "queued", createdAt: now.toISOString(), updatedAt: now.toISOString(),
+    jobId, status: "queued", workflow, createdAt: now.toISOString(), updatedAt: now.toISOString(),
     bodyLayout,
   };
   await atomicJson(statePath, state);

@@ -62,7 +62,7 @@ function setFields(draft) {
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
   generateEnglish.disabled = !draft;
-  workflowState.textContent = draft ? "Listo para generar la versión en inglés." : "Guarda un borrador válido para comenzar.";
+  workflowState.textContent = draft ? "Listo para preparar traducción, audios y vista previa con un solo clic." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
   audioResult.hidden = true;
   generateAudio.disabled = true;
@@ -213,7 +213,7 @@ async function pollTranslation() {
   if (!current) return null;
   try {
     const { translation } = await request(`/api/drafts/${current.articleId}/translation`);
-    workflowState.textContent = translation.status === "queued" ? "Traducción en cola…" : translation.status === "running" ? "Generando inglés…" : translation.status === "completed" ? "Versión en inglés lista." : "La traducción se detuvo.";
+    workflowState.textContent = translation.status === "queued" ? "Traducción en cola…" : translation.status === "running" ? "Generando inglés…" : translation.status === "completed" ? "Inglés listo · preparando audios automáticamente…" : "La traducción se detuvo.";
     if (translation.status === "completed") {
       clearInterval(translationTimer);
       translationTimer = null;
@@ -223,7 +223,7 @@ async function pollTranslation() {
       englishResult.hidden = false;
       generateEnglish.disabled = false;
       await refreshNotifications();
-      generateAudio.disabled = false;
+      generateAudio.disabled = translation.workflow === "preview";
       const audioStatus = await pollAudio();
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "failed") {
@@ -248,9 +248,9 @@ generateEnglish.addEventListener("click", async () => {
   try {
     await request(`/api/drafts/${current.articleId}/translation`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expectedRevision: current.revision }),
+      body: JSON.stringify({ expectedRevision: current.revision, workflow: "preview" }),
     });
-    workflowState.textContent = "Traducción en cola…";
+    workflowState.textContent = "Preparación automática iniciada · no necesitas pulsar los pasos siguientes.";
     await refreshNotifications();
     const status = await pollTranslation();
     if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);

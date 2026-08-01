@@ -75,7 +75,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
         self.assertIn("b10195-47f686f53", command)
         self.assertIn("--configuration-version 6", command)
         self.assertIn("%i/failed-output.json", command)
-        self.assertIn("--max-batch-characters 700", command)
+        self.assertIn("--max-batch-characters 3500", command)
 
 
 if __name__ == "__main__":

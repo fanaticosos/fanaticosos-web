@@ -72,3 +72,16 @@ test("two private TTS jobs reconcile only after both MP3 files validate", async 
   assert.equal(regenerated.status, "queued");
   assert.equal(regenerated.policyRevision, "e".repeat(64));
 });
+
+test("audio queue preserves the automatic preview workflow", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-tts-workflow-"));
+  const state = await queueTts({
+    draft,
+    translation,
+    queueRoot: join(root, "queue"),
+    statesRoot: join(root, "states"),
+    policyRevision,
+    workflow: "preview",
+  });
+  assert.equal(state.workflow, "preview");
+});

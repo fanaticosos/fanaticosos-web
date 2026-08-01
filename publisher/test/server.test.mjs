@@ -83,10 +83,14 @@ test("editor shell is served with private security headers", async (context) => 
   const html = await response.text();
   assert.match(html, /Publicador privado/);
   assert.match(html, /id="article-title"/);
+  assert.match(html, />Preparar todo</);
+  assert.match(html, /id="generate-audio" disabled hidden/);
+  assert.match(html, /id="prepare-release" disabled hidden/);
 
   const app = await (await fetch(`${base}/app.js`)).text();
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
+  assert.match(app, /workflow: "preview"/);
 
   const styles = await (await fetch(`${base}/styles.css`)).text();
   assert.match(styles, /#notification-list[^}]*max-height:[^}]*overflow-y: auto/);
