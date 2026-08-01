@@ -120,7 +120,12 @@
   background: rgba(5, 18, 31, 0.72);
 }
 
-.article-audio audio { width: 100%; }
+.article-audio audio {
+  display: block;
+  height: 54px;
+  max-height: 54px;
+  width: 100%;
+}
 
 .article-shell figure {
   margin: 36px 0;
