@@ -22,6 +22,7 @@ const audiogramResult = document.querySelector("#audiogram-result");
 const audiogramVideo = document.querySelector("#audiogram-video");
 const audiogramStatus = document.querySelector("#audiogram-status");
 const downloadAudiogram = document.querySelector("#download-audiogram");
+const regenerateAudiogram = document.querySelector("#regenerate-audiogram");
 const copyYoutube = document.querySelector("#copy-youtube");
 const copyArticleLink = document.querySelector("#copy-article-link");
 let audiogramMetadata = null;
@@ -447,6 +448,15 @@ async function pollAudiogram() {
 
 copyYoutube.addEventListener("click", async () => { if (audiogramMetadata) await navigator.clipboard.writeText(`${audiogramMetadata.youtubeTitle}\n\n${audiogramMetadata.youtubeDescription}`); });
 copyArticleLink.addEventListener("click", async () => { if (audiogramMetadata) await navigator.clipboard.writeText(audiogramMetadata.canonicalUrl); });
+regenerateAudiogram.addEventListener("click", async () => {
+  if (!current) return;
+  regenerateAudiogram.disabled = true;
+  try {
+    await request(`/api/drafts/${current.articleId}/audiogram`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: current.revision }) });
+    audiogramResult.hidden = false; audiogramStatus.textContent = "Preparando video completo para YouTube…"; setTimeout(pollAudiogram, 2000);
+  } catch (error) { showError(error.message); }
+  finally { regenerateAudiogram.disabled = false; }
+});
 
 generateAudio.addEventListener("click", async () => {
   if (!current) return;

@@ -356,6 +356,14 @@ export function createPublisherServer({
         return response.end(payload);
       }
       const audiogramMatch = AUDIOGRAM_PATH.exec(url.pathname);
+      if (audiogramMatch && request.method === "POST" && !audiogramMatch[2]) {
+        const value = await requestJson(request);
+        const [draft, audio] = await Promise.all([readDraft(draftsRoot, audiogramMatch[1]), readTtsState(statesRoot, audiogramMatch[1])]);
+        if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before creating the audiogram");
+        const audiogram = await queueAudiogram({ draft, audio, queueRoot, statesRoot });
+        await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: draft.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
+        return json(response, 202, { audiogram });
+      }
       if (audiogramMatch && request.method === "GET" && !audiogramMatch[2]) {
         await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
         return json(response, 200, { audiogram: await readAudiogramState(statesRoot, audiogramMatch[1]) });
