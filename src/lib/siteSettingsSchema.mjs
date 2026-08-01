@@ -3,9 +3,9 @@ import { z } from "astro/zod";
 const navidromeUrl = z.url().refine((value) => {
   const url = new URL(value);
   return url.protocol === "https:"
-    && url.hostname === "musica.fanaticosos.com"
+    && ["music.fanaticosos.com", "musica.fanaticosos.com"].includes(url.hostname)
     && /^\/share\/[^/]+\/?$/.test(url.pathname);
-}, "Must be an HTTPS Navidrome share URL on musica.fanaticosos.com");
+}, "Must be an HTTPS Navidrome share URL on music.fanaticosos.com");
 
 export const siteSettingsSchema = z.object({
   version: z.literal(1),

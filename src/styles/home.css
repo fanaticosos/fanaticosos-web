@@ -304,6 +304,72 @@
   margin-top: auto;
 }
 
+.weekly-song {
+  background: rgba(3, 18, 33, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  margin: 4px 0 2px;
+  overflow: hidden;
+  padding: 12px;
+  width: 100%;
+}
+
+.weekly-song-cover {
+  border-radius: 9px;
+  grid-row: span 2;
+  overflow: hidden;
+}
+
+.weekly-song-cover img {
+  aspect-ratio: 1;
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+  width: 100%;
+}
+
+.weekly-song-cover:hover img { transform: scale(1.04); }
+
+.weekly-song-copy {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.weekly-song-label {
+  color: var(--orange);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.weekly-song-copy strong {
+  color: var(--white);
+  font-size: 15px;
+  line-height: 1.3;
+  margin-top: 5px;
+}
+
+.weekly-song-copy > span:last-child {
+  color: var(--gray-light);
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.weekly-song audio {
+  grid-column: 2;
+  height: 32px;
+  max-width: 100%;
+  width: 100%;
+}
+
 .card-cta-secondary {
   color: var(--gray-light);
 }
@@ -339,6 +405,8 @@
   .cards-grid {
     grid-template-columns: 1fr;
   }
+
+  .weekly-song { grid-template-columns: 82px minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

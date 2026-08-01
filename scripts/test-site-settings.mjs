@@ -10,6 +10,10 @@ const validSettings = {
 };
 
 assert.doesNotThrow(() => siteSettingsSchema.parse(validSettings));
+assert.doesNotThrow(() => siteSettingsSchema.parse({
+  ...validSettings,
+  music: { ...validSettings.music, weeklySongUrl: "https://music.fanaticosos.com/share/song" },
+}));
 
 const invalidSettings = [
   { ...validSettings, music: { ...validSettings.music, weeklySongUrl: "http://musica.fanaticosos.com/share/song" } },

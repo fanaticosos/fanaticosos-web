@@ -11,6 +11,7 @@
     "test:content-validation": "node scripts/test-content-validation.mjs",
     "test:article-routes": "node scripts/test-article-routes.mjs",
     "test:article-discovery": "node scripts/test-article-discovery.mjs",
+    "test:navidrome-share": "node scripts/test-navidrome-share.mjs",
     "validate:settings": "node scripts/validate-site-settings.mjs",
     "test:site-settings": "node scripts/test-site-settings.mjs",
     "test:build-media-policy": "node scripts/test-build-media-policy.mjs",

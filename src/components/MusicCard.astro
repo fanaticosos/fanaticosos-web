@@ -4,7 +4,10 @@ interface Props {
   weeklySongUrl: string;
 }
 
+import { fetchNavidromeShare } from "../lib/navidromeShare.mjs";
+
 const { playlistUrl, weeklySongUrl } = Astro.props;
+const weeklySong = await fetchNavidromeShare(weeklySongUrl);
 const iconPath = "M9 3v10.55A4 4 0 1 0 11 17V7h4V3H9zm-2 16a2 2 0 1 1 0-4 2 2 0 0 1 0 4z";
 ---
 
@@ -15,6 +18,21 @@ const iconPath = "M9 3v10.55A4 4 0 1 0 11 17V7h4V3H9zm-2 16a2 2 0 1 1 0-4 2 2 0 
   <span class="card-eyebrow">Música</span>
   <span class="card-title">RuidoOSOS</span>
   <p class="card-desc">La playlist oficial. La música que suena en el estadio y en tu cabeza.</p>
+  {weeklySong && (
+    <div class="weekly-song">
+      <a class="weekly-song-cover" href={weeklySongUrl} target="_blank" rel="noopener" aria-label={`Abrir ${weeklySong.title} de ${weeklySong.artist} en RuidoOSOS`}>
+        <img src={weeklySong.coverUrl} alt={`Portada de ${weeklySong.album || weeklySong.title}`} loading="lazy" />
+      </a>
+      <div class="weekly-song-copy">
+        <span class="weekly-song-label">Canción de la semana</span>
+        <strong>{weeklySong.title}</strong>
+        <span>{weeklySong.artist}{weeklySong.album ? ` · ${weeklySong.album}` : ""}</span>
+      </div>
+      <audio controls preload="metadata" src={weeklySong.streamUrl} aria-label={`${weeklySong.title} de ${weeklySong.artist}`}>
+        Tu navegador no puede reproducir esta canción.
+      </audio>
+    </div>
+  )}
   <div class="card-actions">
     <a class="card-cta" href={playlistUrl} target="_blank" rel="noopener">
       Playlist completa
