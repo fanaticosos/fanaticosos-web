@@ -17,6 +17,11 @@ assert.equal(parsed.artist, track.artist);
 assert.equal(parsed.album, track.album);
 assert.equal(parsed.streamUrl, "https://music.fanaticosos.com/share/s/public-track-token");
 assert.equal(parsed.coverUrl, "https://music.fanaticosos.com/share/img/public-cover-token?size=300");
+const privateHtml = html.replace("https://music.fanaticosos.com/share/img/", "http://100.121.55.59:4533/share/img/");
+assert.equal(
+  parseNavidromeShare(privateHtml, "https://music.fanaticosos.com/share/share-id").coverUrl,
+  "https://music.fanaticosos.com/share/img/public-cover-token?size=300",
+);
 assert.throws(() => parseNavidromeShare(html, "https://example.com/share/share-id"));
 
 const fallback = await fetchNavidromeShare(

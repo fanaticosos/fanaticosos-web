@@ -26,6 +26,12 @@ function validateRequest(value) {
 
 async function json(path) { return JSON.parse(await readFile(path, "utf8")); }
 async function sha256(path) { return createHash("sha256").update(await readFile(path)).digest("hex"); }
+async function optionalFile(path) {
+  return readFile(path).catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+}
 
 async function main() {
   const requestPath = argument("--request");
@@ -59,6 +65,10 @@ async function main() {
     const target = join(temporary, relative);
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, contents, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  }
+  const siteSettings = await optionalFile(join(publisherRoot, "site-settings.json"));
+  if (siteSettings) {
+    await writeFile(join(temporary, "src", "data", "site-settings.json"), siteSettings, { mode: 0o600 });
   }
   const copiedAssets = {};
   for (const [key, asset] of Object.entries(release.assets)) {

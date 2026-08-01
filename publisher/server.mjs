@@ -12,11 +12,13 @@ import { queueTranslation, readTranslationState, reconcileTranslations, updateTr
 import { audioFileForState, queueTts, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { previewPage } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
+import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
 const DEFAULT_TTS_PRODUCTION = join(HERE, "..", "config", "tts", "production.json");
 const DEFAULT_TTS_PRONUNCIATIONS = join(HERE, "..", "config", "tts", "pronunciations.json");
+const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
@@ -77,6 +79,9 @@ export function createPublisherServer({
   releasesRoot = join(dirname(draftsRoot), "releases"),
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
+  siteSettingsPath = join(draftsRoot, "site-settings.json"),
+  siteSettingsFallbackPath = DEFAULT_SITE_SETTINGS,
+  musicResolver = resolveWeeklySong,
 }) {
   async function currentTtsPolicyRevision() {
     const [production, pronunciations] = await Promise.all([
@@ -156,6 +161,20 @@ export function createPublisherServer({
         if (settings.schemaVersion !== 1) throw new Error("publisher settings are invalid");
         return json(response, 200, { settings });
       }
+      if (request.method === "GET" && url.pathname === "/api/music") {
+        return json(response, 200, { settings: await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath) });
+      }
+      if (request.method === "PUT" && url.pathname === "/api/music") {
+        const value = await requestJson(request);
+        if (typeof value.weeklySongUrl !== "string") throw new Error("El enlace de la canción es obligatorio.");
+        const settings = await saveWeeklySong({
+          path: siteSettingsPath,
+          fallbackPath: siteSettingsFallbackPath,
+          weeklySongUrl: value.weeklySongUrl,
+          resolver: musicResolver,
+        });
+        return json(response, 200, { settings });
+      }
       if (request.method === "GET" && url.pathname === "/api/notifications") {
         return json(response, 200, { notifications: await listNotifications(notificationsRoot) });
       }
@@ -171,7 +190,7 @@ export function createPublisherServer({
           "Content-Type": contentType,
           "Content-Length": body.length,
           "Cache-Control": "no-store",
-          "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'",
+          "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https://music.fanaticosos.com https://musica.fanaticosos.com; media-src https://music.fanaticosos.com https://musica.fanaticosos.com; style-src 'self'; script-src 'self'",
           "X-Content-Type-Options": "nosniff",
           "X-Frame-Options": "DENY",
         });
@@ -332,7 +351,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const statesRoot = process.env.PUBLISHER_STATES_ROOT ?? join(HERE, ".local-states");
   const jobsRoot = process.env.PUBLISHER_JOBS_ROOT ?? join(HERE, ".local-jobs");
   const releasesRoot = process.env.PUBLISHER_RELEASES_ROOT ?? join(HERE, ".local-releases");
-  const options = { draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, releasesRoot };
+  const siteSettingsPath = process.env.PUBLISHER_SITE_SETTINGS_PATH ?? join(HERE, ".local-site-settings.json");
+  const options = { draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));
   setInterval(reconcile, 10_000).unref();

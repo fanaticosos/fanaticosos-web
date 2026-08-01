@@ -36,6 +36,22 @@ h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); }
 .panel { margin-bottom: 18px; padding: 24px; border: 1px solid #24384e; border-radius: 14px; background: #0c1a29e8; box-shadow: 0 18px 45px #0003; }
 .panel h2 { margin: 0 0 20px; font-size: 19px; }
 .panel h2 span { color: #8195a7; font-size: 13px; font-weight: 500; }
+.music-settings-panel { padding: 0; }
+.music-settings-panel > summary { align-items: center; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; padding: 17px 20px; }
+.music-settings-panel > summary > span:first-child { display: grid; gap: 3px; }
+.music-settings-panel > summary small { color: #8195a7; font-size: 12px; font-weight: 500; }
+.music-settings-panel > summary > span:last-child { color: #ff8a3d; font-size: 12px; font-weight: 800; }
+.music-settings-panel form { border-top: 1px solid #24384e; padding: 20px; }
+.music-settings-panel form > p { color: #9bb0c1; font-size: 13px; margin: 0 0 17px; }
+.music-preview { align-items: center; background: #07121d; border: 1px solid #2b435b; border-radius: 10px; display: grid; gap: 12px; grid-template-columns: 72px minmax(0, 1fr); margin-bottom: 17px; padding: 12px; }
+.music-preview img { border-radius: 7px; height: 72px; object-fit: cover; width: 72px; }
+.music-preview div { display: grid; gap: 3px; min-width: 0; }
+.music-preview small { color: #ff8a3d; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.music-preview strong, .music-preview span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.music-preview span { color: #9bb0c1; font-size: 12px; }
+.music-preview audio { grid-column: 1 / -1; width: 100%; }
+.music-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; }
+.music-actions span { color: #91d7a6; font-size: 12px; }
 label span { color: #8195a7; font-size: 12px; font-weight: 500; }
 label { display: grid; gap: 8px; margin-bottom: 18px; color: #a9bbca; font-size: 13px; font-weight: 700; }
 input, textarea { width: 100%; border: 1px solid #2b435b; border-radius: 8px; padding: 12px 13px; color: #f4f8fb; background: #07121d; outline: none; resize: vertical; }

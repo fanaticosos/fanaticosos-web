@@ -20,6 +20,7 @@ Environment=PUBLISHER_QUEUE_ROOT=/opt/fanaticosos-blog/publisher/queue
 Environment=PUBLISHER_STATES_ROOT=/opt/fanaticosos-blog/publisher/states
 Environment=PUBLISHER_JOBS_ROOT=/opt/fanaticosos-blog/jobs
 Environment=PUBLISHER_RELEASES_ROOT=/opt/fanaticosos-blog/publisher/releases
+Environment=PUBLISHER_SITE_SETTINGS_PATH=/opt/fanaticosos-blog/publisher/site-settings.json
 ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/publisher/server.mjs
 Restart=on-failure
 RestartSec=3s

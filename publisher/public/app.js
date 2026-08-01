@@ -19,9 +19,23 @@ const audioResult = document.querySelector("#audio-result");
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
+const musicForm = document.querySelector("#music-form");
+const musicState = document.querySelector("#music-state");
 let translationTimer = null;
 let audioTimer = null;
 let releaseTimer = null;
+
+function renderMusic(settings) {
+  const song = settings.music.weeklySong;
+  document.querySelector("#weekly-song-url").value = settings.music.weeklySongUrl;
+  document.querySelector("#music-summary").textContent = `${song.title} · ${song.artist}`;
+  document.querySelector("#music-cover").src = song.coverUrl;
+  document.querySelector("#music-cover").alt = `Portada de ${song.album || song.title}`;
+  document.querySelector("#music-title").textContent = song.title;
+  document.querySelector("#music-artist").textContent = `${song.artist}${song.album ? ` · ${song.album}` : ""}`;
+  document.querySelector("#music-audio").src = song.streamUrl;
+  document.querySelector("#music-preview").hidden = false;
+}
 
 function renderSeoPreview() {
   const seo = generateSeoPreview(fields());
@@ -163,6 +177,28 @@ async function request(url, options) {
   if (!response.ok) throw new Error(value.error || "La operación no pudo completarse.");
   return value;
 }
+
+musicForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = document.querySelector("#save-music");
+  button.disabled = true;
+  musicState.textContent = "Verificando canción…";
+  message.hidden = true;
+  try {
+    const { settings } = await request("/api/music", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weeklySongUrl: document.querySelector("#weekly-song-url").value.trim() }),
+    });
+    renderMusic(settings);
+    musicState.textContent = "Guardada · aparecerá en la próxima publicación";
+  } catch (error) {
+    musicState.textContent = "No guardada";
+    showError(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
 
 async function refreshList() {
   const { drafts } = await request("/api/drafts");
@@ -436,8 +472,10 @@ dropZone.addEventListener("drop", (event) => {
 });
 
 async function initialize() {
-  publisherSettings = (await request("/api/settings")).settings;
+  const [publisherResponse, musicResponse] = await Promise.all([request("/api/settings"), request("/api/music")]);
+  publisherSettings = publisherResponse.settings;
   applySettings(publisherSettings);
+  renderMusic(musicResponse.settings);
   setFields(null);
   await Promise.all([refreshList(), refreshNotifications()]);
 }

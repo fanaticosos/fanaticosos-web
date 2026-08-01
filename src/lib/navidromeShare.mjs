@@ -19,12 +19,17 @@ export function parseNavidromeShare(html, shareUrl) {
   }
   const coverMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
   const publishedCover = coverMatch ? new URL(coverMatch[1], baseUrl) : null;
+  const publishedCoverPath = publishedCover?.pathname.startsWith("/share/img/")
+    ? `${publishedCover.pathname}${publishedCover.search}`
+    : null;
   const coverUrl = publishedCover
     && publishedCover.protocol === "https:"
     && allowedHosts.has(publishedCover.hostname)
-    && publishedCover.pathname.startsWith("/share/img/")
+    && publishedCoverPath
     ? publishedCover.href
-    : new URL(`/share/img/${encodeURIComponent(track.id)}?size=600&square=true`, baseUrl).href;
+    : publishedCoverPath
+      ? new URL(publishedCoverPath, baseUrl).href
+      : new URL(`/share/img/${encodeURIComponent(track.id)}?size=600&square=true`, baseUrl).href;
   return {
     title: track.title,
     artist: track.artist,

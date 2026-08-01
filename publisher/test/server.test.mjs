@@ -24,10 +24,19 @@ async function fixture() {
   const queueRoot = await mkdtemp(join(tmpdir(), "fanaticosos-queue-"));
   const statesRoot = await mkdtemp(join(tmpdir(), "fanaticosos-states-"));
   const jobsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-jobs-"));
-  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot });
+  const siteSettingsPath = join(draftsRoot, "site-settings.json");
+  const musicResolver = async () => ({
+    title: "Bear Down, Chicago Bears",
+    artist: "Jerry Downs",
+    album: "Chicago Football",
+    duration: 134,
+    coverUrl: "https://music.fanaticosos.com/share/img/cover-token",
+    streamUrl: "https://music.fanaticosos.com/share/s/stream-token",
+  });
+  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
-  return { server, base: `http://127.0.0.1:${port}`, queueRoot, statesRoot };
+  return { server, base: `http://127.0.0.1:${port}`, queueRoot, statesRoot, siteSettingsPath };
 }
 
 test("health endpoint is available without touching drafts", async (context) => {
@@ -55,6 +64,22 @@ test("owner defaults are centralized and available to the editor", async (contex
   assert.equal(settings.defaultSeason, 2026);
   assert.equal(settings.defaultTags.length, 10);
   assert.equal(settings.promotion.platforms.length, 3);
+});
+
+test("weekly song can be resolved, previewed, and persisted", async (context) => {
+  const { server, base, siteSettingsPath } = await fixture();
+  context.after(() => server.close());
+  const initial = (await (await fetch(`${base}/api/music`)).json()).settings;
+  assert.equal(initial.music.weeklySong.title, "Send Me An Angel");
+  const response = await fetch(`${base}/api/music`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ weeklySongUrl: "https://music.fanaticosos.com/share/new-song" }),
+  });
+  assert.equal(response.status, 200);
+  const saved = (await response.json()).settings;
+  assert.equal(saved.music.weeklySong.title, "Bear Down, Chicago Bears");
+  assert.equal(JSON.parse(await readFile(siteSettingsPath, "utf8")).music.weeklySongUrl, "https://music.fanaticosos.com/share/new-song");
 });
 
 test("valid image upload can be previewed privately", async (context) => {
@@ -88,6 +113,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.doesNotMatch(html, /name="imageCaption"/);
   assert.match(html, /Crédito o pie de foto/);
   assert.match(html, /SEO y apariencia al compartir/);
+  assert.match(html, /id="music-form"/);
+  assert.match(html, /Canción de la semana/);
   assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
   assert.match(html, /id="prepare-release" disabled hidden/);
@@ -97,6 +124,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /workflow: "preview"/);
   assert.match(app, /generateSeoPreview/);
+  assert.match(app, /\/api\/music/);
 
   const seo = await (await fetch(`${base}/seo.js`)).text();
   assert.match(seo, /canonicalUrl/);
