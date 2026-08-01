@@ -43,7 +43,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
 
     def test_enforces_resource_and_process_limits(self):
         service = self.parser["Service"]
-        self.assertEqual(service["RuntimeMaxSec"], "5min")
+        self.assertEqual(service["RuntimeMaxSec"], "12min")
         self.assertEqual(service["TimeoutStopSec"], "30s")
         self.assertEqual(service["KillMode"], "control-group")
         self.assertEqual(service["MemoryMax"], "16G")
@@ -75,7 +75,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
         self.assertIn("b10195-47f686f53", command)
         self.assertIn("--configuration-version 6", command)
         self.assertIn("%i/failed-output.json", command)
-        self.assertIn("--max-batch-characters 3500", command)
+        self.assertIn("--max-batch-characters 6000", command)
 
 
 if __name__ == "__main__":
