@@ -22,6 +22,10 @@ def load_configuration(path: Path) -> dict[str, Any]:
         raise ValueError("Azure NFL entity schema version must be 1")
     if value.get("locale") != "es-MX":
         raise ValueError("Azure NFL lexicon locale must be es-MX")
+    if not isinstance(value.get("voice"), str) or not value["voice"].startswith("es-MX-"):
+        raise ValueError("Azure NFL lexicon must define an es-MX narrator voice")
+    if not isinstance(value.get("englishVoice"), str) or not value["englishVoice"].startswith("en-US-"):
+        raise ValueError("Azure NFL lexicon must define an en-US pronunciation voice")
     teams = value.get("teams")
     if not isinstance(teams, list) or len(teams) != 32:
         raise ValueError("Azure NFL lexicon must define exactly 32 teams")
@@ -167,6 +171,58 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
         cursor = match.end()
     parts.append(escape(text[cursor:]))
     return "".join(parts)
+
+
+def voice_segments(text: str, configuration: dict[str, Any]) -> list[dict[str, str]]:
+    """Return escaped SSML fragments assigned to an actual Spanish or English voice."""
+    from xml.sax.saxutils import escape, quoteattr
+
+    entries = inline_entries(configuration)
+    if not entries:
+        return [{"voice": configuration["voice"], "markup": escape(text)}]
+    pattern = re.compile(
+        rf"(?<!\w)({'|'.join(re.escape(item['grapheme']) for item in entries)})(?!\w)",
+        flags=re.IGNORECASE,
+    )
+    lookup = {item["grapheme"].casefold(): item for item in entries}
+    fragments: list[dict[str, str]] = []
+
+    def append(voice: str, markup: str, volume: str = "") -> None:
+        if not markup:
+            return
+        if fragments and fragments[-1]["voice"] == voice and fragments[-1].get("volume", "") == volume:
+            fragments[-1]["markup"] += markup
+            return
+        fragment = {"voice": voice, "markup": markup}
+        if volume:
+            fragment["volume"] = volume
+        fragments.append(fragment)
+
+    cursor = 0
+    for match in pattern.finditer(text):
+        append(configuration["voice"], escape(text[cursor:match.start()]))
+        written = match.group(0)
+        entry = lookup[written.casefold()]
+        spoken = escape(written)
+        if entry.get("alias"):
+            spoken = f"<sub alias={quoteattr(entry['alias'])}>{spoken}</sub>"
+        if entry.get("language") == "en-US":
+            append(
+                configuration["englishVoice"],
+                spoken,
+                entry.get("volume", configuration.get("englishVolume", "-2dB")),
+            )
+        elif entry.get("phoneme"):
+            append(
+                configuration["voice"],
+                f"<phoneme alphabet=\"ipa\" ph={quoteattr(entry['phoneme'])}>"
+                f"{escape(written)}</phoneme>",
+            )
+        else:
+            append(configuration["voice"], spoken)
+        cursor = match.end()
+    append(configuration["voice"], escape(text[cursor:]))
+    return fragments
 
 
 def write_outputs(configuration_path: Path, output_path: Path) -> None:

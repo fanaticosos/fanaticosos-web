@@ -14,7 +14,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from compile_azure_nfl_lexicon import apply_inline_ssml, load_configuration
+from compile_azure_nfl_lexicon import load_configuration, voice_segments
 
 
 def build_chunks(segments: list[dict[str, str]], maximum_characters: int = 2600) -> list[str]:
@@ -40,13 +40,18 @@ def build_chunks(segments: list[dict[str, str]], maximum_characters: int = 2600)
 
 
 def build_ssml(text: str, configuration: dict) -> bytes:
-    body = apply_inline_ssml(text, configuration)
+    voices: list[str] = []
+    for segment in voice_segments(text, configuration):
+        volume = f' volume="{segment["volume"]}"' if segment.get("volume") else ""
+        voices.append(
+            f'<voice name="{segment["voice"]}">'
+            f'<prosody rate="{configuration["broadcastRate"]}"{volume}>'
+            f'{segment["markup"]}</prosody></voice>'
+        )
     ssml = (
         '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         f'xml:lang="{configuration["locale"]}">'
-        f'<voice name="{configuration["voice"]}">'
-        f'<prosody rate="{configuration["broadcastRate"]}">{body}</prosody>'
-        "</voice></speak>"
+        f'{"".join(voices)}</speak>'
     )
     ET.fromstring(ssml)
     return ssml.encode("utf-8")

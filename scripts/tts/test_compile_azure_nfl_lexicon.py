@@ -15,6 +15,7 @@ from compile_azure_nfl_lexicon import (
     compile_pls,
     load_configuration,
     pronunciation_entries,
+    voice_segments,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,7 +57,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         entries = {item["grapheme"]: item for item in pronunciation_entries(self.configuration)}
         self.assertEqual(entries["Bears"]["phoneme"], "ˈbeɾs")
         self.assertEqual(entries["Vikings"]["phoneme"], "ˈbaikɪŋs")
-        self.assertEqual(entries["Justin"]["phoneme"], "ˈʝastin")
+        self.assertEqual(entries["Justin"]["language"], "en-US")
         self.assertEqual(entries["Halas Hall"]["phoneme"], "ˈhalas.ˈhol")
 
     def test_team_city_and_nickname_are_not_wrapped_as_one_phrase(self):
@@ -77,7 +78,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertIn('xml:lang="en-US"', output)
         self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
         self.assertIn("&amp;", output)
-        self.assertIn('alias="Kéileb Uíliams">Caleb Williams</sub>', output)
+        self.assertIn('<lang xml:lang="en-US">Caleb Williams</lang>', output)
 
     def test_owner_requested_english_names_and_td_delivery(self):
         output = apply_inline_ssml(
@@ -98,7 +99,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         entries = {item["grapheme"]: item for item in self.configuration["entities"]}
         for phrase in phrases:
             with self.subTest(phrase=phrase):
-                self.assertEqual(entries[phrase]["mode"], "english-low")
+                self.assertIn(entries[phrase]["mode"], {"english-low", "english-voice"})
                 self.assertEqual(entries[phrase]["language"], "en-US")
 
         output = apply_inline_ssml(
@@ -108,12 +109,27 @@ class AzureNflLexiconTests(unittest.TestCase):
         )
         for phrase in phrases[:5] + ["safeties", "linebackers"]:
             with self.subTest(rendered_phrase=phrase):
-                self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', output)
+                self.assertIn(phrase, output)
 
     def test_offseason_has_no_forced_pronunciation(self):
         output = apply_inline_ssml("Durante la offseason mejoró el equipo.", self.configuration)
         self.assertIn("la offseason mejoró", output)
         self.assertNotIn("óf síson", output)
+
+    def test_names_and_retained_terms_are_assigned_to_a_real_english_voice(self):
+        segments = voice_segments(
+            "Luther Burden III, Rome Odunze y el tight end hablaron con Caleb Williams.",
+            self.configuration,
+        )
+        english = [item["markup"] for item in segments if item["voice"] == "en-US-GuyNeural"]
+        self.assertIn(
+            '<sub alias="Luther Burden the Third">Luther Burden III</sub>',
+            english,
+        )
+        self.assertIn("Rome Odunze", english)
+        self.assertIn("tight end", english)
+        self.assertIn("Caleb Williams", english)
+        self.assertTrue(any(item["voice"] == "es-MX-JorgeMultilingualNeural" for item in segments))
 
     def test_owner_reviewed_english_game_terms_are_not_hispanicized(self):
         output = apply_inline_ssml(

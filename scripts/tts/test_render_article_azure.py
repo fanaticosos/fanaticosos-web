@@ -43,17 +43,19 @@ class AzureArticleRendererTests(unittest.TestCase):
     def test_article_ssml_contains_no_markdown_and_wraps_reported_terms(self):
         narration = (
             "Los safeties y linebackers hablaron con Luther Burden III, "
-            "Rome Odunze, Colston Loveland, Jahdae Walker y Kyle DeVan. "
+            "Rome Odunze, Colston Loveland, Jahdae Walker y Kyle DeVan, el tight end. "
             "Necesitan un quarterback. Go Bears!"
         )
         text = build_ssml(narration, self.configuration).decode("utf-8")
         self.assertNotIn("*", text)
         for phrase in (
             "safeties", "linebackers", "Luther Burden III", "Rome Odunze",
-            "Colston Loveland", "Jahdae Walker", "Kyle DeVan",
+            "Colston Loveland", "Jahdae Walker", "Kyle DeVan", "tight end",
         ):
             with self.subTest(phrase=phrase):
-                self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', text)
+                self.assertIn(phrase, text)
+        self.assertIn('<voice name="en-US-GuyNeural">', text)
+        self.assertNotIn('<lang xml:lang="en-US">', text)
 
 
 if __name__ == "__main__":
