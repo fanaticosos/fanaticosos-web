@@ -412,6 +412,40 @@
   }
 
   .weekly-song { grid-template-columns: 82px minmax(0, 1fr); }
+
+  .latest-article-card.has-image {
+    display: block;
+  }
+
+  .latest-article-card > img {
+    aspect-ratio: 16 / 9;
+    display: block;
+    height: auto;
+    object-fit: cover;
+    object-position: center;
+    width: 100%;
+  }
+
+  .latest-article-copy {
+    background: var(--navy-card);
+    gap: 12px;
+    padding: 24px 22px 26px;
+    position: relative;
+  }
+
+  .latest-article-copy .card-title {
+    font-size: clamp(28px, 9vw, 38px);
+    line-height: 1.05;
+  }
+
+  .latest-article-copy .card-desc {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .latest-article-actions {
+    margin-top: 6px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
