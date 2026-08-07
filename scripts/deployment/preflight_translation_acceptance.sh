@@ -140,8 +140,8 @@ if [[ $verify_status -ne 0 || -n "$verify_output" ]]; then
   exit 1
 fi
 
-if ! sudo grep -Fq -- '--configuration-version 8' "$source_unit"; then
-  echo "STOP: Versioned unit is not configuration version 8."
+if ! sudo grep -Fq -- '--configuration-version 9' "$source_unit"; then
+  echo "STOP: Versioned unit is not configuration version 9."
   exit 1
 fi
 
@@ -160,9 +160,9 @@ if ! sudo test -f "$installed_unit"; then
 fi
 
 if sudo cmp -s "$source_unit" "$installed_unit"; then
-  echo "Installed template already matches configuration version 8."
+  echo "Installed template already matches configuration version 9."
 else
-  echo "CHANGE REQUIRED: Installed template must be replaced with version 8."
+  echo "CHANGE REQUIRED: Installed template must be replaced with version 9."
 fi
 
 echo
@@ -205,4 +205,4 @@ df -h /
 
 echo
 echo "PASS: Translation acceptance preflight completed without mutation."
-echo "NEXT: Install the verified version 8 template and create job $job_id."
+echo "NEXT: Install the verified version 9 template and create job $job_id."
