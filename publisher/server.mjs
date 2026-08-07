@@ -58,6 +58,15 @@ async function readOptionalState(readState) {
   }
 }
 
+export function releaseWithFreshness(release, audio) {
+  if (!release || release.status !== "completed") return release;
+  const current = audio?.status === "completed"
+    && release.draftRevision === audio.draftRevision
+    && release.manifest?.assets?.esAudio?.sha256 === audio.jobs?.es?.result?.sha256
+    && release.manifest?.assets?.enAudio?.sha256 === audio.jobs?.en?.result?.sha256;
+  return current ? release : { ...release, status: "stale" };
+}
+
 export function audioByteRange(value, size) {
   if (!value) return null;
   const match = /^bytes=(\d+)-(\d*)$/.exec(value);
@@ -405,7 +414,11 @@ export function createPublisherServer({
       }
       if (releaseMatch && request.method === "GET") {
         await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
-        return json(response, 200, { release: await readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])) });
+        const [release, audio] = await Promise.all([
+          readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])),
+          readOptionalState(() => readTtsState(statesRoot, releaseMatch[1])),
+        ]);
+        return json(response, 200, { release: releaseWithFreshness(release, audio) });
       }
       const publishMatch = PUBLISH_PATH.exec(url.pathname);
       if (publishMatch && request.method === "POST") {

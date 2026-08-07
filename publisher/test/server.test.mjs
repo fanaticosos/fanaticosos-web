@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioByteRange, createPublisherServer } from "../server.mjs";
+import { audioByteRange, createPublisherServer, releaseWithFreshness } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -22,6 +22,25 @@ test("audio byte ranges support browser metadata and seeking requests", () => {
   assert.deepEqual(audioByteRange("bytes=100-199", 1000), { start: 100, end: 199 });
   assert.equal(audioByteRange(undefined, 1000), null);
   assert.throws(() => audioByteRange("bytes=1000-", 1000), /unsatisfiable/);
+});
+
+test("completed preview becomes stale when either accepted audio changes", () => {
+  const release = {
+    status: "completed",
+    draftRevision: 1,
+    manifest: { assets: { esAudio: { sha256: "old-es" }, enAudio: { sha256: "same-en" } } },
+  };
+  const audio = {
+    status: "completed",
+    draftRevision: 1,
+    jobs: {
+      es: { result: { sha256: "new-es" } },
+      en: { result: { sha256: "same-en" } },
+    },
+  };
+  assert.equal(releaseWithFreshness(release, audio).status, "stale");
+  audio.jobs.es.result.sha256 = "old-es";
+  assert.equal(releaseWithFreshness(release, audio).status, "completed");
 });
 
 async function fixture() {

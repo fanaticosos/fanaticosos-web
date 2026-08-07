@@ -554,6 +554,12 @@ async function pollRelease() {
       prepareRelease.disabled = false;
       showError(release.error || "La compilación privada no pasó la validación.");
       await refreshNotifications();
+    } else if (release.status === "stale") {
+      if (releaseTimer) clearInterval(releaseTimer);
+      releaseTimer = null;
+      workflowState.textContent = "Los audios cambiaron · prepara una nueva vista previa antes de publicar.";
+      prepareRelease.disabled = false;
+      publishRelease.disabled = true;
     } else {
       workflowState.textContent = release.status === "queued" ? "Compilación privada en cola…" : "Validando compilación privada…";
     }
