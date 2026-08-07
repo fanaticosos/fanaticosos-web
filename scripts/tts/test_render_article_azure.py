@@ -26,7 +26,19 @@ class AzureArticleRendererTests(unittest.TestCase):
         ]
         chunks = build_chunks(segments)
         self.assertEqual(len(chunks), 2)
-        self.assertTrue(all(len(chunk) <= 2600 for chunk in chunks))
+        self.assertTrue(all(sum(len(segment["text"]) for segment in chunk) <= 2600 for chunk in chunks))
+
+    def test_article_structure_produces_audible_heading_and_paragraph_pauses(self):
+        chunks = build_chunks([
+            {"id": "description", "kind": "description", "text": "Introducción."},
+            {"id": "body-001", "kind": "heading", "text": "I. El mensaje"},
+            {"id": "body-002", "kind": "paragraph", "text": "Primer párrafo."},
+            {"id": "body-003", "kind": "heading", "text": "II. La respuesta"},
+        ])
+        text = build_ssml(chunks[0], self.configuration).decode("utf-8")
+        self.assertIn('<break time="1000ms"/>I. El mensaje', text)
+        self.assertIn('<break time="650ms"/>Primer párrafo.', text)
+        self.assertIn('<break time="1000ms"/>II. La respuesta', text)
 
     def test_ssml_is_well_formed_and_uses_accepted_profile(self):
         ssml = build_ssml(
@@ -37,7 +49,7 @@ class AzureArticleRendererTests(unittest.TestCase):
         text = ssml.decode("utf-8")
         self.assertIn('name="es-MX-JorgeMultilingualNeural"', text)
         self.assertIn('ph="ˈbeɾs"', text)
-        self.assertIn('ph="ˈhalas.ˈhol"', text)
+        self.assertIn('<lang xml:lang="en-US">Halas Hall</lang>', text)
 
     def test_article_ssml_contains_no_markdown_and_wraps_reported_terms(self):
         narration = (

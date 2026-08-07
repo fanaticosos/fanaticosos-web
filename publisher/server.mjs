@@ -49,6 +49,15 @@ function json(response, status, value) {
   response.end(body);
 }
 
+async function readOptionalState(readState) {
+  try {
+    return await readState();
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 export function audioByteRange(value, size) {
   if (!value) return null;
   const match = /^bytes=(\d+)-(\d*)$/.exec(value);
@@ -297,7 +306,7 @@ export function createPublisherServer({
       }
       if (translationMatch && request.method === "GET") {
         await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
-        return json(response, 200, { translation: await readTranslationState(statesRoot, translationMatch[1]) });
+        return json(response, 200, { translation: await readOptionalState(() => readTranslationState(statesRoot, translationMatch[1])) });
       }
       if (translationMatch && request.method === "PUT") {
         const value = await requestJson(request);
@@ -340,7 +349,7 @@ export function createPublisherServer({
       }
       if (audioMatch && request.method === "GET" && !audioMatch[2]) {
         await reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed });
-        return json(response, 200, { audio: await readTtsState(statesRoot, audioMatch[1]) });
+        return json(response, 200, { audio: await readOptionalState(() => readTtsState(statesRoot, audioMatch[1])) });
       }
       if (audioMatch && request.method === "GET" && audioMatch[2]) {
         const state = await readTtsState(statesRoot, audioMatch[1]);
@@ -366,7 +375,7 @@ export function createPublisherServer({
       }
       if (audiogramMatch && request.method === "GET" && !audiogramMatch[2]) {
         await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
-        return json(response, 200, { audiogram: await readAudiogramState(statesRoot, audiogramMatch[1]) });
+        return json(response, 200, { audiogram: await readOptionalState(() => readAudiogramState(statesRoot, audiogramMatch[1])) });
       }
       if (audiogramMatch && request.method === "GET" && audiogramMatch[2] === "video") {
         const state = await readAudiogramState(statesRoot, audiogramMatch[1]);
@@ -396,7 +405,7 @@ export function createPublisherServer({
       }
       if (releaseMatch && request.method === "GET") {
         await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
-        return json(response, 200, { release: await readReleaseState(statesRoot, releaseMatch[1]) });
+        return json(response, 200, { release: await readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])) });
       }
       const publishMatch = PUBLISH_PATH.exec(url.pathname);
       if (publishMatch && request.method === "POST") {
@@ -406,7 +415,12 @@ export function createPublisherServer({
         const deployment = await queueDeployment({ articleId: draft.articleId, draftRevision: draft.revision, releaseJobId: release.jobId, queueRoot, statesRoot });
         await createNotification(notificationsRoot, { level: "info", event: "deployment-started", articleId: draft.articleId, message: `Publicación iniciada: ${draft.title}` }); return json(response, 202, { deployment });
       }
-      if (publishMatch && request.method === "GET") { const state = await readDeploymentState(statesRoot, publishMatch[1]); return json(response, 200, { deployment: await reconcileDeployment({ state, statesRoot, releasesRoot }) }); }
+      if (publishMatch && request.method === "GET") {
+        const state = await readOptionalState(() => readDeploymentState(statesRoot, publishMatch[1]));
+        return json(response, 200, {
+          deployment: state ? await reconcileDeployment({ state, statesRoot, releasesRoot }) : null,
+        });
+      }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
       if (uploadMatch && request.method === "GET") {
         const contentType = contentTypeForName(uploadMatch[1]);
@@ -437,8 +451,10 @@ export function createPublisherServer({
       }
       return json(response, 404, { error: "not found" });
     } catch (error) {
-      const status = error.code === "ENOENT" ? 404 : /another browser session/.test(error.message) ? 409 : 400;
-      return json(response, status, { error: error.message });
+      const message = error?.message ?? "Request failed.";
+      const notFound = error?.code === "ENOENT";
+      const status = notFound ? 404 : /another browser session/.test(message) ? 409 : 400;
+      return json(response, status, { error: notFound ? "Resource not found." : message });
     }
   });
   server.reconcilePublisherJobs = reconcilePublisherJobs;

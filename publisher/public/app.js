@@ -339,6 +339,7 @@ async function pollTranslation() {
   if (!current) return null;
   try {
     const { translation } = await request(`/api/drafts/${current.articleId}/translation`);
+    if (!translation) return null;
     workflowState.textContent = translation.status === "queued" ? "Traducción en cola…" : translation.status === "running" ? "Generando inglés…" : translation.status === "completed" ? "Inglés listo · preparando audios automáticamente…" : "La traducción se detuvo.";
     if (translation.status === "completed") {
       clearInterval(translationTimer);
@@ -391,6 +392,7 @@ async function pollAudio() {
   if (!current) return null;
   try {
     const { audio } = await request(`/api/drafts/${current.articleId}/audio`);
+    if (!audio) return null;
     if (audio.status === "completed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
@@ -434,6 +436,7 @@ async function pollAudiogram() {
   if (!current) return;
   try {
     const { audiogram } = await request(`/api/drafts/${current.articleId}/audiogram`);
+    if (!audiogram) return null;
     audiogramResult.hidden = false;
     if (audiogram.status === "completed") {
       audiogramMetadata = audiogram.result;
@@ -536,6 +539,7 @@ async function pollRelease() {
   if (!current) return null;
   try {
     const { release } = await request(`/api/drafts/${current.articleId}/release`);
+    if (!release) return null;
     if (release.status === "completed") {
       if (releaseTimer) clearInterval(releaseTimer);
       releaseTimer = null;
@@ -583,7 +587,7 @@ publishRelease.addEventListener("click", async () => {
   try {
     await request(`/api/drafts/${current.articleId}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: current.revision }) });
     workflowState.textContent = "Publicación iniciada… el sitio actual permanece activo durante la validación.";
-    const timer = setInterval(async () => { const { deployment } = await request(`/api/drafts/${current.articleId}/publish`); if (deployment.status === "completed") { clearInterval(timer); workflowState.textContent = "Publicado y verificado en fanaticosos.com."; } if (deployment.status === "failed") { clearInterval(timer); publishRelease.disabled = false; showError(deployment.error); } }, 4000);
+    const timer = setInterval(async () => { const { deployment } = await request(`/api/drafts/${current.articleId}/publish`); if (!deployment) return; if (deployment.status === "completed") { clearInterval(timer); workflowState.textContent = "Publicado y verificado en fanaticosos.com."; } if (deployment.status === "failed") { clearInterval(timer); publishRelease.disabled = false; showError(deployment.error); } }, 4000);
   } catch (error) { publishRelease.disabled = false; showError(error.message); }
 });
 

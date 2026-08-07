@@ -56,6 +56,9 @@ test("TTS requests bind approved Spanish and English text to one revision", () =
   assert.match(requests.en.sourceRevision, /^[0-9a-f]{64}$/);
   assert.notEqual(requests.en.sourceRevision, translation.sourceRevision);
   assert.equal(requests.es.segments[1].text, "Primer cuarto");
+  assert.equal(requests.es.segments[0].kind, "description");
+  assert.equal(requests.es.segments[1].kind, "heading");
+  assert.equal(requests.es.segments[2].kind, "paragraph");
   assert.equal(requests.en.segments[2].text, "Caleb Williams threw a touchdown.");
   const corrected = structuredClone(translation);
   corrected.result.body += " Correction.";

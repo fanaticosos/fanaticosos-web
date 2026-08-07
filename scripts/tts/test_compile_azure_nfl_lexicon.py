@@ -58,7 +58,25 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertEqual(entries["Bears"]["phoneme"], "ˈbeɾs")
         self.assertEqual(entries["Vikings"]["phoneme"], "ˈbaikɪŋs")
         self.assertEqual(entries["Justin"]["alias"], "Yástin")
-        self.assertEqual(entries["Halas Hall"]["phoneme"], "ˈhalas.ˈhol")
+        self.assertEqual(entries["Halas Hall"]["language"], "en-US")
+
+    def test_reported_names_places_titles_and_terms_use_english_delivery(self):
+        text = (
+            "Coby Bryant visitó Lake Forest y Stevenson High School en Lincolnshire. "
+            "Holiday Touchdown: A Bears Love Story, de Hallmark, apareció en el playbook."
+        )
+        output = apply_inline_ssml(text, self.configuration)
+        for phrase in (
+            "Coby Bryant", "Lake Forest", "Stevenson High School", "Lincolnshire",
+            "Holiday Touchdown: A Bears Love Story", "Hallmark", "playbook",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', output)
+
+    def test_encanto_does_not_change_encanto_with_a_written_accent(self):
+        output = apply_inline_ssml("El encanto regresó y encantó a todos.", self.configuration)
+        self.assertIn('ph="enˈkanto">encanto</phoneme>', output)
+        self.assertIn("y encantó a todos", output)
 
     def test_team_city_and_nickname_are_not_wrapped_as_one_phrase(self):
         output = apply_inline_ssml(

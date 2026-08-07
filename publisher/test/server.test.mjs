@@ -191,6 +191,58 @@ test("draft can be created, listed, reopened, and updated", async (context) => {
   assert.equal((await updatedResponse.json()).draft.revision, 2);
 });
 
+test("saved draft workflow endpoints are idle before processing starts", async (context) => {
+  const { server, base, statesRoot } = await fixture();
+  context.after(() => server.close());
+  const draft = (await (await fetch(`${base}/api/drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  })).json()).draft;
+
+  const endpoints = [
+    ["translation", "translation"],
+    ["audio", "audio"],
+    ["audiogram", "audiogram"],
+    ["release", "release"],
+    ["publish", "deployment"],
+  ];
+  for (const [endpoint, property] of endpoints) {
+    const response = await fetch(`${base}/api/drafts/${draft.articleId}/${endpoint}`);
+    assert.equal(response.status, 200, endpoint);
+    assert.equal((await response.json())[property], null, endpoint);
+  }
+
+  const reopened = await (await fetch(`${base}/api/drafts/${draft.articleId}`)).json();
+  assert.equal(reopened.draft.articleId, draft.articleId);
+  assert.equal(reopened.draft.revision, 1);
+
+  await writeFile(join(statesRoot, `${draft.articleId}.json`), JSON.stringify({
+    schemaVersion: 1,
+    articleId: draft.articleId,
+    draftRevision: draft.revision,
+    status: "failed",
+    error: "Translation worker exited before producing a result.",
+  }));
+  const failedResponse = await fetch(`${base}/api/drafts/${draft.articleId}/translation`);
+  const failed = (await failedResponse.json()).translation;
+  assert.equal(failedResponse.status, 200);
+  assert.equal(failed.status, "failed");
+  assert.equal(failed.error, "Translation worker exited before producing a result.");
+});
+
+test("filesystem errors do not expose internal paths", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const missingId = "00000000-0000-4000-8000-000000000000";
+  const response = await fetch(`${base}/api/drafts/${missingId}`);
+  const body = await response.json();
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(body, { error: "Resource not found." });
+  assert.doesNotMatch(JSON.stringify(body), /fanaticosos-|ENOENT|states|drafts|\//i);
+});
+
 test("stale browser revision returns a conflict", async (context) => {
   const { server, base } = await fixture();
   context.after(() => server.close());

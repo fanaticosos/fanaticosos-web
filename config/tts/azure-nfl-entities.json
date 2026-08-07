@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 7,
+  "version": 8,
   "locale": "es-MX",
   "voice": "es-MX-JorgeMultilingualNeural",
   "broadcastRate": "+8%",
@@ -68,7 +68,15 @@
     {"division":"AFC West","canonical":"Los Angeles Chargers","market":"Los Ángeles","writtenMarkets":["Los Angeles"],"nickname":"Chargers","nicknameAlias":"Chárgers"}
   ],
   "entities": [
-    {"category":"venue","grapheme":"Halas Hall","mode":"spanish-broadcast","phoneme":"ˈhalas.ˈhol","status":"approved","sourceType":"owner-review"},
+    {"category":"venue","grapheme":"Halas Hall","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"place","grapheme":"Lake Forest","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"place","grapheme":"Lincolnshire","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"school","grapheme":"Stevenson High School","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"player","grapheme":"Coby Bryant","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"title","grapheme":"Holiday Touchdown: A Bears Love Story","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"brand","grapheme":"Hallmark","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"term","grapheme":"playbook","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"term","grapheme":"encanto","mode":"spanish","phoneme":"enˈkanto","status":"approved","sourceType":"owner-review"},
     {"category":"venue","grapheme":"Soldier Field","mode":"spanish-broadcast","alias":"Sóldier Fíld","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Justin","mode":"spanish-broadcast","alias":"Yástin","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Justin Jefferson","mode":"spanish-broadcast","alias":"Yástin Yéferson","status":"approved","sourceType":"owner-review"},

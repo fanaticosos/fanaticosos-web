@@ -32,7 +32,7 @@ export function narrationText(markdown) {
 }
 
 function narrationSegments(description, body) {
-  const segments = [{ id: "description", text: narrationText(description) }];
+  const segments = [{ id: "description", kind: "description", text: narrationText(description) }];
   let sequence = 0;
   for (const part of body.split(/\n\s*\n/)) {
     if (!part.trim()) continue;
@@ -40,6 +40,7 @@ function narrationSegments(description, body) {
     const marker = /^(#{1,6}\s+|>\s*|(?:[-*+]\s+)|(?:\d+[.)]\s+))/.exec(part);
     segments.push({
       id: `body-${String(sequence).padStart(3, "0")}`,
+      kind: marker?.[0]?.startsWith("#") ? "heading" : "paragraph",
       text: narrationText(part.slice(marker?.[0]?.length ?? 0)),
     });
   }

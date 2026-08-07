@@ -18,36 +18,58 @@ from pathlib import Path
 from compile_azure_nfl_lexicon import load_configuration, voice_segments
 
 
-def build_chunks(segments: list[dict[str, str]], maximum_characters: int = 2600) -> list[str]:
-    chunks: list[str] = []
-    current: list[str] = []
+def pause_before(segment: dict[str, str], is_first: bool) -> int:
+    if is_first:
+        return 0
+    if segment.get("kind") == "heading":
+        return 1000
+    return 650 if segment.get("previousKind") == "heading" else 500
+
+
+def build_chunks(segments: list[dict[str, str]], maximum_characters: int = 2600) -> list[list[dict[str, str | int]]]:
+    chunks: list[list[dict[str, str | int]]] = []
+    current: list[dict[str, str | int]] = []
     current_length = 0
-    for segment in segments:
+    previous_kind = ""
+    for index, segment in enumerate(segments):
         text = segment["text"].strip()
         if not text:
             continue
         addition = len(text) + (2 if current else 0)
         if current and current_length + addition > maximum_characters:
-            chunks.append("\n\n".join(current))
+            chunks.append(current)
             current = []
             current_length = 0
         if len(text) > maximum_characters:
             raise ValueError(f"segment exceeds Azure chunk limit: {segment['id']}")
-        current.append(text)
+        current.append({
+            **segment,
+            "text": text,
+            "pauseBeforeMs": pause_before(
+                {**segment, "previousKind": previous_kind},
+                index == 0,
+            ),
+        })
         current_length += len(text) + (2 if len(current) > 1 else 0)
+        previous_kind = segment.get("kind", "paragraph")
     if current:
-        chunks.append("\n\n".join(current))
+        chunks.append(current)
     return chunks
 
 
-def build_ssml(text: str, configuration: dict) -> bytes:
-    segments = voice_segments(text, configuration)
-    if len(segments) != 1 or segments[0]["voice"] != configuration["voice"]:
-        raise ValueError("Spanish narration must use exactly one configured voice")
+def build_ssml(narration: str | list[dict[str, str | int]], configuration: dict) -> bytes:
+    if isinstance(narration, str):
+        narration = [{"text": narration, "pauseBeforeMs": 0}]
+    markup: list[str] = []
+    for segment in narration:
+        pause = segment.get("pauseBeforeMs", 0)
+        if pause:
+            markup.append(f'<break time="{pause}ms"/>')
+        markup.append(voice_segments(str(segment["text"]), configuration)[0]["markup"])
     ssml = (
         '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         f'xml:lang="{configuration["locale"]}">'
-        f'<voice name="{configuration["voice"]}">{segments[0]["markup"]}</voice></speak>'
+        f'<voice name="{configuration["voice"]}">{"".join(markup)}</voice></speak>'
     )
     ET.fromstring(ssml)
     return ssml.encode("utf-8")
