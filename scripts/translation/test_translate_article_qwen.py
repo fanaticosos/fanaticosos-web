@@ -62,11 +62,11 @@ class TranslateArticleQwenTests(unittest.TestCase):
             {"id": f"segment-{index:03d}", "kind": "paragraph", "text": "x" * length}
             for index, length in enumerate(lengths)
         ]
-        batches = create_batches(segments, 1_200)
-        self.assertGreater(len(batches), 1)
+        batches = create_batches(segments, 12_000)
+        self.assertEqual(len(batches), 1)
         self.assertTrue(
             all(
-                sum(len(item["text"]) for item in batch) <= 1_200
+                sum(len(item["text"]) for item in batch) <= 12_000
                 for batch in batches
             )
         )

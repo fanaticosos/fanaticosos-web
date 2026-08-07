@@ -73,10 +73,10 @@ class TranslationSystemdUnitTests(unittest.TestCase):
         self.assertIn("Qwen3-8B-Q4_K_M.gguf", command)
         self.assertIn("7c41481f57cb95916b40956ab2f0b139b296d974", command)
         self.assertIn("b10195-47f686f53", command)
-        self.assertIn("--configuration-version 7", command)
+        self.assertIn("--configuration-version 8", command)
         self.assertIn("%i/failed-output.json", command)
-        self.assertIn("--output-tokens 1024", command)
-        self.assertIn("--max-batch-characters 1200", command)
+        self.assertIn("--output-tokens 4096", command)
+        self.assertIn("--max-batch-characters 12000", command)
 
 
 if __name__ == "__main__":
