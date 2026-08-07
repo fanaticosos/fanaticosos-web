@@ -51,6 +51,30 @@ class TranslateArticleQwenTests(unittest.TestCase):
         batches = create_batches(self.request["segments"], 60)
         self.assertEqual([[item["id"] for item in batch] for batch in batches], [["title"], ["body-001"]])
 
+    def test_article_sized_input_is_split_into_bounded_ordered_batches(self):
+        lengths = [
+            185, 240, 315, 278, 352, 196, 410, 225, 344, 298,
+            205, 365, 188, 430, 255, 322, 274, 389, 216, 341,
+            267, 378, 194, 405, 236, 329, 281, 360, 212, 397,
+            248, 335, 290, 371, 223,
+        ]
+        segments = [
+            {"id": f"segment-{index:03d}", "kind": "paragraph", "text": "x" * length}
+            for index, length in enumerate(lengths)
+        ]
+        batches = create_batches(segments, 1_200)
+        self.assertGreater(len(batches), 1)
+        self.assertTrue(
+            all(
+                sum(len(item["text"]) for item in batch) <= 1_200
+                for batch in batches
+            )
+        )
+        self.assertEqual(
+            [item["id"] for batch in batches for item in batch],
+            [item["id"] for item in segments],
+        )
+
     def test_rejects_oversized_single_segment(self):
         with self.assertRaisesRegex(ValueError, "segment exceeds model batch limit"):
             create_batches(self.request["segments"], 10)

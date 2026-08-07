@@ -140,12 +140,12 @@ if [[ $verify_status -ne 0 || -n "$verify_output" ]]; then
   exit 1
 fi
 
-if ! sudo grep -Fq -- '--configuration-version 6' "$source_unit"; then
-  echo "STOP: Versioned unit is not configuration version 6."
+if ! sudo grep -Fq -- '--configuration-version 7' "$source_unit"; then
+  echo "STOP: Versioned unit is not configuration version 7."
   exit 1
 fi
 
-if ! sudo grep -Fq -- '--max-batch-characters 700' "$source_unit"; then
+if ! sudo grep -Fq -- '--max-batch-characters 1200' "$source_unit"; then
   echo "STOP: Versioned unit lacks the approved batch limit."
   exit 1
 fi
@@ -160,9 +160,9 @@ if ! sudo test -f "$installed_unit"; then
 fi
 
 if sudo cmp -s "$source_unit" "$installed_unit"; then
-  echo "Installed template already matches configuration version 6."
+  echo "Installed template already matches configuration version 7."
 else
-  echo "CHANGE REQUIRED: Installed template must be replaced with version 6."
+  echo "CHANGE REQUIRED: Installed template must be replaced with version 7."
 fi
 
 echo
@@ -205,4 +205,4 @@ df -h /
 
 echo
 echo "PASS: Translation acceptance preflight completed without mutation."
-echo "NEXT: Install the verified version 6 template and create job $job_id."
+echo "NEXT: Install the verified version 7 template and create job $job_id."

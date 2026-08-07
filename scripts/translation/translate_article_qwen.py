@@ -326,13 +326,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-file", required=True, type=Path)
     parser.add_argument("--model-revision", required=True)
     parser.add_argument("--runtime-version", required=True)
-    parser.add_argument("--configuration-version", default="1")
+    parser.add_argument("--configuration-version", default="7")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--failure-output", type=Path)
     parser.add_argument("--threads", type=int, default=12)
     parser.add_argument("--context", type=int, default=8192)
-    parser.add_argument("--output-tokens", type=int, default=2048)
-    parser.add_argument("--max-batch-characters", type=int, default=6_000)
+    parser.add_argument("--output-tokens", type=int, default=1024)
+    parser.add_argument("--max-batch-characters", type=int, default=1_200)
     return parser.parse_args()
 
 
