@@ -94,6 +94,27 @@ test("TTS requests never send inline Markdown to either narrator", () => {
   assert.equal(requests.en.segments.some(({ text }) => text.includes("*")), false);
 });
 
+test("section numbers remain visual and are omitted from bilingual narration", () => {
+  const numberedDraft = {
+    ...draft,
+    body: "## I. El mensaje\n\nTexto I. permanece intacto.\n\n## 2. La respuesta",
+  };
+  const numberedTranslation = {
+    ...translation,
+    result: {
+      ...translation.result,
+      body: "## I. The message\n\nText I. remains intact.\n\n## 2. The response",
+    },
+  };
+  const requests = ttsRequestsForDraft(numberedDraft, numberedTranslation);
+  assert.deepEqual(requests.es.segments.map(({ text }) => text), [
+    "Resumen del partido.", "El mensaje", "Texto I. permanece intacto.", "La respuesta",
+  ]);
+  assert.deepEqual(requests.en.segments.map(({ text }) => text), [
+    "Game summary.", "The message", "Text I. remains intact.", "The response",
+  ]);
+});
+
 test("two private TTS jobs reconcile only after both MP3 files validate", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-"));
   const queueRoot = join(root, "queue");

@@ -31,6 +31,10 @@ export function narrationText(markdown) {
     .trim();
 }
 
+function narrationHeading(markdown) {
+  return narrationText(markdown).replace(/^(?:[IVXLCDM]+|\d+)[.)]\s+/i, "");
+}
+
 function narrationSegments(description, body) {
   const segments = [{ id: "description", kind: "description", text: narrationText(description) }];
   let sequence = 0;
@@ -38,10 +42,12 @@ function narrationSegments(description, body) {
     if (!part.trim()) continue;
     sequence += 1;
     const marker = /^(#{1,6}\s+|>\s*|(?:[-*+]\s+)|(?:\d+[.)]\s+))/.exec(part);
+    const kind = marker?.[0]?.startsWith("#") ? "heading" : "paragraph";
+    const content = part.slice(marker?.[0]?.length ?? 0);
     segments.push({
       id: `body-${String(sequence).padStart(3, "0")}`,
-      kind: marker?.[0]?.startsWith("#") ? "heading" : "paragraph",
-      text: narrationText(part.slice(marker?.[0]?.length ?? 0)),
+      kind,
+      text: kind === "heading" ? narrationHeading(content) : narrationText(content),
     });
   }
   if (segments.length > 250) throw new Error("the article has too many audio segments");
