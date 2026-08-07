@@ -115,6 +115,21 @@ test("section numbers remain visual and are omitted from bilingual narration", (
   ]);
 });
 
+test("English player-name suffixes are spoken as ordinals", () => {
+  const suffixTranslation = {
+    ...translation,
+    result: {
+      ...translation.result,
+      body: "Luther Burden III met Robert Griffin II. Rocky III remains a title.",
+    },
+  };
+  const requests = ttsRequestsForDraft(draft, suffixTranslation);
+  assert.equal(
+    requests.en.segments[1].text,
+    "Luther Burden the Third met Robert Griffin the Second. Rocky III remains a title.",
+  );
+});
+
 test("two private TTS jobs reconcile only after both MP3 files validate", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-"));
   const queueRoot = join(root, "queue");

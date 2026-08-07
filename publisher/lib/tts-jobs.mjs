@@ -35,8 +35,17 @@ function narrationHeading(markdown) {
   return narrationText(markdown).replace(/^(?:[IVXLCDM]+|\d+)[.)]\s+/i, "");
 }
 
-function narrationSegments(description, body) {
-  const segments = [{ id: "description", kind: "description", text: narrationText(description) }];
+function englishNameSuffixes(text) {
+  const ordinals = { II: "the Second", III: "the Third", IV: "the Fourth" };
+  return text.replace(
+    /\b([A-Z][\p{L}'’-]+(?:\s+[A-Z][\p{L}'’-]+)+)\s+(II|III|IV)\b/gu,
+    (_, name, suffix) => `${name} ${ordinals[suffix]}`,
+  );
+}
+
+function narrationSegments(description, body, locale) {
+  const spoken = (text) => locale === "en" ? englishNameSuffixes(text) : text;
+  const segments = [{ id: "description", kind: "description", text: spoken(narrationText(description)) }];
   let sequence = 0;
   for (const part of body.split(/\n\s*\n/)) {
     if (!part.trim()) continue;
@@ -47,7 +56,7 @@ function narrationSegments(description, body) {
     segments.push({
       id: `body-${String(sequence).padStart(3, "0")}`,
       kind,
-      text: kind === "heading" ? narrationHeading(content) : narrationText(content),
+      text: spoken(kind === "heading" ? narrationHeading(content) : narrationText(content)),
     });
   }
   if (segments.length > 250) throw new Error("the article has too many audio segments");
@@ -65,12 +74,12 @@ export function ttsRequestsForDraft(draft, translation) {
   return {
     es: {
       schemaVersion: 1, articleId: draft.articleId, locale: "es", sourceRevision: digest(source),
-      title: draft.title, segments: narrationSegments(draft.description, draft.body),
+      title: draft.title, segments: narrationSegments(draft.description, draft.body, "es"),
     },
     en: {
       schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: digest(englishSource),
       title: translation.result.title,
-      segments: narrationSegments(translation.result.description, translation.result.body),
+      segments: narrationSegments(translation.result.description, translation.result.body, "en"),
     },
   };
 }
