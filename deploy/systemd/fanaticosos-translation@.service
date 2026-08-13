@@ -33,7 +33,7 @@ ExecStart=/usr/bin/python3 /opt/fanaticosos-blog/repository/scripts/translation/
   --max-batch-characters 12000
 
 Restart=no
-RuntimeMaxSec=15min
+RuntimeMaxSec=60min
 TimeoutStopSec=30s
 KillMode=control-group
 

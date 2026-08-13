@@ -35,9 +35,31 @@ const musicState = document.querySelector("#music-state");
 const articleBody = document.querySelector("#article-body");
 const bodyPreview = document.querySelector("#body-preview");
 let translationTimer = null;
+let translationClockTimer = null;
 let audioTimer = null;
 let releaseTimer = null;
 let markdownPreviewTimer = null;
+
+function stopTranslationClock() {
+  if (translationClockTimer) clearInterval(translationClockTimer);
+  translationClockTimer = null;
+}
+
+function formatElapsed(startedAt) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function showTranslationProgress(translation) {
+  stopTranslationClock();
+  const update = () => {
+    const phase = translation.status === "queued" ? "En cola" : "Traduciendo al inglés";
+    workflowState.textContent = `${phase} · ${formatElapsed(translation.createdAt)} transcurridos · puedes cerrar esta página.`;
+  };
+  update();
+  translationClockTimer = setInterval(update, 1000);
+}
 
 async function renderBodyPreview() {
   const markdown = articleBody.value;
@@ -136,6 +158,7 @@ function fields() {
 }
 
 function setFields(draft) {
+  stopTranslationClock();
   if (translationTimer) clearInterval(translationTimer);
   translationTimer = null;
   if (audioTimer) clearInterval(audioTimer);
@@ -340,8 +363,10 @@ async function pollTranslation() {
   try {
     const { translation } = await request(`/api/drafts/${current.articleId}/translation`);
     if (!translation) return null;
-    workflowState.textContent = translation.status === "queued" ? "Traducción en cola…" : translation.status === "running" ? "Generando inglés…" : translation.status === "completed" ? "Inglés listo · preparando audios automáticamente…" : "La traducción se detuvo.";
+    if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
+      stopTranslationClock();
+      workflowState.textContent = "Inglés listo · preparando audios automáticamente…";
       clearInterval(translationTimer);
       translationTimer = null;
       document.querySelector("#english-title").value = translation.result.title;
@@ -354,6 +379,8 @@ async function pollTranslation() {
       const audioStatus = await pollAudio();
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "failed") {
+      stopTranslationClock();
+      workflowState.textContent = "La traducción se detuvo.";
       clearInterval(translationTimer);
       translationTimer = null;
       generateEnglish.disabled = false;

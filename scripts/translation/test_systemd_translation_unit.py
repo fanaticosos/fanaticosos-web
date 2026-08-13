@@ -43,7 +43,7 @@ class TranslationSystemdUnitTests(unittest.TestCase):
 
     def test_enforces_resource_and_process_limits(self):
         service = self.parser["Service"]
-        self.assertEqual(service["RuntimeMaxSec"], "15min")
+        self.assertEqual(service["RuntimeMaxSec"], "60min")
         self.assertEqual(service["TimeoutStopSec"], "30s")
         self.assertEqual(service["KillMode"], "control-group")
         self.assertEqual(service["MemoryMax"], "16G")

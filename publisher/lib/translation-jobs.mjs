@@ -3,9 +3,9 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const JOB_ID = /^translation-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
-// The systemd worker has a 15-minute hard stop. Allow reconciliation one
-// additional minute so systemd can record the authoritative result first.
-const JOB_TIMEOUT_MS = 16 * 60 * 1000;
+// The systemd worker has a 60-minute hard stop. Allow reconciliation two
+// additional minutes so systemd can record the authoritative result first.
+const JOB_TIMEOUT_MS = 62 * 60 * 1000;
 
 async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.saving`;
