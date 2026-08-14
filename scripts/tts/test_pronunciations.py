@@ -50,6 +50,18 @@ class PronunciationTests(unittest.TestCase):
         self.assertEqual(spoken, "Thanks for listening to Fanatic Osos.")
         self.assertIn("Fanaticosos", written)
 
+    def test_current_article_difficult_names_use_official_english_pronunciations(self):
+        written = (
+            "Coby Bryant, Xavier Woods, George McCaskey, Dillon Thieneman, "
+            "Rome Odunze, Tyson Bagent and Kyle Monangai."
+        )
+        spoken = apply_pronunciations(written, "en", self.configuration)
+        self.assertEqual(
+            spoken,
+            "CO-bee Bryant, ZAY-vee-er Woods, George muh-CAS-key, "
+            "Dillon THEE-nuh-mun, Rome OH-dune-ZAY, Tyson BAY-jint and Kyle muh-NUN-guy.",
+        )
+
     def test_spanish_touchdown_terms_use_one_broadcast_word(self):
         written = "Anotó dos touchdowns y el segundo touchdown decidió el partido."
         spoken = apply_pronunciations(written, "es", self.configuration)

@@ -62,16 +62,27 @@ class AzureNflLexiconTests(unittest.TestCase):
 
     def test_reported_names_places_titles_and_terms_use_english_delivery(self):
         text = (
-            "Coby Bryant visitó Lake Forest y Stevenson High School en Lincolnshire. "
+            "George McCaskey y Ben Johnson visitaron Hammond, Indiana, Lost Marsh, "
+            "Wolf Lake Terminal, Lake, Porter, Denver, Cleveland, Lake Forest y Halas Hall. "
+            "Coby Bryant, Xavier Woods, Dillon Thieneman, Ray-Ray McCloud III, "
+            "Peyton Manning, Patrick Mahomes, Andy Reid, Tyson Bagent y Kyle Monangai. "
+            "Stevenson High School en Lincolnshire. "
             "Holiday Touchdown: A Bears Love Story, de Hallmark, apareció en el playbook."
         )
         output = apply_inline_ssml(text, self.configuration)
         for phrase in (
-            "Coby Bryant", "Lake Forest", "Stevenson High School", "Lincolnshire",
+            "George McCaskey", "Ben Johnson", "Hammond", "Indiana", "Lost Marsh",
+            "Wolf Lake Terminal", "Lake", "Porter", "Denver", "Cleveland", "Lake Forest",
+            "Halas Hall", "Coby Bryant", "Xavier Woods", "Peyton Manning",
+            "Patrick Mahomes", "Andy Reid", "Stevenson High School", "Lincolnshire",
             "Holiday Touchdown: A Bears Love Story", "Hallmark", "playbook",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', output)
+        self.assertIn('alias="Dillon THEE-nuh-mun"', output)
+        self.assertIn('alias="Ray-Ray McCloud the Third"', output)
+        self.assertIn('alias="Tyson BAY-jint"', output)
+        self.assertIn('alias="Kyle muh-NUN-guy"', output)
 
     def test_encanto_does_not_change_encanto_with_a_written_accent(self):
         output = apply_inline_ssml("El encanto regresó y encantó a todos.", self.configuration)

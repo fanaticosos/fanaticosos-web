@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "version": 9,
+  "version": 10,
   "overrides": {
     "es": [
       {
@@ -95,6 +95,76 @@
       }
     ],
     "en": [
+      {
+        "category": "player",
+        "canonical": "Coby Bryant",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "CO-bee Bryant"},
+        "reason": "Keep the player's first name from being read as Kobe",
+        "source": "Fanaticosos owner listening review, 2026-08-14",
+        "sourceType": "owner-review",
+        "status": "approved"
+      },
+      {
+        "category": "player",
+        "canonical": "Xavier Woods",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "ZAY-vee-er Woods"},
+        "reason": "Preserve the player's English first-name pronunciation",
+        "source": "Fanaticosos pronunciation review, 2026-08-14",
+        "sourceType": "owner-review",
+        "status": "approved"
+      },
+      {
+        "category": "term",
+        "canonical": "George McCaskey",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "George muh-CAS-key"},
+        "reason": "Preserve the McCaskey family-name pronunciation",
+        "source": "Fanaticosos pronunciation review, 2026-08-14",
+        "sourceType": "owner-review",
+        "status": "approved"
+      },
+      {
+        "category": "player",
+        "canonical": "Dillon Thieneman",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Dillon THEE-nuh-mun"},
+        "reason": "Use the official Oregon pronunciation guide",
+        "source": "University of Oregon football pronunciation guide, 2025",
+        "sourceType": "official",
+        "status": "approved"
+      },
+      {
+        "category": "player",
+        "canonical": "Rome Odunze",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Rome OH-dune-ZAY"},
+        "reason": "Use the official Chicago Bears pronunciation guide",
+        "source": "Chicago Bears pronunciation guide, 2025",
+        "sourceType": "official",
+        "status": "approved"
+      },
+      {
+        "category": "player",
+        "canonical": "Tyson Bagent",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Tyson BAY-jint"},
+        "reason": "Use the official Chicago Bears pronunciation guide",
+        "source": "Chicago Bears pronunciation guide, 2025",
+        "sourceType": "official",
+        "status": "approved"
+      },
+      {
+        "category": "player",
+        "canonical": "Kyle Monangai",
+        "aliases": [],
+        "synthesis": {"profile": "american-af-heart", "type": "text-substitution", "text": "Kyle muh-NUN-guy"},
+        "reason": "Use the official Chicago Bears pronunciation guide",
+        "source": "Chicago Bears pronunciation guide, 2025",
+        "sourceType": "official",
+        "status": "approved"
+      },
       {
         "category": "term",
         "canonical": "Fanaticosos",
