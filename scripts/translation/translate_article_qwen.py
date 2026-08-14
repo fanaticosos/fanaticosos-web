@@ -259,16 +259,16 @@ def validate_segment_translation(
     translation: str,
     glossary: dict[str, Any],
 ) -> None:
-    source_markers = [
+    source_markers = {
         word.casefold()
         for word in WORD_PATTERN.findall(segment["text"])
         if word.casefold() in SPANISH_MARKERS
-    ]
-    translation_markers = [
+    }
+    translation_markers = {
         word.casefold()
         for word in WORD_PATTERN.findall(translation)
         if word.casefold() in SPANISH_MARKERS
-    ]
+    }
     if len(source_markers) >= 2 and len(translation_markers) >= max(
         2, (len(source_markers) + 1) // 2
     ):

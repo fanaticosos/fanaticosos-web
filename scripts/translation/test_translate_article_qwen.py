@@ -376,6 +376,20 @@ class TranslateArticleQwenTests(unittest.TestCase):
                 self.glossary,
             )
 
+    def test_accepts_repeated_english_article_in_heading(self):
+        segment = {
+            "id": "body-021",
+            "kind": "heading",
+            "text": "IV. Una práctica sin libreto y el bombazo Williams-Odunze",
+            "preserve": [],
+        }
+        glossary = {"version": 1, "protectedNames": [], "terms": []}
+        validate_segment_translation(
+            segment,
+            "IV. A practice without a script and the Williams-Odunze bomb",
+            glossary,
+        )
+
     def test_failure_does_not_return_partial_result(self):
         invalid = copy.deepcopy(self.request)
         invalid["segments"][1]["text"] = (
