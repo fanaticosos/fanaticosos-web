@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 10,
+  "version": 11,
   "locale": "es-MX",
   "voice": "es-MX-JorgeMultilingualNeural",
   "broadcastRate": "+8%",
@@ -68,9 +68,10 @@
     {"division":"AFC West","canonical":"Los Angeles Chargers","market":"Los Ángeles","writtenMarkets":["Los Angeles"],"nickname":"Chargers","nicknameAlias":"Chárgers"}
   ],
   "entities": [
-    {"category":"phrase","grapheme":"Navy and Orange","mode":"spanish-broadcast","alias":"Néivi and Órench","status":"approved","sourceType":"owner-review"},
-    {"category":"brand","grapheme":"fanaticOSO","mode":"spanish","phoneme":"fanatiˈkoso","status":"approved","sourceType":"owner-review"},
-    {"category":"phrase","grapheme":"Bear Down","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
+    {"category":"phrase","grapheme":"Navy and Orange","mode":"spanish-broadcast","alias":"Néivi and Órinch","status":"approved","sourceType":"owner-review"},
+    {"category":"brand","grapheme":"fanaticOSO","mode":"spanish","alias":"fanaticoso","status":"approved","sourceType":"owner-review"},
+    {"category":"brand","grapheme":"Fanaticosos","mode":"spanish","alias":"fanaticosos","status":"approved","sourceType":"owner-review"},
+    {"category":"phrase","grapheme":"Bear Down","mode":"spanish-broadcast","alias":"Bér Daun","status":"approved","sourceType":"owner-review"},
     {"category":"venue","grapheme":"Halas Hall","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
     {"category":"place","grapheme":"Hammond","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},
     {"category":"place","grapheme":"Indiana","mode":"english","language":"en-US","status":"approved","sourceType":"owner-review"},

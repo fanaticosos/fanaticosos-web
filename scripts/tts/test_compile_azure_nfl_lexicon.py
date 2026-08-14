@@ -91,9 +91,10 @@ class AzureNflLexiconTests(unittest.TestCase):
             self.configuration,
         )
         self.assertIn('<lang xml:lang="es-MX">. ¿Confianza competitiva o soberbia? El apunte </lang>', output)
-        self.assertIn('alias="Néivi and Órench"', output)
-        self.assertIn('ph="fanatiˈkoso"', output)
-        self.assertIn('<lang xml:lang="en-US">Bear Down</lang>', output)
+        self.assertIn('alias="Néivi and Órinch"', output)
+        self.assertIn('alias="fanaticoso"', output)
+        self.assertIn('alias="Bér Daun"', output)
+        self.assertNotIn('<lang xml:lang="en-US">Bear Down</lang>', output)
 
     def test_encanto_does_not_change_encanto_with_a_written_accent(self):
         output = apply_inline_ssml("El encanto regresó y encantó a todos.", self.configuration)
