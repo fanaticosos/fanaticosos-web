@@ -8,6 +8,7 @@ import json
 import os
 import re
 import unicodedata
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -204,6 +205,55 @@ def expected_preserved_values(
     return list(dict.fromkeys(values))
 
 
+def numeric_value_is_preserved(value: str, source: str, translation: str) -> bool:
+    """Accept equivalent English number formatting and scale conversions."""
+    if value in translation:
+        return True
+    if not re.fullmatch(r"\d+(?:[.,]\d+)?", value):
+        return False
+
+    normalized = value
+    if re.fullmatch(r"\d{1,3}(?:,\d{3})+", value):
+        normalized = value.replace(",", "")
+    elif re.fullmatch(r"\d{1,3}(?:\.\d{3})+", value):
+        normalized = value.replace(".", "")
+    elif "," in value:
+        normalized = value.replace(",", ".")
+
+    try:
+        number = Decimal(normalized)
+    except InvalidOperation:
+        return False
+
+    plain = format(number, "f")
+    if "." in plain:
+        plain = plain.rstrip("0").rstrip(".")
+    if re.search(rf"(?<![\d.]){re.escape(plain)}(?![\d.])", translation):
+        return True
+
+    source_tail = source[source.find(value) + len(value) :]
+    if re.match(r"\s+millones?\b", source_tail, re.IGNORECASE):
+        billions = number / Decimal(1000)
+        if billions == billions.to_integral():
+            scaled = format(billions, "f")
+            if "." in scaled:
+                scaled = scaled.rstrip("0").rstrip(".")
+            return bool(
+                re.search(
+                    rf"(?<![\d.]){re.escape(scaled)}(?:\.0+)?\s+billion\b",
+                    translation,
+                    re.IGNORECASE,
+                )
+            )
+    return False
+
+
+def preserved_value_occurs(value: str, source: str, translation: str) -> bool:
+    if value in translation:
+        return True
+    return numeric_value_is_preserved(value, source, translation)
+
+
 def validate_segment_translation(
     segment: dict[str, Any],
     translation: str,
@@ -228,7 +278,7 @@ def validate_segment_translation(
     missing = [
         value
         for value in expected_preserved_values(segment, glossary["protectedNames"])
-        if value not in translation
+        if not preserved_value_occurs(value, segment["text"], translation)
     ]
     if missing:
         raise ValueError(

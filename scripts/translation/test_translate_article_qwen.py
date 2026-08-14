@@ -328,6 +328,35 @@ class TranslateArticleQwenTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing protected values"):
             validate_segment_translation(segment, "They win in the city", self.glossary)
 
+    def test_accepts_equivalent_billion_conversion(self):
+        segment = {
+            "id": "body-005",
+            "kind": "paragraph",
+            "text": "Indiana podría destinar más de 1,000 millones de dólares.",
+            "preserve": [],
+        }
+        glossary = {"version": 1, "protectedNames": [], "terms": []}
+        validate_segment_translation(
+            segment,
+            "Indiana could allocate more than $1 billion.",
+            glossary,
+        )
+
+    def test_rejects_wrong_billion_conversion(self):
+        segment = {
+            "id": "body-005",
+            "kind": "paragraph",
+            "text": "Indiana podría destinar más de 1,000 millones de dólares.",
+            "preserve": [],
+        }
+        glossary = {"version": 1, "protectedNames": [], "terms": []}
+        with self.assertRaisesRegex(ValueError, "missing protected values: 1,000"):
+            validate_segment_translation(
+                segment,
+                "Indiana could allocate more than $2 billion.",
+                glossary,
+            )
+
     def test_rejects_missing_glossary_translation(self):
         segment = copy.deepcopy(self.request["segments"][1])
         segment["text"] = "Caleb Williams lanzó un pase de anotación."
