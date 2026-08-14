@@ -58,8 +58,8 @@ class PronunciationTests(unittest.TestCase):
         spoken = apply_pronunciations(written, "en", self.configuration)
         self.assertEqual(
             spoken,
-            "CO-bee Bryant, ZAY-vee-er Woods, George muh-CAS-key, "
-            "Dillon THEE-nuh-mun, Rome OH-dune-ZAY, Tyson BAY-jint and Kyle muh-NUN-guy.",
+            "Coe bee Bryant, Zay vee er Woods, George muh Cass key, "
+            "Dillon thee nuh mun, Rome oh doon zay, Tyson bay jint and Kyle muh nun guy.",
         )
 
     def test_spanish_touchdown_terms_use_one_broadcast_word(self):

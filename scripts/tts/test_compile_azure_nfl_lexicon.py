@@ -79,10 +79,21 @@ class AzureNflLexiconTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(f'<lang xml:lang="en-US">{phrase}</lang>', output)
-        self.assertIn('alias="Dillon THEE-nuh-mun"', output)
+        self.assertIn('alias="Dillon thee nuh mun"', output)
         self.assertIn('alias="Ray-Ray McCloud the Third"', output)
-        self.assertIn('alias="Tyson BAY-jint"', output)
-        self.assertIn('alias="Kyle muh-NUN-guy"', output)
+        self.assertIn('alias="Tyson bay jint"', output)
+        self.assertIn('alias="Kyle muh nun guy"', output)
+
+    def test_spanish_text_is_language_locked_and_reported_phrases_are_controlled(self):
+        output = apply_inline_ssml(
+            "Afición Navy and Orange. ¿Confianza competitiva o soberbia? "
+            "El apunte fanaticOSO. Bear Down.",
+            self.configuration,
+        )
+        self.assertIn('<lang xml:lang="es-MX">. ¿Confianza competitiva o soberbia? El apunte </lang>', output)
+        self.assertIn('alias="Néivi and Órench"', output)
+        self.assertIn('ph="fanatiˈkoso"', output)
+        self.assertIn('<lang xml:lang="en-US">Bear Down</lang>', output)
 
     def test_encanto_does_not_change_encanto_with_a_written_accent(self):
         output = apply_inline_ssml("El encanto regresó y encantó a todos.", self.configuration)
@@ -94,8 +105,8 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Los Chicago Bears reciben a los Minnesota Vikings.",
             self.configuration,
         )
-        self.assertIn("Chicago <phoneme", output)
-        self.assertIn("Minnesota <phoneme", output)
+        self.assertIn("Chicago </lang><phoneme", output)
+        self.assertIn("Minnesota </lang><phoneme", output)
         self.assertNotIn(">Chicago Bears</", output)
         self.assertNotIn(">Minnesota Vikings</", output)
 

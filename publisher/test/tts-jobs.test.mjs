@@ -47,6 +47,7 @@ test("narration text removes Markdown without removing its spoken words", () => 
   assert.equal(narrationText("**Go Bears!**"), "Go Bears!");
   assert.equal(narrationText("Un [enlace](https://example.com) y `código`."), "Un enlace y código.");
   assert.equal(narrationText("~~tachado~~ y *énfasis*."), "tachado y énfasis.");
+  assert.equal(narrationText("🐻⬇️"), "Bear Down");
 });
 
 test("TTS requests bind approved Spanish and English text to one revision", () => {

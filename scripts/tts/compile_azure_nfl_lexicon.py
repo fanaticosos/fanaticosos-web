@@ -147,9 +147,11 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
     )
     lookup = {item["grapheme"].casefold(): item for item in entries}
     parts: list[str] = []
+    def spanish(value: str) -> str:
+        return f'<lang xml:lang="{configuration["locale"]}">{escape(value)}</lang>' if value else ""
     cursor = 0
     for match in pattern.finditer(text):
-        parts.append(escape(text[cursor:match.start()]))
+        parts.append(spanish(text[cursor:match.start()]))
         written = match.group(0)
         entry = lookup[written.casefold()]
         if "phoneme" in entry:
@@ -167,7 +169,7 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
         else:
             parts.append(f"<sub alias={quoteattr(entry['alias'])}>{escape(written)}</sub>")
         cursor = match.end()
-    parts.append(escape(text[cursor:]))
+    parts.append(spanish(text[cursor:]))
     return "".join(parts)
 
 

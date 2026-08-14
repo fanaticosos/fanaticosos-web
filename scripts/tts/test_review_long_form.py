@@ -63,7 +63,7 @@ class LongFormReviewTests(unittest.TestCase):
             self.assertEqual(version, 8)
             self.assertEqual(settings["speed"], 1.02)
             self.assertEqual(settings["pause_seconds"], 0.16)
-            self.assertEqual(settings["pronunciation_version"], 10)
+            self.assertEqual(settings["pronunciation_version"], 11)
         self.assertEqual(summary["configurationVersion"], 8)
 
     def test_failure_removes_combined_staging_output(self):

@@ -21,6 +21,7 @@ export function ttsPolicyRevision(production, pronunciations, azureEntities = {}
 
 export function narrationText(markdown) {
   return markdown
+    .replace(/🐻(?:\uFE0F)?⬇(?:\uFE0F)?/gu, "Bear Down")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
