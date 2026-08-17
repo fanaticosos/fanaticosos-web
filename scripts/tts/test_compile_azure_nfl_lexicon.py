@@ -61,6 +61,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertEqual(entries["Justin"]["language"], "en-US")
         self.assertEqual(entries["Halas Hall"]["language"], "en-US")
         self.assertEqual(entries["Chicago"]["language"], "en-US")
+        self.assertEqual(entries["Chicago"]["alias"], "shih-KAH-go")
         self.assertEqual(entries["Cincinnati"]["language"], "en-US")
 
     def test_reported_names_places_titles_and_terms_use_english_delivery(self):
@@ -109,7 +110,7 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Los Chicago Bears reciben a los Minnesota Vikings.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">Chicago</lang>', output)
+        self.assertIn('<lang xml:lang="en-US"><sub alias="shih-KAH-go">Chicago</sub></lang>', output)
         self.assertIn('<lang xml:lang="en-US">Minnesota</lang>', output)
         self.assertNotIn(">Chicago Bears</", output)
         self.assertNotIn(">Minnesota Vikings</", output)
@@ -194,6 +195,15 @@ class AzureNflLexiconTests(unittest.TestCase):
         ):
             with self.subTest(written=written):
                 self.assertRegex(output, rf'<lang xml:lang="en-US">(?:<sub [^>]+>)?{re.escape(written)}')
+
+    def test_reported_chicago_deshaun_and_roster_use_explicit_english(self):
+        output = apply_inline_ssml(
+            "Chicago vio a Deshaun Watson competir por el roster.",
+            self.configuration,
+        )
+        self.assertIn('<lang xml:lang="en-US"><sub alias="shih-KAH-go">Chicago</sub></lang>', output)
+        self.assertIn('<lang xml:lang="en-US"><sub alias="duh-SHAWN Watson">Deshaun Watson</sub></lang>', output)
+        self.assertIn('<lang xml:lang="en-US">roster</lang>', output)
 
     def test_owner_reviewed_english_game_terms_use_latino_phonetic_aliases(self):
         output = apply_inline_ssml(
