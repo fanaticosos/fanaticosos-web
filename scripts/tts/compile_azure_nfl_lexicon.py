@@ -126,7 +126,9 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
         if item.get("status") not in {"approved", "provisional"}:
             continue
         entry = {"grapheme": item["grapheme"]}
-        if item.get("narratorAlias"):
+        if item.get("narratorPhoneme"):
+            entry["phoneme"] = item["narratorPhoneme"]
+        elif item.get("narratorAlias"):
             entry["alias"] = item["narratorAlias"]
         elif item.get("language"):
             entry["language"] = item["language"]

@@ -24541,6 +24541,7 @@
       "category": "place",
       "grapheme": "Cleveland",
       "language": "en-US",
+      "narratorAlias": "Clívland",
       "status": "approved",
       "sourceType": "owner-review"
     },
@@ -24569,6 +24570,7 @@
       "category": "venue",
       "grapheme": "Soldier Field",
       "language": "en-US",
+      "narratorAlias": "Sóulyer Fíld",
       "status": "approved",
       "sourceType": "owner-review"
     },
@@ -24576,6 +24578,7 @@
       "category": "place",
       "grapheme": "Michigan",
       "language": "en-US",
+      "narratorAlias": "Míshigan",
       "status": "approved",
       "sourceType": "owner-review"
     },
@@ -24583,6 +24586,7 @@
       "category": "place",
       "grapheme": "Cincinnati",
       "language": "en-US",
+      "narratorAlias": "Sinsináti",
       "status": "approved",
       "sourceType": "owner-review"
     },
@@ -24591,6 +24595,7 @@
       "grapheme": "Chicago",
       "language": "en-US",
       "alias": "shih-KAH-go",
+      "narratorPhoneme": "ʃɪˈkɑɡoʊ",
       "status": "approved",
       "sourceType": "owner-review"
     }

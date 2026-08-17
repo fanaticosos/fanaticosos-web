@@ -65,7 +65,7 @@ def build(configuration: dict[str, Any], terms: dict[str, Any], season: int) -> 
                 player["writtenForms"] = [surname]
             override = reviewed.get(player["name"].casefold())
             if override:
-                for key in ("alias", "narratorAlias", "writtenForms", "writtenFormAliases", "narratorWrittenFormAliases", "status", "sourceType"):
+                for key in ("alias", "narratorAlias", "narratorPhoneme", "writtenForms", "writtenFormAliases", "narratorWrittenFormAliases", "status", "sourceType"):
                     if key in override:
                         if key == "writtenForms":
                             player[key] = list(dict.fromkeys([*(player.get(key) or []), *override[key]]))
@@ -80,7 +80,7 @@ def build(configuration: dict[str, Any], terms: dict[str, Any], season: int) -> 
             "players": players,
         })
     places = [
-        {key: item[key] for key in ("category", "grapheme", "language", "alias", "status", "sourceType") if key in item}
+        {key: item[key] for key in ("category", "grapheme", "language", "alias", "narratorAlias", "narratorPhoneme", "status", "sourceType") if key in item}
         for item in configuration["entities"]
         if item.get("category") in {"place", "venue", "school"}
     ]

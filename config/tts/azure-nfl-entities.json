@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 16,
+  "version": 17,
   "locale": "es-MX",
   "voice": "es-MX-JorgeMultilingualNeural",
   "broadcastRate": "+8%",
@@ -108,7 +108,7 @@
     {"category":"player","grapheme":"Rome Odunze","mode":"english","language":"en-US","alias":"Rome Oh dune Zay","writtenForms":["Odunze"],"writtenFormAliases":{"Odunze":"Oh dune Zay"},"status":"approved","sourceType":"official"},
     {"category":"place","grapheme":"Michigan","mode":"english","language":"en-US","narratorAlias":"Míshigan","status":"approved","sourceType":"owner-review"},
     {"category":"place","grapheme":"Cincinnati","mode":"english","language":"en-US","narratorAlias":"Sinsináti","status":"approved","sourceType":"owner-review"},
-    {"category":"place","grapheme":"Chicago","mode":"english","language":"en-US","alias":"shih-KAH-go","narratorAlias":"Shicágo","status":"approved","sourceType":"owner-review"},
+    {"category":"place","grapheme":"Chicago","mode":"english","language":"en-US","alias":"shih-KAH-go","narratorPhoneme":"ʃɪˈkɑɡoʊ","status":"approved","sourceType":"owner-review"},
     {"category":"player","grapheme":"Deshaun Watson","mode":"english","language":"en-US","alias":"duh-SHAWN Watson","narratorAlias":"De Shón Uátson","writtenForms":["Watson"],"writtenFormAliases":{"Watson":"Watson"},"narratorWrittenFormAliases":{"Watson":"Uátson"},"status":"approved","sourceType":"official"},
     {"category":"player","grapheme":"Maurice Alexander","mode":"english","language":"en-US","narratorAlias":"Morís Alexander","writtenForms":["Alexander"],"narratorWrittenFormAliases":{"Alexander":"Alexander"},"status":"provisional","sourceType":"official"},
     {"category":"player","grapheme":"Kaden Davis","mode":"english","language":"en-US","narratorAlias":"Kéiden Déivis","writtenForms":["Davis"],"narratorWrittenFormAliases":{"Davis":"Déivis"},"status":"provisional","sourceType":"official"},
