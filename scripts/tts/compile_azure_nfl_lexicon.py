@@ -78,9 +78,10 @@ def load_configuration(path: Path) -> dict[str, Any]:
 def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     explicit_graphemes = {
-        item["grapheme"].casefold()
+        form.casefold()
         for item in [*configuration["entities"], *configuration["termReferenceData"]["ttsEntries"]]
         if item.get("status") in {"approved", "provisional"}
+        for form in [item["grapheme"], *item.get("writtenForms", [])]
     }
     for team in configuration["teams"]:
         canonical_market = team["canonical"].removesuffix(team["nickname"]).strip()
@@ -117,13 +118,17 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
                 entry["alias"] = player["alias"]
             entries.append(entry)
             for written_form in player.get("writtenForms", []):
+                if written_form.casefold() in explicit_graphemes:
+                    continue
                 entries.append({**entry, "grapheme": written_form})
     referenced_terms = configuration["termReferenceData"]["ttsEntries"]
     for item in [*configuration["entities"], *referenced_terms]:
         if item.get("status") not in {"approved", "provisional"}:
             continue
         entry = {"grapheme": item["grapheme"]}
-        if item.get("language"):
+        if item.get("narratorAlias"):
+            entry["alias"] = item["narratorAlias"]
+        elif item.get("language"):
             entry["language"] = item["language"]
             entry["volume"] = item.get("volume", "-2dB")
             if item.get("alias"):
@@ -140,7 +145,11 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
         # so later references do not fall back to Spanish letter sounds.
         for written_form in item.get("writtenForms", []):
             variant = {**entry, "grapheme": written_form}
-            if entry.get("alias") and item.get("writtenFormAliases", {}).get(written_form):
+            narrator_variant = item.get("narratorWrittenFormAliases", {}).get(written_form)
+            if narrator_variant:
+                variant.pop("language", None)
+                variant["alias"] = narrator_variant
+            elif entry.get("alias") and item.get("writtenFormAliases", {}).get(written_form):
                 variant["alias"] = item["writtenFormAliases"][written_form]
             entries.append(variant)
     seen: dict[tuple[str, bool], dict[str, Any]] = {}

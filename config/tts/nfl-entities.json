@@ -31,8 +31,12 @@
             "Ahmed"
           ],
           "alias": "suh-VON OCK-med",
+          "narratorAlias": "Sa Vón Akmed",
           "writtenFormAliases": {
             "Ahmed": "OCK-med"
+          },
+          "narratorWrittenFormAliases": {
+            "Ahmed": "Akmed"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -44,6 +48,10 @@
           "writtenForms": [
             "Alexander"
           ],
+          "narratorAlias": "Morís Alexander",
+          "narratorWrittenFormAliases": {
+            "Alexander": "Alexander"
+          },
           "status": "provisional",
           "sourceType": "official"
         },
@@ -63,8 +71,12 @@
             "Bagent"
           ],
           "alias": "Tyson bay jint",
+          "narratorAlias": "Táison Béi Yent",
           "writtenFormAliases": {
             "Bagent": "bay jint"
+          },
+          "narratorWrittenFormAliases": {
+            "Bagent": "Béi Yent"
           },
           "status": "approved",
           "sourceType": "official"
@@ -92,6 +104,10 @@
           "writtenForms": [
             "Bennett"
           ],
+          "narratorAlias": "Cóulman Bénet",
+          "narratorWrittenFormAliases": {
+            "Bennett": "Bénet"
+          },
           "status": "provisional",
           "sourceType": "official"
         },
@@ -104,9 +120,14 @@
             "Beanie Bishop"
           ],
           "alias": "Beanie Bishop Junior",
+          "narratorAlias": "Bíni Bíshop Yúnior",
           "writtenFormAliases": {
             "Beanie Bishop": "Beanie Bishop",
             "Bishop": "Bishop"
+          },
+          "narratorWrittenFormAliases": {
+            "Beanie Bishop": "Bíni Bíshop",
+            "Bishop": "Bíshop"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -143,8 +164,12 @@
             "Brown"
           ],
           "alias": "BRIT-in Brown",
+          "narratorAlias": "Bríten Braun",
           "writtenFormAliases": {
             "Brown": "Brown"
+          },
+          "narratorWrittenFormAliases": {
+            "Brown": "Braun"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -156,6 +181,10 @@
           "writtenForms": [
             "Bryant"
           ],
+          "narratorAlias": "Cóubi Bráiant",
+          "narratorWrittenFormAliases": {
+            "Bryant": "Bráiant"
+          },
           "status": "approved",
           "sourceType": "owner-review"
         },
@@ -193,6 +222,10 @@
           "writtenForms": [
             "Davis"
           ],
+          "narratorAlias": "Kéiden Déivis",
+          "narratorWrittenFormAliases": {
+            "Davis": "Déivis"
+          },
           "status": "provisional",
           "sourceType": "official"
         },
@@ -324,8 +357,12 @@
             "Hyppolite"
           ],
           "alias": "Ruben HIP-oh-light the Second",
+          "narratorAlias": "Rúben Jípolait de sécond",
           "writtenFormAliases": {
             "Hyppolite": "HIP-oh-light"
+          },
+          "narratorWrittenFormAliases": {
+            "Hyppolite": "Jípolait"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -418,8 +455,12 @@
             "Kalinic"
           ],
           "alias": "NEE-koh-lah KAL-in-itch",
+          "narratorAlias": "Nícola Kálinich",
           "writtenFormAliases": {
             "Kalinic": "KAL-in-itch"
+          },
+          "narratorWrittenFormAliases": {
+            "Kalinic": "Kálinich"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -432,8 +473,12 @@
             "Keenum"
           ],
           "alias": "Case Key-num",
+          "narratorAlias": "Kéis Kínum",
           "writtenFormAliases": {
             "Keenum": "Key-num"
+          },
+          "narratorWrittenFormAliases": {
+            "Keenum": "Kínum"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -462,8 +507,12 @@
             "Kromah"
           ],
           "alias": "JAM-ree KROH-mah",
+          "narratorAlias": "Yamrí Cróuma",
           "writtenFormAliases": {
             "Kromah": "KROH-mah"
+          },
+          "narratorWrittenFormAliases": {
+            "Kromah": "Cróuma"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -687,7 +736,11 @@
             "Santos"
           ],
           "alias": "Kye-ro Santos",
+          "narratorAlias": "Káiro Santos",
           "writtenFormAliases": {
+            "Santos": "Santos"
+          },
+          "narratorWrittenFormAliases": {
             "Santos": "Santos"
           },
           "status": "provisional",
@@ -709,8 +762,12 @@
             "Sewell"
           ],
           "alias": "NEE-fye SOO-ell",
+          "narratorAlias": "Ní Fái Súel",
           "writtenFormAliases": {
             "Sewell": "SOO-ell"
+          },
+          "narratorWrittenFormAliases": {
+            "Sewell": "Súel"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -850,6 +907,10 @@
           "writtenForms": [
             "Williams"
           ],
+          "narratorAlias": "Kéileb Uíliams",
+          "narratorWrittenFormAliases": {
+            "Williams": "Uíliams"
+          },
           "status": "approved",
           "sourceType": "owner-review"
         },
@@ -868,6 +929,10 @@
           "writtenForms": [
             "Woods"
           ],
+          "narratorAlias": "Zéivier Uds",
+          "narratorWrittenFormAliases": {
+            "Woods": "Uds"
+          },
           "status": "approved",
           "sourceType": "owner-review"
         },
@@ -14030,6 +14095,10 @@
           "writtenForms": [
             "Gabriel"
           ],
+          "narratorAlias": "Dílon Gábriel",
+          "narratorWrittenFormAliases": {
+            "Gabriel": "Gábriel"
+          },
           "status": "provisional",
           "sourceType": "official"
         },
@@ -14371,8 +14440,12 @@
             "Sanders"
           ],
           "alias": "shuh-DURE Sanders",
+          "narratorAlias": "Shedúr Sánders",
           "writtenFormAliases": {
             "Sanders": "Sanders"
+          },
+          "narratorWrittenFormAliases": {
+            "Sanders": "Sánders"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -14497,8 +14570,12 @@
             "Watson"
           ],
           "alias": "duh-SHAWN Watson",
+          "narratorAlias": "De Shón Uátson",
           "writtenFormAliases": {
             "Watson": "Watson"
+          },
+          "narratorWrittenFormAliases": {
+            "Watson": "Uátson"
           },
           "status": "approved",
           "sourceType": "official"
