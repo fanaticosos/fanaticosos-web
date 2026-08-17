@@ -67,6 +67,12 @@ def load_configuration(path: Path) -> dict[str, Any]:
 def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
     for team in configuration["teams"]:
+        canonical_market = team["canonical"].removesuffix(team["nickname"]).strip()
+        entries.append({
+            "grapheme": canonical_market,
+            "language": "en-US",
+            "volume": "-2dB",
+        })
         entry = {"grapheme": team["nickname"]}
         if team.get("nicknamePhoneme"):
             entry["phoneme"] = team["nicknamePhoneme"]
@@ -74,7 +80,11 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
             entry["alias"] = team["nicknameAlias"]
         entries.append(entry)
         for written_market in team.get("writtenMarkets", []):
-            entries.append({"grapheme": written_market, "alias": team["market"]})
+            entries.append({
+                "grapheme": written_market,
+                "language": "en-US",
+                "volume": "-2dB",
+            })
     referenced_terms = configuration["termReferenceData"]["ttsEntries"]
     for item in [*configuration["entities"], *referenced_terms]:
         if item.get("status") not in {"approved", "provisional"}:
