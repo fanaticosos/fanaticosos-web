@@ -170,6 +170,26 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertIn('<sub alias="Kéileb Uíliams">Caleb Williams</sub>', markup)
         self.assertNotIn("en-US", markup)
 
+    def test_current_article_names_places_and_surnames_are_retained(self):
+        output = apply_inline_ssml(
+            "Michigan y Cincinnati. Deshaun Watson; Maurice Alexander; Kaden Davis; "
+            "Cairo Santos; Case Keenum; Salvon Ahmed; Brittain Brown; Coleman Bennett; "
+            "Jamree Kromah; Beanie Bishop Jr.; Shedeur Sanders; Dillon Gabriel; "
+            "Ruben Hyppolite II; Nephi Sewell; Nikola Kalinic. "
+            "Bagent, Keenum, Davis, Kromah, Bishop y Kalinic.",
+            self.configuration,
+        )
+        for alias in (
+            "Míshigan", "Sinsináti", "Deshón Uátson", "Morís Alexander",
+            "Kéiden Déivis", "Káiro Santos", "Kéis Kínum", "Savón Okmed",
+            "Brítin Braun", "Cóulman Bénet", "Yámri Króuma",
+            "Bíni Bíshop Yúnior", "Shadúr Sánders", "Dílan Gáibriel",
+            "Rúben Hípolait de sécond", "Nífai Súel", "Nícola Kálinich",
+            "bay jint", "Kínum", "Déivis", "Króuma", "Bíshop", "Kálinich",
+        ):
+            with self.subTest(alias=alias):
+                self.assertIn(f'alias="{alias}"', output)
+
     def test_owner_reviewed_english_game_terms_use_latino_phonetic_aliases(self):
         output = apply_inline_ssml(
             "Dos fumbles tras varios handoffs obligaron a cambiar el play call.",

@@ -92,6 +92,14 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
         elif not item.get("language"):
             raise ValueError(f"entity has no pronunciation: {item['grapheme']}")
         entries.append(entry)
+        # Articles commonly introduce a player by full name and then use only
+        # the surname. Keep both forms on the same reviewed pronunciation rule
+        # so later references do not fall back to Spanish letter sounds.
+        for written_form in item.get("writtenForms", []):
+            variant = {**entry, "grapheme": written_form}
+            if entry.get("alias") and item.get("writtenFormAliases", {}).get(written_form):
+                variant["alias"] = item["writtenFormAliases"][written_form]
+            entries.append(variant)
     seen: dict[str, dict[str, str]] = {}
     unique_entries: list[dict[str, str]] = []
     for entry in entries:

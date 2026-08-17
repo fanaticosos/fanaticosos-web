@@ -22,6 +22,9 @@ export function ttsPolicyRevision(production, pronunciations, azureEntities = {}
 export function narrationText(markdown) {
   return markdown
     .replace(/🐻(?:\uFE0F)?⬇(?:\uFE0F)?/gu, "Bear Down")
+    // Emoji are visual decoration. Narrating their Unicode names creates a
+    // second, synthetic-sounding voice and duplicates a written “Bear Down.”
+    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
