@@ -120,14 +120,14 @@
             "Beanie Bishop"
           ],
           "alias": "Beanie Bishop Junior",
-          "narratorAlias": "Bíni Bíshop Yúnior",
+          "narratorAlias": "Bíni Bíchop Yúnior",
           "writtenFormAliases": {
             "Beanie Bishop": "Beanie Bishop",
             "Bishop": "Bishop"
           },
           "narratorWrittenFormAliases": {
-            "Beanie Bishop": "Bíni Bíshop",
-            "Bishop": "Bíshop"
+            "Beanie Bishop": "Bíni Bíchop",
+            "Bishop": "Bíchop"
           },
           "status": "provisional",
           "sourceType": "official"
@@ -24578,7 +24578,7 @@
       "category": "place",
       "grapheme": "Michigan",
       "language": "en-US",
-      "narratorAlias": "Míshigan",
+      "narratorAlias": "Míchigan",
       "status": "approved",
       "sourceType": "owner-review"
     },
