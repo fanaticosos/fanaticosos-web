@@ -22,17 +22,17 @@ function addEntity(target, seen, entity) {
 function inventory(database, azureEntities) {
   const values = [];
   const seen = new Set();
-  const push = (written, category, source, language = "en-US") => {
-    const casefold = written.toLocaleLowerCase("en-US");
-    addEntity(values, seen, { written, casefold, category, source, language });
+  const push = (written, category, source, language = "en-US", caseSensitive = false) => {
+    const casefold = `${written.toLocaleLowerCase("en-US")}:${caseSensitive}`;
+    addEntity(values, seen, { written, casefold, category, source, language, caseSensitive });
   };
   for (const team of database.teams ?? []) {
     push(team.canonical, "team", team.rosterSource);
     push(team.market, "city", team.rosterSource);
     push(team.nickname, "team", team.rosterSource, "es-MX");
     for (const player of team.players ?? []) {
-      push(player.name, "player", team.rosterSource);
-      for (const form of player.writtenForms ?? []) push(form, "player", team.rosterSource);
+      push(player.name, "player", team.rosterSource, "en-US", true);
+      for (const form of player.writtenForms ?? []) push(form, "player", team.rosterSource, "en-US", true);
     }
   }
   for (const place of database.places ?? []) push(place.grapheme, place.category, "operational-database", place.language ?? "en-US");
@@ -50,7 +50,7 @@ export function ttsPreflight(draft, database, azureEntities) {
   let masked = original;
   const detected = [];
   for (const entity of entities) {
-    const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${escapePattern(entity.written)}(?![\\p{L}\\p{N}])`, "giu");
+    const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${escapePattern(entity.written)}(?![\\p{L}\\p{N}])`, entity.caseSensitive ? "gu" : "giu");
     let found = false;
     masked = masked.replace(pattern, (match) => {
       found = true;

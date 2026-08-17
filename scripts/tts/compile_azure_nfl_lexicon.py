@@ -75,8 +75,8 @@ def load_configuration(path: Path) -> dict[str, Any]:
     return value
 
 
-def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]:
-    entries: list[dict[str, str]] = []
+def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
     explicit_graphemes = {
         item["grapheme"].casefold()
         for item in [*configuration["entities"], *configuration["termReferenceData"]["ttsEntries"]]
@@ -111,10 +111,13 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
                 "grapheme": player["name"],
                 "language": "en-US",
                 "volume": "-2dB",
+                "caseSensitive": True,
             }
             if player.get("alias"):
                 entry["alias"] = player["alias"]
             entries.append(entry)
+            for written_form in player.get("writtenForms", []):
+                entries.append({**entry, "grapheme": written_form})
     referenced_terms = configuration["termReferenceData"]["ttsEntries"]
     for item in [*configuration["entities"], *referenced_terms]:
         if item.get("status") not in {"approved", "provisional"}:
@@ -140,10 +143,10 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
             if entry.get("alias") and item.get("writtenFormAliases", {}).get(written_form):
                 variant["alias"] = item["writtenFormAliases"][written_form]
             entries.append(variant)
-    seen: dict[str, dict[str, str]] = {}
-    unique_entries: list[dict[str, str]] = []
+    seen: dict[tuple[str, bool], dict[str, Any]] = {}
+    unique_entries: list[dict[str, Any]] = []
     for entry in entries:
-        normalized = entry["grapheme"].casefold()
+        normalized = (entry["grapheme"].casefold(), bool(entry.get("caseSensitive")))
         if normalized in seen:
             existing_rule = {key: value for key, value in seen[normalized].items() if key != "grapheme"}
             candidate_rule = {key: value for key, value in entry.items() if key != "grapheme"}
@@ -177,7 +180,7 @@ def compile_pls(configuration: dict[str, Any]) -> bytes:
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
-def inline_entries(configuration: dict[str, Any]) -> list[dict[str, str]]:
+def inline_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(
         pronunciation_entries(configuration),
         key=lambda item: len(item["grapheme"]),
@@ -191,19 +194,32 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
     entries = inline_entries(configuration)
     if not entries:
         return escape(text)
-    pattern = re.compile(
-        rf"(?<!\w)({'|'.join(re.escape(item['grapheme']) for item in entries)})(?!\w)",
-        flags=re.IGNORECASE,
-    )
-    lookup = {item["grapheme"].casefold(): item for item in entries}
+    matches: list[tuple[int, int, dict[str, Any]]] = []
+    for case_sensitive in (False, True):
+        selected = [item for item in entries if bool(item.get("caseSensitive")) is case_sensitive]
+        if not selected:
+            continue
+        pattern = re.compile(
+            rf"(?<!\w)({'|'.join(re.escape(item['grapheme']) for item in selected)})(?!\w)",
+            flags=0 if case_sensitive else re.IGNORECASE,
+        )
+        lookup = {
+            (item["grapheme"] if case_sensitive else item["grapheme"].casefold()): item
+            for item in selected
+        }
+        for match in pattern.finditer(text):
+            key = match.group(0) if case_sensitive else match.group(0).casefold()
+            matches.append((match.start(), match.end(), lookup[key]))
+    matches.sort(key=lambda item: (item[0], -(item[1] - item[0]), not bool(item[2].get("caseSensitive"))))
     parts: list[str] = []
     def spanish(value: str) -> str:
         return f'<lang xml:lang="{configuration["locale"]}">{escape(value)}</lang>' if value else ""
     cursor = 0
-    for match in pattern.finditer(text):
-        parts.append(spanish(text[cursor:match.start()]))
-        written = match.group(0)
-        entry = lookup[written.casefold()]
+    for start, end, entry in matches:
+        if start < cursor:
+            continue
+        parts.append(spanish(text[cursor:start]))
+        written = text[start:end]
         if "phoneme" in entry:
             parts.append(
                 f"<phoneme alphabet=\"ipa\" ph={quoteattr(entry['phoneme'])}>"
@@ -218,7 +234,7 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
             )
         else:
             parts.append(f"<sub alias={quoteattr(entry['alias'])}>{escape(written)}</sub>")
-        cursor = match.end()
+        cursor = end
     parts.append(spanish(text[cursor:]))
     return "".join(parts)
 

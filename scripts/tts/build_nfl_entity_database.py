@@ -14,6 +14,14 @@ from typing import Any
 
 NFL_ROSTER = "https://www.nfl.com/sitemap/html/rosters/{season}/{slug}"
 PLAYER = re.compile(r'<a href="(/players/[^"]+/)"[^>]*>\s*([^<]+?)\s*</a>')
+NAME_SUFFIXES = {"jr.", "sr.", "ii", "iii", "iv", "v"}
+
+
+def player_surname(name: str) -> str | None:
+    parts = name.split()
+    if parts and parts[-1].casefold() in NAME_SUFFIXES:
+        parts.pop()
+    return parts[-1] if len(parts) >= 2 else None
 
 
 def slugify_team(canonical: str) -> str:
@@ -52,11 +60,17 @@ def build(configuration: dict[str, Any], terms: dict[str, Any], season: int) -> 
     for team in configuration["teams"]:
         players = fetch_roster(season, team["canonical"])
         for player in players:
+            surname = player_surname(player["name"])
+            if surname:
+                player["writtenForms"] = [surname]
             override = reviewed.get(player["name"].casefold())
             if override:
                 for key in ("alias", "writtenForms", "writtenFormAliases", "status", "sourceType"):
                     if key in override:
-                        player[key] = override[key]
+                        if key == "writtenForms":
+                            player[key] = list(dict.fromkeys([*(player.get(key) or []), *override[key]]))
+                        else:
+                            player[key] = override[key]
         teams.append({
             "canonical": team["canonical"],
             "market": team["canonical"].removesuffix(team["nickname"]).strip(),
