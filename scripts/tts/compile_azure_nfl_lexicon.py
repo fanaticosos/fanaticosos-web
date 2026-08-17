@@ -61,6 +61,17 @@ def load_configuration(path: Path) -> dict[str, Any]:
     if not isinstance(tts_entries, list):
         raise ValueError("Spanish NFL term reference has invalid TTS entries")
     value["termReferenceData"] = reference
+    database_name = value.get("entityDatabase")
+    if not isinstance(database_name, str) or not database_name:
+        raise ValueError("Azure NFL lexicon must define an entity database")
+    database = json.loads((path.parent / database_name).read_text(encoding="utf-8"))
+    if database.get("schemaVersion") != 1 or database.get("season") != 2026:
+        raise ValueError("NFL entity database is invalid or stale")
+    if len(database.get("teams", [])) != 32:
+        raise ValueError("NFL entity database must contain all 32 teams")
+    if sum(len(team.get("players", [])) for team in database["teams"]) < 1600:
+        raise ValueError("NFL entity database does not contain complete rosters")
+    value["entityDatabaseData"] = database
     return value
 
 
@@ -92,6 +103,18 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
                     "language": "en-US",
                     "volume": "-2dB",
                 })
+    for team in configuration["entityDatabaseData"]["teams"]:
+        for player in team["players"]:
+            if player["name"].casefold() in explicit_graphemes:
+                continue
+            entry = {
+                "grapheme": player["name"],
+                "language": "en-US",
+                "volume": "-2dB",
+            }
+            if player.get("alias"):
+                entry["alias"] = player["alias"]
+            entries.append(entry)
     referenced_terms = configuration["termReferenceData"]["ttsEntries"]
     for item in [*configuration["entities"], *referenced_terms]:
         if item.get("status") not in {"approved", "provisional"}:
@@ -122,7 +145,9 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, str]]
     for entry in entries:
         normalized = entry["grapheme"].casefold()
         if normalized in seen:
-            if seen[normalized] != entry:
+            existing_rule = {key: value for key, value in seen[normalized].items() if key != "grapheme"}
+            candidate_rule = {key: value for key, value in entry.items() if key != "grapheme"}
+            if existing_rule != candidate_rule:
                 raise ValueError(f"conflicting lexicon grapheme: {entry['grapheme']}")
             continue
         seen[normalized] = entry

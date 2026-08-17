@@ -88,6 +88,14 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .workflow-steps li { counter-increment: workflow; padding: 7px 11px; border: 1px solid #32495f; border-radius: 999px; color: #b6c7d5; }
 .workflow-steps li::before { content: counter(workflow) " · "; color: #ff8a3d; font-weight: 900; }
 .future p { color: #9bb0c1; }
+.tts-preflight { background: #0b2030; border: 1px solid #31536b; border-radius: 9px; margin: 0 0 18px; padding: 14px 16px; }
+.tts-preflight.ready { border-color: #39855a; }
+.tts-preflight.blocked { border-color: #d14b4b; background: #341919; }
+.tts-preflight h3 { margin: 0 0 7px; font-size: 15px; }
+.tts-preflight p { margin: 0 0 8px; }
+.tts-preflight ul { margin: 8px 0 0; padding-left: 20px; }
+.tts-preflight details { margin-top: 10px; }
+.tts-preflight summary { cursor: pointer; color: #b8cad8; }
 .future-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .future-actions button { padding: 10px 13px; border: 1px solid #32495f; border-radius: 7px; color: #8799a8; background: #152434; }
 .future-actions button:not(:disabled) { color: #fff; border-color: #ff6a13; cursor: pointer; }

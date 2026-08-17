@@ -16,6 +16,7 @@ const workflowState = document.querySelector("#workflow-state");
 const englishResult = document.querySelector("#english-result");
 const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
+const ttsPreflightPanel = document.querySelector("#tts-preflight");
 const regenerateSpanishAudio = document.querySelector("#regenerate-spanish-audio");
 const regenerateEnglishAudio = document.querySelector("#regenerate-english-audio");
 const audiogramResult = document.querySelector("#audiogram-result");
@@ -182,12 +183,39 @@ function setFields(draft) {
   workflowState.textContent = draft ? "Listo para preparar traducción, audios y vista previa con un solo clic." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
   audioResult.hidden = true;
+  ttsPreflightPanel.hidden = !draft;
   audiogramResult.hidden = true;
   generateAudio.disabled = true;
   openPreview.disabled = true;
   prepareRelease.disabled = true;
   renderSeoPreview();
   scheduleBodyPreview();
+}
+
+async function refreshTtsPreflight() {
+  if (!current) { ttsPreflightPanel.hidden = true; return null; }
+  const { preflight } = await request(`/api/drafts/${current.articleId}/tts-preflight`);
+  ttsPreflightPanel.hidden = false;
+  ttsPreflightPanel.className = `tts-preflight ${preflight.status}`;
+  document.querySelector("#tts-preflight-title").textContent = preflight.status === "ready"
+    ? "Nombres y lugares listos para TTS"
+    : "TTS detenido: faltan nombres o lugares";
+  document.querySelector("#tts-preflight-summary").textContent = preflight.status === "ready"
+    ? `${preflight.detected.length} entidades detectadas · ${preflight.rosterPlayers} jugadores NFL disponibles · temporada ${preflight.season}`
+    : `No se generará audio completo hasta resolver ${preflight.unresolved.length} entidad(es).`;
+  const unresolved = document.querySelector("#tts-preflight-unresolved");
+  unresolved.replaceChildren(...preflight.unresolved.map((name) => {
+    const item = document.createElement("li"); item.textContent = name; return item;
+  }));
+  const detected = document.querySelector("#tts-preflight-detected");
+  detected.replaceChildren(...preflight.detected.map((entity) => {
+    const item = document.createElement("li");
+    item.textContent = `${entity.written} · ${entity.category} · ${entity.language}`;
+    return item;
+  }));
+  generateEnglish.disabled = preflight.status !== "ready";
+  generateAudio.disabled = preflight.status !== "ready";
+  return preflight;
 }
 
 function applySettings(settings) {
@@ -303,6 +331,7 @@ async function refreshList() {
     button.addEventListener("click", async () => {
       current = (await request(`/api/drafts/${draft.articleId}`)).draft;
       setFields(current);
+      await refreshTtsPreflight();
       message.hidden = true;
       await refreshList();
       const status = await pollTranslation();
@@ -351,6 +380,7 @@ form.addEventListener("submit", async (event) => {
       })).draft;
     }
     setFields(current);
+    await refreshTtsPreflight();
     await refreshList();
   } catch (error) {
     saveState.textContent = "No guardado";

@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": 14,
+  "version": 15,
   "locale": "es-MX",
   "voice": "es-MX-JorgeMultilingualNeural",
   "broadcastRate": "+8%",
+  "entityDatabase": "nfl-entities.json",
   "termReference": "spanish-nfl-terms.json",
   "policy": {
     "description": "Neutral Latin-American Spanish sports-broadcast delivery",

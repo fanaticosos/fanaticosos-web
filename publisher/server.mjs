@@ -10,6 +10,7 @@ import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mj
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
+import { requireTtsPreflight, ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
@@ -22,11 +23,13 @@ const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json"
 const DEFAULT_TTS_PRODUCTION = join(HERE, "..", "config", "tts", "production.json");
 const DEFAULT_TTS_PRONUNCIATIONS = join(HERE, "..", "config", "tts", "pronunciations.json");
 const DEFAULT_TTS_AZURE_ENTITIES = join(HERE, "..", "config", "tts", "azure-nfl-entities.json");
+const DEFAULT_TTS_ENTITY_DATABASE = join(HERE, "..", "config", "tts", "nfl-entities.json");
 const DEFAULT_TTS_SPANISH_TERMS = join(HERE, "..", "config", "tts", "spanish-nfl-terms.json");
 const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
+const TTS_PREFLIGHT_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/tts-preflight$/;
 const AUDIOGRAM_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audiogram(?:\/(video))?$/;
 const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
 const PUBLISH_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/publish$/;
@@ -117,19 +120,34 @@ export function createPublisherServer({
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
   ttsAzureEntitiesPath = DEFAULT_TTS_AZURE_ENTITIES,
+  ttsEntityDatabasePath = DEFAULT_TTS_ENTITY_DATABASE,
   ttsSpanishTermsPath = DEFAULT_TTS_SPANISH_TERMS,
   siteSettingsPath = join(draftsRoot, "site-settings.json"),
   siteSettingsFallbackPath = DEFAULT_SITE_SETTINGS,
   musicResolver = resolveWeeklySong,
 }) {
+  async function currentTtsReferences() {
+    const [azureEntities, entityDatabase] = await Promise.all([
+      readFile(ttsAzureEntitiesPath, "utf8").then(JSON.parse),
+      readFile(ttsEntityDatabasePath, "utf8").then(JSON.parse),
+    ]);
+    return { azureEntities, entityDatabase };
+  }
+  async function currentTtsPreflight(draft, required = false) {
+    const { azureEntities, entityDatabase } = await currentTtsReferences();
+    return required
+      ? requireTtsPreflight(draft, entityDatabase, azureEntities)
+      : ttsPreflight(draft, entityDatabase, azureEntities);
+  }
   async function currentTtsPolicyRevision() {
-    const [production, pronunciations, azureEntities, spanishTerms] = await Promise.all([
+    const [production, pronunciations, azureEntities, entityDatabase, spanishTerms] = await Promise.all([
       readFile(ttsProductionPath, "utf8").then(JSON.parse),
       readFile(ttsPronunciationsPath, "utf8").then(JSON.parse),
       readFile(ttsAzureEntitiesPath, "utf8").then(JSON.parse),
+      readFile(ttsEntityDatabasePath, "utf8").then(JSON.parse),
       readFile(ttsSpanishTermsPath, "utf8").then(JSON.parse),
     ]);
-    return ttsPolicyRevision(production, pronunciations, azureEntities, spanishTerms);
+    return ttsPolicyRevision(production, pronunciations, { azureEntities, entityDatabase }, spanishTerms);
   }
   async function translationCompleted(state) {
     await createNotification(notificationsRoot, {
@@ -138,6 +156,14 @@ export function createPublisherServer({
     });
     if (state.workflow !== "preview") return;
     const draft = await readDraft(draftsRoot, state.articleId);
+    const preflight = await currentTtsPreflight(draft);
+    if (preflight.status !== "ready") {
+      await createNotification(notificationsRoot, {
+        level: "error", event: "tts-preflight-blocked", articleId: state.articleId,
+        message: `Audio detenido antes de TTS; faltan entidades: ${preflight.unresolved.join(", ")}`,
+      });
+      return preflight;
+    }
     const audio = await queueTts({
       draft, translation: state, queueRoot, statesRoot,
       policyRevision: await currentTtsPolicyRevision(), workflow: "preview",
@@ -329,9 +355,15 @@ export function createPublisherServer({
         return json(response, 200, { translation });
       }
       const audioMatch = AUDIO_PATH.exec(url.pathname);
+      const ttsPreflightMatch = TTS_PREFLIGHT_PATH.exec(url.pathname);
+      if (ttsPreflightMatch && request.method === "GET") {
+        const draft = await readDraft(draftsRoot, ttsPreflightMatch[1]);
+        return json(response, 200, { preflight: await currentTtsPreflight(draft) });
+      }
       if (audioMatch && request.method === "POST" && ["es", "en"].includes(audioMatch[2])) {
         const value = await requestJson(request);
         const draft = await readDraft(draftsRoot, audioMatch[1]);
+        if (audioMatch[2] === "es") await currentTtsPreflight(draft, true);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before regenerating Spanish audio");
         const translation = await readTranslationState(statesRoot, draft.articleId);
         const locale = audioMatch[2];
@@ -347,6 +379,7 @@ export function createPublisherServer({
       if (audioMatch && request.method === "POST" && !audioMatch[2]) {
         const value = await requestJson(request);
         const draft = await readDraft(draftsRoot, audioMatch[1]);
+        await currentTtsPreflight(draft, true);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
         const translation = await readTranslationState(statesRoot, draft.articleId);
         const audio = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision(), workflow: value.workflow ?? "manual" });

@@ -121,6 +121,15 @@
               <li>Traducción</li><li>Audios</li><li>Vista previa</li>
             </ol>
             <p id="workflow-state">Guarda un borrador válido para comenzar.</p>
+            <section id="tts-preflight" class="tts-preflight" hidden>
+              <h3 id="tts-preflight-title">Revisión de nombres y lugares</h3>
+              <p id="tts-preflight-summary"></p>
+              <ul id="tts-preflight-unresolved"></ul>
+              <details>
+                <summary>Ver nombres y lugares detectados</summary>
+                <ul id="tts-preflight-detected"></ul>
+              </details>
+            </section>
             <div class="future-actions">
               <button id="generate-english" class="workflow-primary" disabled type="button">Crear traducción, audios y vista previa</button>
               <button id="generate-audio" disabled hidden type="button">Generar audios</button>
