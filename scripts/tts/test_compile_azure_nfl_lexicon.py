@@ -61,7 +61,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         self.assertEqual(entries["Justin"]["language"], "en-US")
         self.assertEqual(entries["Halas Hall"]["language"], "en-US")
         self.assertNotIn("language", entries["Chicago"])
-        self.assertEqual(entries["Chicago"]["phoneme"], "ʃɪˈkɑɡoʊ")
+        self.assertEqual(entries["Chicago"]["alias"], "Chicágo")
         self.assertNotIn("language", entries["Cincinnati"])
 
     def test_reported_names_places_titles_and_terms_use_english_delivery(self):
@@ -110,7 +110,7 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Los Chicago Bears reciben a los Minnesota Vikings.",
             self.configuration,
         )
-        self.assertIn('<phoneme alphabet="ipa" ph="ʃɪˈkɑɡoʊ">Chicago</phoneme>', output)
+        self.assertIn('<sub alias="Chicágo">Chicago</sub>', output)
         self.assertIn('<lang xml:lang="en-US">Minnesota</lang>', output)
         self.assertNotIn(">Chicago Bears</", output)
         self.assertNotIn(">Minnesota Vikings</", output)
@@ -201,7 +201,7 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Chicago vio a Deshaun Watson competir por el roster.",
             self.configuration,
         )
-        self.assertIn('<phoneme alphabet="ipa" ph="ʃɪˈkɑɡoʊ">Chicago</phoneme>', output)
+        self.assertIn('<sub alias="Chicágo">Chicago</sub>', output)
         self.assertIn('<sub alias="De Shón Uátson">Deshaun Watson</sub>', output)
         self.assertIn('<sub alias="róuster">roster</sub>', output)
 
