@@ -20,14 +20,14 @@ from render_article_azure import build_chunks, build_ssml, synthesize
 
 
 ENGINE = "Azure Speech"
-MODEL_REVISION = "en-US-BrianMultilingualNeural"
+MODEL_REVISION = "en-US-Brian:DragonHDLatestNeural"
 
 
 def normalize_mp3(source: Path, destination: Path) -> None:
     subprocess.run(
         [
             "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
-            "-i", str(source), "-af", "atempo=1.08,loudnorm=I=-16:TP=-1.5:LRA=11",
+            "-i", str(source), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
             "-ar", "48000", "-ac", "1", "-b:a", "128k", str(destination),
         ],
         check=True,
@@ -89,7 +89,7 @@ def render_production(
             "voice": configuration["voice"],
             "configurationVersion": configuration["version"],
             "deliveryProfile": "broadcast",
-            "speed": 1.08,
+            "speed": 1.0,
             "pronunciationVersion": configuration["version"],
             "engine": ENGINE,
             "modelRevision": MODEL_REVISION,

@@ -25,6 +25,7 @@ def load_configuration(path: Path) -> dict[str, Any]:
     if value.get("voice") not in {
         "es-MX-JorgeMultilingualNeural",
         "en-US-BrianMultilingualNeural",
+        "en-US-Brian:DragonHDLatestNeural",
     }:
         raise ValueError("Azure NFL lexicon must define an approved multilingual narrator voice")
     teams = value.get("teams")
@@ -240,8 +241,11 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
             matches.append((match.start(), match.end(), lookup[key]))
     matches.sort(key=lambda item: (item[0], -(item[1] - item[0]), not bool(item[2].get("caseSensitive"))))
     parts: list[str] = []
+    automatic_multilingual = configuration["voice"].endswith(":DragonHDLatestNeural")
     def spanish(value: str) -> str:
-        return f'<lang xml:lang="{configuration["locale"]}">{escape(value)}</lang>' if value else ""
+        if not value:
+            return ""
+        return escape(value) if automatic_multilingual else f'<lang xml:lang="{configuration["locale"]}">{escape(value)}</lang>'
     cursor = 0
     for start, end, entry in matches:
         if start < cursor:
@@ -253,6 +257,8 @@ def apply_inline_ssml(text: str, configuration: dict[str, Any]) -> str:
                 f"<phoneme alphabet=\"ipa\" ph={quoteattr(entry['phoneme'])}>"
                 f"{escape(written)}</phoneme>"
             )
+        elif "language" in entry and automatic_multilingual:
+            parts.append(escape(written))
         elif "language" in entry:
             spoken = escape(written)
             if entry.get("alias"):

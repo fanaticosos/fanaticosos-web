@@ -36,9 +36,9 @@ class AzureArticleRendererTests(unittest.TestCase):
             {"id": "body-003", "kind": "heading", "text": "II. La respuesta"},
         ])
         text = build_ssml(chunks[0], self.configuration).decode("utf-8")
-        self.assertIn('<break time="1000ms"/><lang xml:lang="es-MX">I. El mensaje</lang>', text)
-        self.assertIn('<break time="650ms"/><lang xml:lang="es-MX">Primer párrafo.</lang>', text)
-        self.assertIn('<break time="1000ms"/><lang xml:lang="es-MX">II. La respuesta</lang>', text)
+        self.assertIn('<break time="1000ms"/>I. El mensaje', text)
+        self.assertIn('<break time="650ms"/>Primer párrafo.', text)
+        self.assertIn('<break time="1000ms"/>II. La respuesta', text)
 
     def test_ssml_is_well_formed_and_uses_accepted_profile(self):
         ssml = build_ssml(
@@ -47,9 +47,10 @@ class AzureArticleRendererTests(unittest.TestCase):
         )
         ET.fromstring(ssml)
         text = ssml.decode("utf-8")
-        self.assertIn('name="en-US-BrianMultilingualNeural"', text)
-        self.assertIn('<lang xml:lang="en-US">Bears</lang>', text)
-        self.assertIn('<lang xml:lang="en-US">Halas Hall</lang>', text)
+        self.assertIn('name="en-US-Brian:DragonHDLatestNeural"', text)
+        self.assertIn("Chicago Bears", text)
+        self.assertIn("Halas Hall", text)
+        self.assertNotIn("<lang ", text)
 
     def test_article_ssml_contains_no_markdown_and_wraps_reported_terms(self):
         narration = (
@@ -66,11 +67,12 @@ class AzureArticleRendererTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, text)
         self.assertEqual(text.count("<voice "), 1)
-        self.assertIn('<voice name="en-US-BrianMultilingualNeural">', text)
+        self.assertIn('<voice name="en-US-Brian:DragonHDLatestNeural">', text)
         self.assertIn('<sub alias="tái-den">tight end</sub>', text)
-        self.assertIn('<lang xml:lang="en-US">Luther Burden III</lang>', text)
+        self.assertIn("Luther Burden III", text)
         self.assertNotIn("en-US-GuyNeural", text)
-        self.assertIn('<lang xml:lang="en-US">Rome Odunze</lang>', text)
+        self.assertIn("Rome Odunze", text)
+        self.assertNotIn("<lang ", text)
 
 
 if __name__ == "__main__":

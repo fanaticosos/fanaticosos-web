@@ -48,7 +48,7 @@ function englishNameSuffixes(text) {
 }
 
 function narrationSegments(description, body, locale) {
-  const spoken = (text) => locale === "en" ? englishNameSuffixes(text) : text;
+  const spoken = (text) => englishNameSuffixes(text);
   const segments = [{ id: "description", kind: "description", text: spoken(narrationText(description)) }];
   let sequence = 0;
   for (const part of body.split(/\n\s*\n/)) {

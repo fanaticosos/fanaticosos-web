@@ -83,10 +83,10 @@ class AzureNflLexiconTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, output)
-        self.assertIn('<lang xml:lang="en-US">Dillon Thieneman</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Ray-Ray McCloud III</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Tyson Bagent</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Kyle Monangai</lang>', output)
+        self.assertIn("Dillon Thieneman", output)
+        self.assertIn("Ray-Ray McCloud III", output)
+        self.assertIn("Tyson Bagent", output)
+        self.assertIn("Kyle Monangai", output)
 
     def test_spanish_text_is_language_locked_and_reported_phrases_are_controlled(self):
         output = apply_inline_ssml(
@@ -94,7 +94,7 @@ class AzureNflLexiconTests(unittest.TestCase):
             "El apunte fanaticOSO. Bear Down.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="es-MX">. ¿Confianza competitiva o soberbia? El apunte </lang>', output)
+        self.assertIn(". ¿Confianza competitiva o soberbia? El apunte ", output)
         self.assertIn('alias="Néivi and Órinch"', output)
         self.assertIn('alias="fanaticoso"', output)
         self.assertIn('alias="Bér Daun"', output)
@@ -110,8 +110,8 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Los Chicago Bears reciben a los Minnesota Vikings.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">Chicago</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Minnesota</lang>', output)
+        self.assertIn("Chicago Bears", output)
+        self.assertIn("Minnesota Vikings", output)
         self.assertNotIn(">Chicago Bears</", output)
         self.assertNotIn(">Minnesota Vikings</", output)
 
@@ -120,19 +120,19 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Justin Jefferson habló con Justin & Caleb Williams.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
+        self.assertIn("Justin Jefferson", output)
         self.assertIn("&amp;", output)
-        self.assertIn('<lang xml:lang="en-US">Caleb Williams</lang>', output)
+        self.assertIn("Caleb Williams", output)
 
     def test_owner_requested_english_names_and_td_delivery(self):
         output = apply_inline_ssml(
             "J.J. McCarthy lanzó un TD a Justin Jefferson y habló con Aaron Jones.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">J.J. McCarthy</lang>', output)
+        self.assertIn("J.J. McCarthy", output)
         self.assertIn('alias="tóchdaun">TD</sub>', output)
-        self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Aaron Jones</lang>', output)
+        self.assertIn("Justin Jefferson", output)
+        self.assertIn("Aaron Jones", output)
 
     def test_people_use_english_and_defensive_terms_use_spanish_broadcast(self):
         phrases = [
@@ -169,12 +169,13 @@ class AzureNflLexiconTests(unittest.TestCase):
             self.configuration,
         )
         self.assertEqual(len(segments), 1)
-        self.assertEqual(segments[0]["voice"], "en-US-BrianMultilingualNeural")
+        self.assertEqual(segments[0]["voice"], "en-US-Brian:DragonHDLatestNeural")
         markup = segments[0]["markup"]
-        self.assertIn('<lang xml:lang="en-US">Luther Burden III</lang>', markup)
-        self.assertIn('<lang xml:lang="en-US">Rome Odunze</lang>', markup)
+        self.assertIn("Luther Burden III", markup)
+        self.assertIn("Rome Odunze", markup)
         self.assertIn('<sub alias="tái-den">tight end</sub>', markup)
-        self.assertIn('<lang xml:lang="en-US">Caleb Williams</lang>', markup)
+        self.assertIn("Caleb Williams", markup)
+        self.assertNotIn("<lang ", markup)
 
     def test_current_article_names_places_and_surnames_are_retained(self):
         output = apply_inline_ssml(
@@ -194,16 +195,17 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Bagent", "Keenum", "Davis", "Kromah", "Bishop", "Kalinic",
         ):
             with self.subTest(written=written):
-                self.assertIn(f'<lang xml:lang="en-US">{written}</lang>', output)
+                self.assertIn(written, output)
 
     def test_reported_chicago_deshaun_and_roster_use_explicit_english(self):
         output = apply_inline_ssml(
             "Chicago vio a Deshaun Watson competir por el roster.",
             self.configuration,
         )
-        self.assertIn('<lang xml:lang="en-US">Chicago</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">Deshaun Watson</lang>', output)
-        self.assertIn('<lang xml:lang="en-US">roster</lang>', output)
+        self.assertIn("Chicago", output)
+        self.assertIn("Deshaun Watson", output)
+        self.assertIn("roster", output)
+        self.assertNotIn("<lang ", output)
 
     def test_owner_reviewed_english_game_terms_use_latino_phonetic_aliases(self):
         output = apply_inline_ssml(

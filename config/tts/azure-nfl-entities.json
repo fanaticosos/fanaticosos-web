@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "version": 21,
+  "version": 22,
   "locale": "es-MX",
-  "voice": "en-US-BrianMultilingualNeural",
-  "broadcastRate": "+8%",
+  "voice": "en-US-Brian:DragonHDLatestNeural",
+  "broadcastRate": "default",
   "entityDatabase": "nfl-entities.json",
   "termReference": "spanish-nfl-terms.json",
   "policy": {
