@@ -22,8 +22,11 @@ def load_configuration(path: Path) -> dict[str, Any]:
         raise ValueError("Azure NFL entity schema version must be 1")
     if value.get("locale") != "es-MX":
         raise ValueError("Azure NFL lexicon locale must be es-MX")
-    if not isinstance(value.get("voice"), str) or not value["voice"].startswith("es-MX-"):
-        raise ValueError("Azure NFL lexicon must define an es-MX narrator voice")
+    if value.get("voice") not in {
+        "es-MX-JorgeMultilingualNeural",
+        "en-US-BrianMultilingualNeural",
+    }:
+        raise ValueError("Azure NFL lexicon must define an approved multilingual narrator voice")
     teams = value.get("teams")
     if not isinstance(teams, list) or len(teams) != 32:
         raise ValueError("Azure NFL lexicon must define exactly 32 teams")
@@ -92,7 +95,10 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
                 "volume": "-2dB",
             })
         entry = {"grapheme": team["nickname"]}
-        if team.get("nicknamePhoneme"):
+        if configuration["voice"].startswith("en-US-"):
+            entry["language"] = "en-US"
+            entry["volume"] = "-2dB"
+        elif team.get("nicknamePhoneme"):
             entry["phoneme"] = team["nicknamePhoneme"]
         else:
             entry["alias"] = team["nicknameAlias"]
@@ -114,7 +120,7 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
                 "volume": "-2dB",
                 "caseSensitive": True,
             }
-            if player.get("alias"):
+            if player.get("alias") and not configuration["voice"].startswith("en-US-"):
                 entry["alias"] = player["alias"]
             entries.append(entry)
             for written_form in player.get("writtenForms", []):
@@ -126,7 +132,14 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
         if item.get("status") not in {"approved", "provisional"}:
             continue
         entry = {"grapheme": item["grapheme"]}
-        if item.get("narratorPhoneme"):
+        english_native = (
+            configuration["voice"].startswith("en-US-")
+            and item.get("language") == "en-US"
+        )
+        if english_native:
+            entry["language"] = "en-US"
+            entry["volume"] = item.get("volume", "-2dB")
+        elif item.get("narratorPhoneme"):
             entry["phoneme"] = item["narratorPhoneme"]
         elif item.get("narratorAlias"):
             entry["alias"] = item["narratorAlias"]
@@ -148,7 +161,11 @@ def pronunciation_entries(configuration: dict[str, Any]) -> list[dict[str, Any]]
         for written_form in item.get("writtenForms", []):
             variant = {**entry, "grapheme": written_form}
             narrator_variant = item.get("narratorWrittenFormAliases", {}).get(written_form)
-            if narrator_variant:
+            if english_native:
+                variant.pop("alias", None)
+                variant["language"] = "en-US"
+                variant["volume"] = item.get("volume", "-2dB")
+            elif narrator_variant:
                 variant.pop("language", None)
                 variant["alias"] = narrator_variant
             elif entry.get("alias") and item.get("writtenFormAliases", {}).get(written_form):

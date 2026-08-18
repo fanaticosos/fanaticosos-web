@@ -56,13 +56,13 @@ class AzureNflLexiconTests(unittest.TestCase):
 
     def test_core_owner_approved_pronunciations_are_compiled(self):
         entries = {item["grapheme"]: item for item in pronunciation_entries(self.configuration)}
-        self.assertEqual(entries["Bears"]["phoneme"], "ˈbeɾs")
-        self.assertEqual(entries["Vikings"]["phoneme"], "ˈbaikɪŋs")
+        self.assertEqual(entries["Bears"]["language"], "en-US")
+        self.assertEqual(entries["Vikings"]["language"], "en-US")
         self.assertEqual(entries["Justin"]["language"], "en-US")
         self.assertEqual(entries["Halas Hall"]["language"], "en-US")
-        self.assertNotIn("language", entries["Chicago"])
-        self.assertEqual(entries["Chicago"]["alias"], "Chicágo")
-        self.assertNotIn("language", entries["Cincinnati"])
+        self.assertEqual(entries["Chicago"]["language"], "en-US")
+        self.assertNotIn("alias", entries["Chicago"])
+        self.assertEqual(entries["Cincinnati"]["language"], "en-US")
 
     def test_reported_names_places_titles_and_terms_use_english_delivery(self):
         text = (
@@ -83,10 +83,10 @@ class AzureNflLexiconTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, output)
-        self.assertIn('alias="Dillon thee nuh mun"', output)
-        self.assertIn('alias="Réi Réi Mac Claud de térd"', output)
-        self.assertIn('alias="Táison Béi Yent"', output)
-        self.assertIn('alias="Kyle muh nun guy"', output)
+        self.assertIn('<lang xml:lang="en-US">Dillon Thieneman</lang>', output)
+        self.assertIn('<lang xml:lang="en-US">Ray-Ray McCloud III</lang>', output)
+        self.assertIn('<lang xml:lang="en-US">Tyson Bagent</lang>', output)
+        self.assertIn('<lang xml:lang="en-US">Kyle Monangai</lang>', output)
 
     def test_spanish_text_is_language_locked_and_reported_phrases_are_controlled(self):
         output = apply_inline_ssml(
@@ -110,7 +110,7 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Los Chicago Bears reciben a los Minnesota Vikings.",
             self.configuration,
         )
-        self.assertIn('<sub alias="Chicágo">Chicago</sub>', output)
+        self.assertIn('<lang xml:lang="en-US">Chicago</lang>', output)
         self.assertIn('<lang xml:lang="en-US">Minnesota</lang>', output)
         self.assertNotIn(">Chicago Bears</", output)
         self.assertNotIn(">Minnesota Vikings</", output)
@@ -122,7 +122,7 @@ class AzureNflLexiconTests(unittest.TestCase):
         )
         self.assertIn('<lang xml:lang="en-US">Justin Jefferson</lang>', output)
         self.assertIn("&amp;", output)
-        self.assertIn('<sub alias="Kéileb Uíliams">Caleb Williams</sub>', output)
+        self.assertIn('<lang xml:lang="en-US">Caleb Williams</lang>', output)
 
     def test_owner_requested_english_names_and_td_delivery(self):
         output = apply_inline_ssml(
@@ -169,12 +169,12 @@ class AzureNflLexiconTests(unittest.TestCase):
             self.configuration,
         )
         self.assertEqual(len(segments), 1)
-        self.assertEqual(segments[0]["voice"], "es-MX-JorgeMultilingualNeural")
+        self.assertEqual(segments[0]["voice"], "en-US-BrianMultilingualNeural")
         markup = segments[0]["markup"]
-        self.assertIn('<lang xml:lang="en-US"><sub alias="Luther Burden the Third">Luther Burden III</sub></lang>', markup)
-        self.assertIn('<lang xml:lang="en-US"><sub alias="Rome Oh dune Zay">Rome Odunze</sub></lang>', markup)
+        self.assertIn('<lang xml:lang="en-US">Luther Burden III</lang>', markup)
+        self.assertIn('<lang xml:lang="en-US">Rome Odunze</lang>', markup)
         self.assertIn('<sub alias="tái-den">tight end</sub>', markup)
-        self.assertIn('<sub alias="Kéileb Uíliams">Caleb Williams</sub>', markup)
+        self.assertIn('<lang xml:lang="en-US">Caleb Williams</lang>', markup)
 
     def test_current_article_names_places_and_surnames_are_retained(self):
         output = apply_inline_ssml(
@@ -194,16 +194,16 @@ class AzureNflLexiconTests(unittest.TestCase):
             "Bagent", "Keenum", "Davis", "Kromah", "Bishop", "Kalinic",
         ):
             with self.subTest(written=written):
-                self.assertRegex(output, rf'<sub [^>]+>{re.escape(written)}</sub>')
+                self.assertIn(f'<lang xml:lang="en-US">{written}</lang>', output)
 
     def test_reported_chicago_deshaun_and_roster_use_explicit_english(self):
         output = apply_inline_ssml(
             "Chicago vio a Deshaun Watson competir por el roster.",
             self.configuration,
         )
-        self.assertIn('<sub alias="Chicágo">Chicago</sub>', output)
-        self.assertIn('<sub alias="De Shón Uátson">Deshaun Watson</sub>', output)
-        self.assertIn('<sub alias="róuster">roster</sub>', output)
+        self.assertIn('<lang xml:lang="en-US">Chicago</lang>', output)
+        self.assertIn('<lang xml:lang="en-US">Deshaun Watson</lang>', output)
+        self.assertIn('<lang xml:lang="en-US">roster</lang>', output)
 
     def test_owner_reviewed_english_game_terms_use_latino_phonetic_aliases(self):
         output = apply_inline_ssml(

@@ -47,8 +47,8 @@ class AzureArticleRendererTests(unittest.TestCase):
         )
         ET.fromstring(ssml)
         text = ssml.decode("utf-8")
-        self.assertIn('name="es-MX-JorgeMultilingualNeural"', text)
-        self.assertIn('ph="ˈbeɾs"', text)
+        self.assertIn('name="en-US-BrianMultilingualNeural"', text)
+        self.assertIn('<lang xml:lang="en-US">Bears</lang>', text)
         self.assertIn('<lang xml:lang="en-US">Halas Hall</lang>', text)
 
     def test_article_ssml_contains_no_markdown_and_wraps_reported_terms(self):
@@ -66,11 +66,11 @@ class AzureArticleRendererTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, text)
         self.assertEqual(text.count("<voice "), 1)
-        self.assertIn('<voice name="es-MX-JorgeMultilingualNeural">', text)
+        self.assertIn('<voice name="en-US-BrianMultilingualNeural">', text)
         self.assertIn('<sub alias="tái-den">tight end</sub>', text)
-        self.assertIn('<sub alias="Lúther Bérden de térd">Luther Burden III</sub>', text)
+        self.assertIn('<lang xml:lang="en-US">Luther Burden III</lang>', text)
         self.assertNotIn("en-US-GuyNeural", text)
-        self.assertNotIn('<lang xml:lang="en-US">', text)
+        self.assertIn('<lang xml:lang="en-US">Rome Odunze</lang>', text)
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ from render_article_azure import build_chunks, build_ssml, synthesize
 
 
 ENGINE = "Azure Speech"
-MODEL_REVISION = "es-MX-JorgeMultilingualNeural"
+MODEL_REVISION = "en-US-BrianMultilingualNeural"
 
 
 def normalize_mp3(source: Path, destination: Path) -> None:
