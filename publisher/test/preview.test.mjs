@@ -29,8 +29,7 @@ test("private preview switches the complete article and escapes owner text", () 
   assert.match(english, /Thank you for joining us!/);
   assert.match(english, /← Versión en español/);
   assert.match(english, /audio\/en/);
-  assert.doesNotMatch(spanish, /audio\/es/);
-  assert.match(spanish, /audio en español no está disponible/);
+  assert.match(spanish, /audio\/es/);
 });
 
 test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes safely", () => {

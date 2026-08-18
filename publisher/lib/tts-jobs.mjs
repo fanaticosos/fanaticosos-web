@@ -47,7 +47,7 @@ function englishNameSuffixes(text) {
   );
 }
 
-function narrationSegments(description, body, locale) {
+function narrationSegments(description, body) {
   const spoken = (text) => englishNameSuffixes(text);
   const segments = [{ id: "description", kind: "description", text: spoken(narrationText(description)) }];
   let sequence = 0;
@@ -103,8 +103,13 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  const jobs = {};
-  for (const locale of ["es", "en"]) {
+  let existingSpanish = { status: "awaiting-upload" };
+  try {
+    const existing = JSON.parse(await readFile(statePath, "utf8"));
+    if (existing.draftRevision === draft.revision && existing.sourceRevisions?.es === sourceRevisions.es && existing.jobs?.es?.status === "completed") existingSpanish = existing.jobs.es;
+  } catch (error) { if (error.code !== "ENOENT") throw error; }
+  const jobs = { es: existingSpanish };
+  for (const locale of ["en"]) {
     const jobId = `tts-${locale}-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
     if (!JOB_ID.test(jobId)) throw new Error("TTS job identity is invalid");
     const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
@@ -123,7 +128,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
 }
 
 export async function queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision, now = new Date() }) {
-  if (!["es", "en"].includes(locale)) throw new Error("audio regeneration locale is invalid");
+  if (locale !== "en") throw new Error("Spanish audio must be uploaded as an MP3");
   if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
@@ -133,7 +138,7 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
     throw new Error("completed bilingual audio is required before regenerating one language");
   }
   const requests = ttsRequestsForDraft(draft, translation);
-  const preservedLocale = locale === "es" ? "en" : "es";
+  const preservedLocale = "es";
   if (existing.sourceRevisions?.[preservedLocale] !== requests[preservedLocale].sourceRevision) {
     throw new Error("the preserved audio is stale; regenerate both audios");
   }
@@ -169,6 +174,7 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
     let completed = 0;
     for (const locale of ["es", "en"]) {
       const job = state.jobs[locale];
+      if (!job || job.status === "awaiting-upload") continue;
       if (job.status === "completed") { completed += 1; continue; }
       try {
         const result = JSON.parse(await readFile(join(jobsRoot, job.jobId, "audio", "result.json"), "utf8"));
@@ -188,8 +194,8 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
         }
       }
     }
-    state.status = completed === 2 ? "completed" : "running";
-    if (state.status !== "completed" && now.getTime() - new Date(state.createdAt).getTime() > JOB_TIMEOUT_MS) {
+    state.status = completed === 2 ? "completed" : state.jobs.en?.status === "completed" ? "awaiting-upload" : "running";
+    if (state.status === "running" && now.getTime() - new Date(state.createdAt).getTime() > JOB_TIMEOUT_MS) {
       state.status = "failed";
       state.error = "La generación de audio excedió su límite automático y fue detenida.";
     }
@@ -201,7 +207,7 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
 }
 
 export function audioFileForState(state, locale, jobsRoot) {
-  if (state.status !== "completed" || !["es", "en"].includes(locale)) throw new Error("audio is not ready");
+  if (!["es", "en"].includes(locale) || state.jobs?.[locale]?.status !== "completed") throw new Error("audio is not ready");
   const job = state.jobs[locale];
   return join(jobsRoot, job.jobId, "audio", basename(job.result.file));
 }

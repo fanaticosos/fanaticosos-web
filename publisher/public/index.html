@@ -116,9 +116,9 @@
           </details>
           <section class="panel future">
             <h2>Crear versiones y vista previa</h2>
-            <p class="workflow-explanation">Un solo clic genera la traducción, los dos audios y una vista previa privada. No publica el artículo.</p>
+            <p class="workflow-explanation">Genera la traducción y el audio en inglés. Tú subes el MP3 final en español; después se crea la vista previa privada.</p>
             <ol class="workflow-steps" aria-label="Pasos automáticos">
-              <li>Traducción</li><li>Audios</li><li>Vista previa</li>
+              <li>Traducción</li><li>Audio inglés + tu MP3</li><li>Vista previa</li>
             </ol>
             <p id="workflow-state">Guarda un borrador válido para comenzar.</p>
             <section id="tts-preflight" class="tts-preflight" hidden>
@@ -131,7 +131,7 @@
               </details>
             </section>
             <div class="future-actions">
-              <button id="generate-english" class="workflow-primary" disabled type="button">Crear traducción, audios y vista previa</button>
+              <button id="generate-english" class="workflow-primary" disabled type="button">Crear traducción y audio en inglés</button>
               <button id="generate-audio" disabled hidden type="button">Generar audios</button>
               <button id="open-preview" disabled type="button">Revisar vista previa</button>
               <button id="prepare-release" disabled hidden type="button">Preparar publicación</button>
@@ -145,9 +145,11 @@
               <button id="save-english" type="button">Guardar corrección en inglés</button>
             </section>
             <section id="audio-result" class="english-result" hidden>
-              <h3>Audios listos · escuchar antes de publicar</h3>
+              <h3>Audios · escuchar antes de publicar</h3>
+              <label>Tu MP3 en español<input id="spanish-audio-file" type="file" accept=".mp3,audio/mpeg"></label>
+              <button id="upload-spanish-audio" type="button">Subir MP3 en español</button>
+              <p id="spanish-audio-status">Selecciona el MP3 completo que preparaste.</p>
               <label>Español<audio id="audio-es" controls preload="metadata"></audio></label>
-              <button id="regenerate-spanish-audio" type="button">Regenerar audio en español</button>
               <label>English<audio id="audio-en" controls preload="metadata"></audio></label>
               <button id="regenerate-english-audio" type="button">Regenerar audio en inglés</button>
             </section>

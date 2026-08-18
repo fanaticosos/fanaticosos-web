@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 const [requestPath, jobsRoot, logoPath, outputRoot] = process.argv.slice(2);
 if (![requestPath, jobsRoot, logoPath, outputRoot].every(Boolean)) throw new Error("usage: render_audiogram REQUEST JOBS_ROOT LOGO OUTPUT");
 const request = JSON.parse(await readFile(requestPath, "utf8"));
-if (request.schemaVersion !== 1 || !/^tts-es-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/.test(request.audioJobId)) throw new Error("invalid audiogram request");
+if (request.schemaVersion !== 1 || !/^(?:tts|upload)-es-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/.test(request.audioJobId)) throw new Error("invalid audiogram request");
 const audio = resolve(jobsRoot, request.audioJobId, "audio", basename(request.audioFile));
 if (!audio.startsWith(`${resolve(jobsRoot)}/`)) throw new Error("invalid audio path");
 await Promise.all([stat(audio), stat(logoPath)]);

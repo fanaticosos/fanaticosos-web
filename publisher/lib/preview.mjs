@@ -50,9 +50,7 @@ export function previewPage({ draft, translation, audio, locale, settings }) {
   const tags = draft.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join(" ");
   const imageCredit = draft.featuredImage.caption || draft.featuredImage.credit;
   const image = draft.featuredImage.path ? `<figure><img src="${escapeHtml(draft.featuredImage.path)}" alt="${escapeHtml(draft.featuredImage.alt || draft.title)}">${imageCredit ? `<figcaption>${escapeHtml(imageCredit)}</figcaption>` : ""}</figure>` : "";
-  const player = english
-    ? `<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/en"></audio>`
-    : `<p class="audio-unavailable">La versión de audio en español no está disponible.</p>`;
+  const player = `<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/${english ? "en" : "es"}"></audio>`;
   return `<!doctype html>
 <html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(content.title)} · Vista previa</title><link rel="stylesheet" href="/preview.css"></head>
 <body><header><a class="brand" href="/">FANATICOSOS</a><span>Vista previa privada</span><div class="language-control"><small>${english ? "Language" : "Idioma"}</small><a href="/preview/${draft.articleId}/${alternate}">${english ? "← Versión en español" : "English version →"}</a></div></header>

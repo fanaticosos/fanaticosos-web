@@ -17,6 +17,7 @@ import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
 import { audiogramFileForState, queueAudiogram, readAudiogramState, reconcileAudiograms } from "./lib/audiogram-jobs.mjs";
+import { MAX_SPANISH_AUDIO_BYTES, saveSpanishAudio } from "./lib/spanish-audio-upload.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SETTINGS = join(HERE, "..", "config", "publisher", "defaults.json");
@@ -29,6 +30,7 @@ const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.jso
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
+const SPANISH_AUDIO_UPLOAD_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio\/es-upload$/;
 const TTS_PREFLIGHT_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/tts-preflight$/;
 const AUDIOGRAM_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audiogram(?:\/(video))?$/;
 const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
@@ -156,21 +158,13 @@ export function createPublisherServer({
     });
     if (state.workflow !== "preview") return;
     const draft = await readDraft(draftsRoot, state.articleId);
-    const preflight = await currentTtsPreflight(draft);
-    if (preflight.status !== "ready") {
-      await createNotification(notificationsRoot, {
-        level: "error", event: "tts-preflight-blocked", articleId: state.articleId,
-        message: `Audio detenido antes de TTS; faltan entidades: ${preflight.unresolved.join(", ")}`,
-      });
-      return preflight;
-    }
     const audio = await queueTts({
       draft, translation: state, queueRoot, statesRoot,
       policyRevision: await currentTtsPolicyRevision(), workflow: "preview",
     });
     await createNotification(notificationsRoot, {
       level: "info", event: "audio-started", articleId: state.articleId,
-      message: `Audios en español e inglés iniciados automáticamente: ${draft.title}`,
+      message: `Audio en inglés iniciado automáticamente. Sube tu MP3 en español para completar la publicación: ${draft.title}`,
     });
     return audio;
   }
@@ -196,7 +190,7 @@ export function createPublisherServer({
       await queueAudiogram({ draft, audio: state, queueRoot, statesRoot });
       await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: state.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
     }
-    if (state.workflow !== "preview") return;
+    if (!["preview", "spanish-upload"].includes(state.workflow)) return;
     const draft = await readDraft(draftsRoot, state.articleId);
     const release = await queueRelease({ draft, queueRoot, statesRoot });
     await createNotification(notificationsRoot, {
@@ -355,19 +349,30 @@ export function createPublisherServer({
         return json(response, 200, { translation });
       }
       const audioMatch = AUDIO_PATH.exec(url.pathname);
+      const spanishUploadMatch = SPANISH_AUDIO_UPLOAD_PATH.exec(url.pathname);
       const ttsPreflightMatch = TTS_PREFLIGHT_PATH.exec(url.pathname);
       if (ttsPreflightMatch && request.method === "GET") {
         const draft = await readDraft(draftsRoot, ttsPreflightMatch[1]);
         return json(response, 200, { preflight: await currentTtsPreflight(draft) });
       }
-      if (audioMatch && request.method === "POST" && ["es", "en"].includes(audioMatch[2])) {
+      if (spanishUploadMatch && request.method === "POST") {
+        const draft = await readDraft(draftsRoot, spanishUploadMatch[1]);
+        const expectedRevision = Number(request.headers["x-draft-revision"]);
+        if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
+        const translation = await readTranslationState(statesRoot, draft.articleId);
+        const buffer = await requestBuffer(request, MAX_SPANISH_AUDIO_BYTES + 1);
+        const audio = await saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
+        await createNotification(notificationsRoot, { level: "success", event: "spanish-audio-uploaded", articleId: draft.articleId, message: "El MP3 en español fue validado y guardado.", replacePending: true });
+        if (audio.status === "completed") await audioCompleted(audio);
+        return json(response, 201, { audio });
+      }
+      if (audioMatch && request.method === "POST" && audioMatch[2] === "en") {
         const value = await requestJson(request);
         const draft = await readDraft(draftsRoot, audioMatch[1]);
-        if (audioMatch[2] === "es") await currentTtsPreflight(draft, true);
-        if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before regenerating Spanish audio");
+        if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before regenerating English audio");
         const translation = await readTranslationState(statesRoot, draft.articleId);
         const locale = audioMatch[2];
-        const language = locale === "en" ? "inglés" : "español";
+        const language = "inglés";
         const audio = await queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
         await createNotification(notificationsRoot, {
           level: "info", event: `audio-${locale}-regeneration`, articleId: draft.articleId,
@@ -379,13 +384,12 @@ export function createPublisherServer({
       if (audioMatch && request.method === "POST" && !audioMatch[2]) {
         const value = await requestJson(request);
         const draft = await readDraft(draftsRoot, audioMatch[1]);
-        await currentTtsPreflight(draft, true);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
         const translation = await readTranslationState(statesRoot, draft.articleId);
         const audio = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision(), workflow: value.workflow ?? "manual" });
         await createNotification(notificationsRoot, {
           level: "info", event: "audio-started", articleId: draft.articleId,
-          message: `Audios en español e inglés iniciados: ${draft.title}`,
+          message: `Audio en inglés iniciado. Sube tu MP3 en español para completar la publicación: ${draft.title}`,
         });
         return json(response, 202, { audio });
       }
@@ -457,7 +461,7 @@ export function createPublisherServer({
       if (publishMatch && request.method === "POST") {
         const value = await requestJson(request); const [draft, release, audio] = await Promise.all([readDraft(draftsRoot, publishMatch[1]), readReleaseState(statesRoot, publishMatch[1]), readTtsState(statesRoot, publishMatch[1])]);
         if (value.expectedRevision !== draft.revision || release.status !== "completed" || release.draftRevision !== draft.revision) throw new Error("La vista previa actual debe validarse antes de publicar.");
-        if (release.manifest?.assets?.enAudio?.sha256 !== audio.jobs?.en?.result?.sha256) throw new Error("El audio en inglés cambió; vuelve a crear la vista previa antes de publicar.");
+        if (release.manifest?.assets?.esAudio?.sha256 !== audio.jobs?.es?.result?.sha256 || release.manifest?.assets?.enAudio?.sha256 !== audio.jobs?.en?.result?.sha256) throw new Error("Uno de los audios cambió; vuelve a crear la vista previa antes de publicar.");
         const deployment = await queueDeployment({ articleId: draft.articleId, draftRevision: draft.revision, releaseJobId: release.jobId, queueRoot, statesRoot });
         await createNotification(notificationsRoot, { level: "info", event: "deployment-started", articleId: draft.articleId, message: `Publicación iniciada: ${draft.title}` }); return json(response, 202, { deployment });
       }

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioFileForState, narrationText, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { narrationText, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -132,7 +132,7 @@ test("English player-name suffixes are spoken as ordinals", () => {
   );
 });
 
-test("two private TTS jobs reconcile only after both MP3 files validate", async () => {
+test("English TTS waits for the owner-provided Spanish MP3", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-"));
   const queueRoot = join(root, "queue");
   const statesRoot = join(root, "states");
@@ -140,7 +140,7 @@ test("two private TTS jobs reconcile only after both MP3 files validate", async 
   const state = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision });
   assert.equal(state.status, "queued");
   assert.equal(state.policyRevision, policyRevision);
-  for (const locale of ["es", "en"]) {
+  for (const locale of ["en"]) {
     const job = state.jobs[locale];
     assert.equal((await stat(join(queueRoot, job.jobId, "request.json"))).mode & 0o777, 0o600);
     const audioRoot = join(jobsRoot, job.jobId, "audio");
@@ -152,10 +152,10 @@ test("two private TTS jobs reconcile only after both MP3 files validate", async 
   let completed = 0;
   await reconcileTts({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
   const result = await readTtsState(statesRoot, draft.articleId);
-  assert.equal(result.status, "completed");
-  assert.equal(audioFileForState(result, "es", jobsRoot).endsWith(`es-${draft.articleId}.mp3`), true);
+  assert.equal(result.status, "awaiting-upload");
+  assert.equal(result.jobs.es.status, "awaiting-upload");
   await reconcileTts({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
-  assert.equal(completed, 1);
+  assert.equal(completed, 0);
   const regenerated = await queueTts({
     draft,
     translation,
@@ -180,7 +180,7 @@ test("audio queue preserves the automatic preview workflow", async () => {
   assert.equal(state.workflow, "preview");
 });
 
-test("Spanish regeneration preserves completed English audio", async () => {
+test("Spanish regeneration is replaced by MP3 upload", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-es-only-"));
   const queueRoot = join(root, "queue");
   const statesRoot = join(root, "states");
@@ -192,12 +192,7 @@ test("Spanish regeneration preserves completed English audio", async () => {
     policyRevision: "a".repeat(64), sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
     jobs: { es: { jobId: "old-es", status: "completed", result: { file: "old-es.mp3" } }, en: { jobId: "old-en", status: "completed", result: { file: "old-en.mp3" } } },
   }));
-  const state = await queueTtsLocale({ draft, translation, locale: "es", queueRoot, statesRoot, policyRevision });
-  assert.equal(state.status, "queued");
-  assert.equal(state.jobs.en.jobId, "old-en");
-  assert.equal(state.jobs.en.status, "completed");
-  assert.match(state.jobs.es.jobId, /^tts-es-/);
-  assert.equal(state.regeneratedLocale, "es");
+  await assert.rejects(() => queueTtsLocale({ draft, translation, locale: "es", queueRoot, statesRoot, policyRevision }), /uploaded as an MP3/);
 });
 
 test("English regeneration preserves completed Spanish audio", async () => {

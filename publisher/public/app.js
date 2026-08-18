@@ -17,7 +17,9 @@ const englishResult = document.querySelector("#english-result");
 const generateAudio = document.querySelector("#generate-audio");
 const audioResult = document.querySelector("#audio-result");
 const ttsPreflightPanel = document.querySelector("#tts-preflight");
-const regenerateSpanishAudio = document.querySelector("#regenerate-spanish-audio");
+const spanishAudioFile = document.querySelector("#spanish-audio-file");
+const uploadSpanishAudio = document.querySelector("#upload-spanish-audio");
+const spanishAudioStatus = document.querySelector("#spanish-audio-status");
 const regenerateEnglishAudio = document.querySelector("#regenerate-english-audio");
 const audiogramResult = document.querySelector("#audiogram-result");
 const audiogramVideo = document.querySelector("#audiogram-video");
@@ -450,20 +452,26 @@ async function pollAudio() {
   try {
     const { audio } = await request(`/api/drafts/${current.articleId}/audio`);
     if (!audio) return null;
+    audioResult.hidden = false;
+    const spanishReady = audio.jobs?.es?.status === "completed";
+    const englishReady = audio.jobs?.en?.status === "completed";
+    const spanishPlayer = document.querySelector("#audio-es");
+    const englishPlayer = document.querySelector("#audio-en");
+    if (spanishReady) {
+      spanishPlayer.src = `/api/drafts/${current.articleId}/audio/es?v=${encodeURIComponent(audio.jobs.es.jobId)}`;
+      spanishPlayer.load();
+      spanishAudioStatus.textContent = "MP3 en español cargado y validado.";
+    }
+    if (englishReady) {
+      englishPlayer.src = `/api/drafts/${current.articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
+      englishPlayer.load();
+    }
     if (audio.status === "completed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
-      workflowState.textContent = "Audios en español e inglés listos.";
-      const cacheRevision = encodeURIComponent(`${audio.updatedAt}-${audio.jobs.es.jobId}`);
-      const spanishPlayer = document.querySelector("#audio-es");
-      const englishPlayer = document.querySelector("#audio-en");
-      spanishPlayer.src = `/api/drafts/${current.articleId}/audio/es?v=${cacheRevision}`;
-      englishPlayer.src = `/api/drafts/${current.articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
-      spanishPlayer.load();
-      englishPlayer.load();
-      audioResult.hidden = false;
+      workflowState.textContent = "Tu MP3 en español y el audio en inglés están listos.";
       pollAudiogram();
-      regenerateSpanishAudio.disabled = false;
+      uploadSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
       generateAudio.disabled = false;
       openPreview.disabled = false;
@@ -471,6 +479,13 @@ async function pollAudio() {
       await refreshNotifications();
       const releaseStatus = await pollRelease();
       if (["queued", "running"].includes(releaseStatus) && !releaseTimer) releaseTimer = setInterval(pollRelease, 5000);
+    } else if (audio.status === "awaiting-upload") {
+      if (audioTimer) clearInterval(audioTimer);
+      audioTimer = null;
+      workflowState.textContent = "Audio en inglés listo · falta subir tu MP3 en español.";
+      spanishAudioStatus.textContent = "Selecciona y sube tu MP3 completo en español.";
+      uploadSpanishAudio.disabled = false;
+      regenerateEnglishAudio.disabled = false;
     } else if (audio.status === "failed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
@@ -478,8 +493,8 @@ async function pollAudio() {
       showError(audio.error || "La generación de audio no pasó la validación.");
       await refreshNotifications();
     } else {
-      workflowState.textContent = audio.status === "queued" ? "Audios en cola…" : "Generando audios…";
-      regenerateSpanishAudio.disabled = true;
+      workflowState.textContent = audio.status === "queued" ? "Audio en inglés en cola…" : "Generando audio en inglés…";
+      uploadSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = true;
     }
     return audio.status;
@@ -539,8 +554,8 @@ generateAudio.addEventListener("click", async () => {
 
 async function regenerateLocaleAudio(locale) {
   if (!current) return;
-  const button = locale === "en" ? regenerateEnglishAudio : regenerateSpanishAudio;
-  const language = locale === "en" ? "inglés" : "español";
+  const button = regenerateEnglishAudio;
+  const language = "inglés";
   button.disabled = true;
   message.hidden = true;
   workflowState.textContent = `Regenerando únicamente el audio en ${language}…`;
@@ -559,8 +574,21 @@ async function regenerateLocaleAudio(locale) {
   }
 }
 
-regenerateSpanishAudio.addEventListener("click", () => regenerateLocaleAudio("es"));
 regenerateEnglishAudio.addEventListener("click", () => regenerateLocaleAudio("en"));
+
+uploadSpanishAudio.addEventListener("click", async () => {
+  if (!current || !spanishAudioFile.files?.[0]) return showError("Selecciona primero tu archivo MP3 en español.");
+  const file = spanishAudioFile.files[0];
+  if (!/\.mp3$/i.test(file.name)) return showError("El archivo debe ser MP3.");
+  uploadSpanishAudio.disabled = true;
+  spanishAudioStatus.textContent = `Subiendo ${file.name}…`;
+  try {
+    await request(`/api/drafts/${current.articleId}/audio/es-upload`, { method: "POST", headers: { "Content-Type": "audio/mpeg", "X-Draft-Revision": String(current.revision) }, body: file });
+    spanishAudioStatus.textContent = "MP3 validado. Preparando el audiograma y la vista previa…";
+    await pollAudio();
+  } catch (error) { spanishAudioStatus.textContent = "No se pudo cargar el MP3."; showError(error.message); }
+  finally { uploadSpanishAudio.disabled = false; }
+});
 
 openPreview.addEventListener("click", () => {
   if (current) window.open(`/preview/${current.articleId}/es`, "_blank", "noopener,noreferrer");

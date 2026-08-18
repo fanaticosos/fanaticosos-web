@@ -155,7 +155,7 @@ test("editor shell is served with private security headers", async (context) => 
   const html = await response.text();
   assert.match(html, /Publicador privado/);
   assert.match(html, /id="article-title"/);
-  assert.match(html, />Crear traducción, audios y vista previa</);
+  assert.match(html, />Crear traducción y audio en inglés</);
   assert.match(html, /<details class="activity-panel">/);
   assert.doesNotMatch(html, /name="imageCaption"/);
   assert.match(html, /Crédito o pie de foto/);
@@ -166,7 +166,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Canción de la semana/);
   assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
-  assert.match(html, /id="regenerate-spanish-audio"/);
+  assert.match(html, /id="upload-spanish-audio"/);
   assert.match(html, /id="regenerate-english-audio"/);
   assert.match(html, /id="audiogram-result"/);
   assert.match(html, /class="audiogram-preview"/);
@@ -298,7 +298,7 @@ test("saved draft can queue one private translation job", async (context) => {
   assert.equal((await readFile(join(queueRoot, translation.jobId, "request.json"), "utf8")).includes(draft.title), true);
 });
 
-test("accepted English revision can queue both locale audio jobs", async (context) => {
+test("accepted English revision queues only the English audio job", async (context) => {
   const { server, base, queueRoot, statesRoot } = await fixture();
   context.after(() => server.close());
   const draft = (await (await fetch(`${base}/api/drafts`, {
@@ -315,7 +315,7 @@ test("accepted English revision can queue both locale audio jobs", async (contex
   });
   assert.equal(response.status, 202);
   const queued = (await readdir(queueRoot)).filter((name) => name.startsWith("tts-"));
-  assert.equal(queued.length, 2);
-  assert.equal(queued.some((name) => name.startsWith("tts-es-")), true);
+  assert.equal(queued.length, 1);
+  assert.equal(queued.some((name) => name.startsWith("tts-es-")), false);
   assert.equal(queued.some((name) => name.startsWith("tts-en-")), true);
 });
