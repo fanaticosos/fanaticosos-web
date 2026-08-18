@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from compile_azure_nfl_lexicon import load_configuration
-from render_article_azure_production import render_production
+from render_article_azure_production import naturalize_spanish, render_production
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIGURATION = load_configuration(ROOT / "config/tts/azure-nfl-entities.json")
@@ -28,6 +28,16 @@ def request(locale="es"):
 
 
 class AzureProductionWorkerTests(unittest.TestCase):
+    def test_title_and_score_are_naturalized_without_changing_visible_copy(self):
+        self.assertEqual(
+            naturalize_spanish("Bears 34, Browns 10: fiesta", CONFIGURATION, title=True),
+            "Chicago Bears treinta y cuatro, Cleveland Browns diez: fiesta",
+        )
+        self.assertEqual(
+            naturalize_spanish("Los Bears vencieron 34-10.", CONFIGURATION),
+            "Los Bears vencieron treinta y cuatro a diez.",
+        )
+
     def test_rejects_non_spanish_jobs_before_network_use(self):
         with tempfile.TemporaryDirectory() as name:
             with self.assertRaisesRegex(ValueError, "Spanish jobs only"):

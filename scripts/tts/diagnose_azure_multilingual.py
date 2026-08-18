@@ -13,35 +13,29 @@ from render_article_azure import synthesize
 
 
 VOICES = (
-    "en-US-BrianMultilingualNeural",
     "en-US-Brian:DragonHDLatestNeural",
 )
 
 SPANISH = (
-    "¡Qué manera de abrir la pretemporada a orillas del lago Michigan! "
-    "Los Chicago Bears arrancaron con dificultades, hicieron ajustes y terminaron "
-    "imponiéndose treinta y cuatro a diez a los Cleveland Browns en Soldier Field. "
-    "Chicago anotó treinta y cuatro puntos sin respuesta durante los últimos treinta "
-    "y nueve minutos del encuentro. Fue una actuación alentadora por la disciplina, "
-    "la capacidad de reacción y el rendimiento de varios jugadores que luchan por "
-    "ganarse un lugar en el roster."
+    "Chicago Bears, treinta y cuatro; Cleveland Browns, diez: fiesta en Soldier Field "
+    "y treinta y cuatro puntos sin respuesta. Los Chicago Bears vencieron treinta y "
+    "cuatro a diez a los Cleveland Browns con treinta y cuatro puntos sin respuesta. "
+    "Case Keenum, Kaden Davis y Beanie Bishop destacaron en el debut de pretemporada."
 )
 
 
 def ssml(voice: str, language_switch: bool) -> bytes:
     if language_switch:
         body = (
-            "¡Qué manera de abrir la pretemporada a orillas del lago "
-            '<lang xml:lang="en-US">Michigan</lang>! Los '
-            '<lang xml:lang="en-US">Chicago Bears</lang> arrancaron con dificultades, '
-            "hicieron ajustes y terminaron imponiéndose treinta y cuatro a diez a los "
-            '<lang xml:lang="en-US">Cleveland Browns</lang> en '
-            '<lang xml:lang="en-US">Soldier Field</lang>. '
-            '<lang xml:lang="en-US">Chicago</lang> anotó treinta y cuatro puntos sin '
-            "respuesta durante los últimos treinta y nueve minutos del encuentro. Fue "
-            "una actuación alentadora por la disciplina, la capacidad de reacción y el "
-            "rendimiento de varios jugadores que luchan por ganarse un lugar en el "
-            '<lang xml:lang="en-US">roster</lang>.'
+            '<lang xml:lang="en-US">Chicago Bears</lang>, treinta y cuatro; '
+            '<lang xml:lang="en-US">Cleveland Browns</lang>, diez: fiesta en '
+            '<lang xml:lang="en-US">Soldier Field</lang> y treinta y cuatro puntos sin '
+            "respuesta. Los "
+            '<lang xml:lang="en-US">Chicago Bears</lang> vencieron treinta y cuatro a '
+            "diez a los "
+            '<lang xml:lang="en-US">Cleveland Browns</lang> con treinta y cuatro puntos '
+            'sin respuesta. <lang xml:lang="en-US">Case Keenum, Kaden Davis y Beanie Bishop</lang> '
+            "destacaron en el debut de pretemporada."
         )
     else:
         body = html.escape(SPANISH)

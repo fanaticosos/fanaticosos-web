@@ -7,6 +7,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +22,46 @@ from render_article_azure import build_chunks, build_ssml, synthesize
 
 ENGINE = "Azure Speech"
 MODEL_REVISION = "en-US-Brian:DragonHDLatestNeural"
+
+SMALL_SPANISH = (
+    "cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve",
+    "diez", "once", "doce", "trece", "catorce", "quince", "dieciséis", "diecisiete",
+    "dieciocho", "diecinueve", "veinte", "veintiuno", "veintidós", "veintitrés",
+    "veinticuatro", "veinticinco", "veintiséis", "veintisiete", "veintiocho", "veintinueve",
+)
+TENS_SPANISH = {30: "treinta", 40: "cuarenta", 50: "cincuenta", 60: "sesenta", 70: "setenta", 80: "ochenta", 90: "noventa"}
+
+
+def spanish_cardinal(value: int) -> str:
+    if value < 30:
+        return SMALL_SPANISH[value]
+    if value < 100:
+        tens = value // 10 * 10
+        return TENS_SPANISH[tens] if value == tens else f"{TENS_SPANISH[tens]} y {SMALL_SPANISH[value % 10]}"
+    if value == 100:
+        return "cien"
+    if value < 200:
+        return f"ciento {spanish_cardinal(value - 100)}"
+    hundreds = {2: "doscientos", 3: "trescientos", 4: "cuatrocientos", 5: "quinientos", 6: "seiscientos", 7: "setecientos", 8: "ochocientos", 9: "novecientos"}
+    if value < 1000:
+        base = hundreds[value // 100]
+        return base if value % 100 == 0 else f"{base} {spanish_cardinal(value % 100)}"
+    raise ValueError("spoken score is outside the supported range")
+
+
+def naturalize_spanish(text: str, configuration: dict, *, title: bool = False) -> str:
+    if title:
+        for team in configuration["teams"]:
+            nickname = team["nickname"]
+            canonical = team["canonical"]
+            if canonical.casefold() not in text.casefold():
+                text = re.sub(rf"\b{re.escape(nickname)}\b", canonical, text, flags=re.IGNORECASE)
+        text = re.sub(r"\b([0-9]{1,3})\b", lambda match: spanish_cardinal(int(match.group(1))), text)
+    return re.sub(
+        r"\b([0-9]{1,3})-([0-9]{1,3})\b",
+        lambda match: f"{spanish_cardinal(int(match.group(1)))} a {spanish_cardinal(int(match.group(2)))}",
+        text,
+    )
 
 
 def normalize_mp3(source: Path, destination: Path) -> None:
@@ -58,9 +99,11 @@ def render_production(
     try:
         with tempfile.TemporaryDirectory(prefix="azure-tts-", dir=staging) as temp_name:
             temp = Path(temp_name)
-            chunks = build_chunks(
-                [{"id": "title", "text": request["title"]}, *request["segments"]]
-            )
+            prepared_segments = [
+                {"id": "title", "kind": "title", "text": naturalize_spanish(request["title"], configuration, title=True)},
+                *[{**segment, "text": naturalize_spanish(segment["text"], configuration)} for segment in request["segments"]],
+            ]
+            chunks = build_chunks(prepared_segments)
             source_paths: list[Path] = []
             for index, chunk in enumerate(chunks, start=1):
                 path = temp / f"{index:03d}.mp3"
