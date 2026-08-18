@@ -19,6 +19,7 @@ test("publisher has a single private write boundary", () => {
   assert.match(unit, /ExecStart=\/opt\/nodejs\/current\/bin\/node/);
   assert.match(unit, /ProtectSystem=strict/);
   assert.match(unit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
+  assert.match(unit, /\/opt\/fanaticosos-blog\/jobs/);
   assert.match(unit, /User=fanaticosos-blog/);
   assert.match(unit, /UMask=0077/);
 });
