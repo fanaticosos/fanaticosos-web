@@ -13,7 +13,7 @@ from render_article_azure import synthesize
 
 
 VOICES = (
-    "es-MX-Tristan:DragonHDLatestNeural",
+    "es-MX-Alejo:MAI-Voice-2",
 )
 
 SPANISH = (
@@ -21,6 +21,8 @@ SPANISH = (
     "y treinta y cuatro puntos sin respuesta. Los Chicago Bears vencieron treinta y "
     "cuatro a diez a los Cleveland Browns con treinta y cuatro puntos sin respuesta. "
     "Case Keenum, Kaden Davis y Beanie Bishop destacaron en el debut de pretemporada."
+    " Cerca del lago Michigan también participaron Xavier Woods, Ozzy Trapilo, "
+    "Deshaun Watson y Tyson Bagent."
 )
 
 
@@ -56,7 +58,7 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=False)
     results = []
     for voice in VOICES:
-        for switched in (False, True):
+        for switched in (False,):
             mode = "lang-switch" if switched else "automatic"
             filename = f"{voice}-{mode}.mp3"
             data = synthesize(ssml(voice, switched), key, region)
