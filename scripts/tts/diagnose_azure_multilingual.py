@@ -13,7 +13,7 @@ from render_article_azure import synthesize
 
 
 VOICES = (
-    "en-US-Brian:DragonHDLatestNeural",
+    "es-MX-Tristan:DragonHDLatestNeural",
 )
 
 SPANISH = (
