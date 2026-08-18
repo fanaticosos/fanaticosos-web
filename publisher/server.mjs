@@ -30,7 +30,6 @@ const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.jso
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
 const AUDIO_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio(?:\/(es|en))?$/;
-const SPANISH_AUDIO_UPLOAD_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audio\/es-upload$/;
 const TTS_PREFLIGHT_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/tts-preflight$/;
 const AUDIOGRAM_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/audiogram(?:\/(video))?$/;
 const RELEASE_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/release$/;
@@ -349,14 +348,13 @@ export function createPublisherServer({
         return json(response, 200, { translation });
       }
       const audioMatch = AUDIO_PATH.exec(url.pathname);
-      const spanishUploadMatch = SPANISH_AUDIO_UPLOAD_PATH.exec(url.pathname);
       const ttsPreflightMatch = TTS_PREFLIGHT_PATH.exec(url.pathname);
       if (ttsPreflightMatch && request.method === "GET") {
         const draft = await readDraft(draftsRoot, ttsPreflightMatch[1]);
         return json(response, 200, { preflight: await currentTtsPreflight(draft) });
       }
-      if (spanishUploadMatch && request.method === "POST") {
-        const draft = await readDraft(draftsRoot, spanishUploadMatch[1]);
+      if (audioMatch && request.method === "PUT" && audioMatch[2] === "es") {
+        const draft = await readDraft(draftsRoot, audioMatch[1]);
         const expectedRevision = Number(request.headers["x-draft-revision"]);
         if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
         const translation = await readTranslationState(statesRoot, draft.articleId);
