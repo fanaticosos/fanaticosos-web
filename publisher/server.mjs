@@ -313,14 +313,19 @@ export function createPublisherServer({
         const contentType = request.headers["content-type"]?.split(";", 1)[0] ?? "";
         if (contentType === "audio/mpeg") {
           const articleId = url.searchParams.get("articleId") ?? String(request.headers["x-article-id"] ?? "");
-          const draft = await readDraft(draftsRoot, articleId);
+          let draft;
+          try { draft = await readDraft(draftsRoot, articleId); } catch (error) { throw new Error(`No se encontró el borrador indicado (${error.code || "error"}).`); }
           const expectedRevision = Number(url.searchParams.get("revision") ?? request.headers["x-draft-revision"]);
           if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
-          const translation = await readTranslationState(statesRoot, draft.articleId);
+          let translation;
+          try { translation = await readTranslationState(statesRoot, draft.articleId); } catch (error) { throw new Error(`No se encontró la traducción actual (${error.code || "error"}).`); }
           const buffer = await requestBuffer(request, MAX_SPANISH_AUDIO_BYTES + 1);
-          const audio = await saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
+          let audio;
+          try { audio = await saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() }); } catch (error) { throw new Error(`No se pudo guardar el MP3: ${error.message}`); }
           await createNotification(notificationsRoot, { level: "success", event: "spanish-audio-uploaded", articleId: draft.articleId, message: "El MP3 en español fue validado y guardado.", replacePending: true });
-          if (audio.status === "completed") await audioCompleted(audio);
+          if (audio.status === "completed") {
+            try { await audioCompleted(audio); } catch (error) { throw new Error(`El MP3 se guardó, pero falló la preparación posterior: ${error.message}`); }
+          }
           return json(response, 201, { audio });
         }
         const upload = await saveImage(
