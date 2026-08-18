@@ -112,6 +112,8 @@ class AdminHelperTests(unittest.TestCase):
                 "install-supertonic3",
                 "run-supertonic3-article",
                 "export-supertonic3-article",
+                "run-azure-voice-diagnostic",
+                "export-azure-voice-diagnostic",
             ],
         )
 

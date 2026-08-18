@@ -69,6 +69,7 @@ readonly supertonic_model="$data_root/models/supertonic-3/3cadd1ee6394adea1bd021
 readonly supertonic_candidate="$repository/config/tts/supertonic3-candidate.json"
 readonly supertonic_request="$jobs_root/poking-bear-w1s25-tts-es/request.json"
 readonly supertonic_output="$data_root/work/tts-supertonic3-poking-bear-w1s25-v1"
+readonly azure_voice_diagnostic="$data_root/work/tts-azure-multilingual-diagnostic-v1"
 
 usage() {
   cat <<'EOF'
@@ -139,6 +140,8 @@ Commands:
   install-supertonic3 EXPECTED_COMMIT
   run-supertonic3-article EXPECTED_COMMIT
   export-supertonic3-article EXPECTED_COMMIT
+  run-azure-voice-diagnostic EXPECTED_COMMIT
+  export-azure-voice-diagnostic EXPECTED_COMMIT
 EOF
 }
 
@@ -1289,6 +1292,43 @@ command_export_supertonic3_article() {
   echo "PASS: Supertonic 3 article files exported to $export_root."
 }
 
+command_run_azure_voice_diagnostic() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ ! -e "$azure_voice_diagnostic" ]] || stop "Azure voice diagnostic already exists."
+  systemd-run --quiet --wait --collect --service-type=exec \
+    --unit=fanaticosos-azure-voice-diagnostic.service \
+    --property="User=$service_account" \
+    --property="Group=$service_account" \
+    --property="WorkingDirectory=$repository" \
+    --property="Environment=HOME=$data_root" \
+    --property="EnvironmentFile=$azure_credential_file" \
+    --property="RuntimeMaxSec=5min" \
+    --property="MemoryMax=1G" \
+    --property="PrivateTmp=yes" \
+    --property="ProtectSystem=strict" \
+    --property="ReadWritePaths=$data_root/work" \
+    "$kokoro_venv/bin/python" "$repository/scripts/tts/diagnose_azure_multilingual.py" \
+      --output "$azure_voice_diagnostic"
+  [[ "$(find "$azure_voice_diagnostic" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "6" ]] || \
+    stop "Azure voice diagnostic did not produce six MP3 files."
+  echo "PASS: Azure multilingual voice diagnostic completed."
+}
+
+command_export_azure_voice_diagnostic() {
+  local expected="$1"
+  local export_root="/home/sysadmin/fanaticosos-azure-multilingual-diagnostic-v1"
+  require_repository_commit "$expected"
+  [[ -f "$azure_voice_diagnostic/summary.json" ]] || stop "Azure voice diagnostic is missing."
+  [[ ! -e "$export_root" ]] || stop "Azure voice diagnostic export already exists."
+  install -d -o sysadmin -g sysadmin -m 0750 "$export_root"
+  while IFS= read -r -d '' artifact; do
+    install -o sysadmin -g sysadmin -m 0640 "$artifact" "$export_root/$(basename "$artifact")"
+  done < <(find "$azure_voice_diagnostic" -maxdepth 1 -type f \
+    \( -name '*.mp3' -o -name 'summary.json' \) -print0)
+  echo "PASS: Azure multilingual voice diagnostic exported."
+}
+
 command_run_spanglish_diagnostic() {
   local expected="$1"
   require_repository_commit "$expected"
@@ -1846,6 +1886,14 @@ case "$command" in
   export-supertonic3-article)
     [[ $# == 1 ]] || stop "export-supertonic3-article requires EXPECTED_COMMIT."
     command_export_supertonic3_article "$1"
+    ;;
+  run-azure-voice-diagnostic)
+    [[ $# == 1 ]] || stop "run-azure-voice-diagnostic requires EXPECTED_COMMIT."
+    command_run_azure_voice_diagnostic "$1"
+    ;;
+  export-azure-voice-diagnostic)
+    [[ $# == 1 ]] || stop "export-azure-voice-diagnostic requires EXPECTED_COMMIT."
+    command_export_azure_voice_diagnostic "$1"
     ;;
   *)
     stop "Unsupported command: $command"
