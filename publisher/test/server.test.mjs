@@ -41,6 +41,9 @@ test("completed preview becomes stale when either accepted audio changes", () =>
   assert.equal(releaseWithFreshness(release, audio).status, "stale");
   audio.jobs.es.result.sha256 = "old-es";
   assert.equal(releaseWithFreshness(release, audio).status, "completed");
+  delete release.manifest.assets.esAudio;
+  audio.jobs.es.result.sha256 = "ignored-es";
+  assert.equal(releaseWithFreshness(release, audio).status, "completed");
 });
 
 async function fixture() {
