@@ -14,14 +14,20 @@ assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio]), [
   `Phase 1 dist unexpectedly contains generated audio: audio/en-${articleId}.mp3`,
   `Phase 1 dist unexpectedly contains generated audio: audio/es-${articleId}.mp3`,
 ]);
-assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio], releaseEnvironment), []);
+assert.deepEqual(validateGeneratedMedia(["index.html", expectedAudio[1]], releaseEnvironment), []);
 assert.deepEqual(
   validateGeneratedMedia(["index.html", ...expectedAudio, "audio/unrelated.mp3"], releaseEnvironment),
-  ["private release dist contains unexpected generated audio: audio/unrelated.mp3"],
+  [
+    `private release dist contains unexpected generated audio: audio/es-${articleId}.mp3`,
+    "private release dist contains unexpected generated audio: audio/unrelated.mp3",
+  ],
 );
 assert.deepEqual(
   validateGeneratedMedia(["index.html", expectedAudio[0]], releaseEnvironment),
-  [`private release dist is missing required generated audio: audio/en-${articleId}.mp3`],
+  [
+    `private release dist contains unexpected generated audio: audio/es-${articleId}.mp3`,
+    `private release dist is missing required generated audio: audio/en-${articleId}.mp3`,
+  ],
 );
 assert.deepEqual(
   validateGeneratedMedia(["index.html", ...expectedAudio], { FANATICOSOS_PRIVATE_RELEASE_BUILD: "1" }),

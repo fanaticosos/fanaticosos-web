@@ -14,7 +14,7 @@ export function validateGeneratedMedia(outputFiles, environment = process.env) {
     return ["private release build is missing a valid FANATICOSOS_RELEASE_ARTICLE_ID"];
   }
 
-  const expected = [`audio/en-${articleId}.mp3`, `audio/es-${articleId}.mp3`].sort();
+  const expected = [`audio/en-${articleId}.mp3`];
   const failures = [];
   for (const file of generatedMedia) {
     if (!expected.includes(file)) failures.push(`private release dist contains unexpected generated audio: ${file}`);
