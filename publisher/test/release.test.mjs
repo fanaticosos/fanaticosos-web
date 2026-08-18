@@ -25,10 +25,10 @@ test("accepted draft serializes as a bilingual publishable pair", () => {
   const english = release.files[`src/content/articles/en/${draft.articleId}.md`];
   const data = yaml.load(spanish.match(/^---\n([\s\S]*?)\n---/)[1]);
   assert.equal(data.status, "published");
-  assert.equal(data.audio.voice, "Jorge");
-  assert.equal(data.audio.path, `/audio/es-${draft.articleId}.mp3?v=${"c".repeat(16)}`);
+  assert.equal(data.audio, undefined);
   assert.doesNotMatch(spanish, /¡Gracias por acompañarnos!/);
   assert.doesNotMatch(english, /Thank you for joining us!/);
   assert.match(english, /translation:/);
   assert.equal(release.assets.enAudio.publicPath, `public/audio/en-${draft.articleId}.mp3`);
+  assert.equal("esAudio" in release.assets, false);
 });

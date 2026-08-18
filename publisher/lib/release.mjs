@@ -29,7 +29,6 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
       ...((draft.featuredImage.caption || draft.featuredImage.credit) ? { credit: draft.featuredImage.caption || draft.featuredImage.credit } : {}),
     } } : {}),
   };
-  const esAudio = audio.jobs.es.result;
   const enAudio = audio.jobs.en.result;
   const versionedAudioPath = (result) => {
     if (!/^[0-9a-f]{64}$/.test(result.sha256 ?? "")) throw new Error("release audio checksum is invalid");
@@ -38,7 +37,6 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
   const es = {
     ...shared, locale: "es", slug: slugify(draft.title), title: draft.title,
     description: draft.description, category: draft.category,
-    audio: { path: versionedAudioPath(esAudio), durationSeconds: esAudio.durationSeconds, voice: esAudio.voice, engine: esAudio.engine, textHash: esAudio.textHash, generatedAt: esAudio.generatedAt },
   };
   const en = {
     ...shared, locale: "en", slug: slugify(translation.result.title), title: translation.result.title,
@@ -59,7 +57,6 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
       [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${translation.result.body.trim()}\n`,
     },
     assets: {
-      esAudio: { sourceJobId: audio.jobs.es.jobId, file: esAudio.file, publicPath: `public/audio/${esAudio.file}` },
       enAudio: { sourceJobId: audio.jobs.en.jobId, file: enAudio.file, publicPath: `public/audio/${enAudio.file}` },
       ...(imagePath ? { image: { sourcePath: draft.featuredImage.path, publicPath: `public${imagePath}` } } : {}),
     },
