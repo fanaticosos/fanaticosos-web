@@ -251,6 +251,12 @@ def numeric_value_is_preserved(value: str, source: str, translation: str) -> boo
 def preserved_value_occurs(value: str, source: str, translation: str) -> bool:
     if value in translation:
         return True
+    if (
+        value == "Chicago"
+        and re.search(r"\bhora de Chicago\b", source, re.IGNORECASE)
+        and re.search(r"\bCentral (?:Time|Standard Time|Daylight Time)\b", translation)
+    ):
+        return True
     return numeric_value_is_preserved(value, source, translation)
 
 
