@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 19,
+  "version": 20,
   "locale": "es-MX",
   "voice": "es-MX-JorgeMultilingualNeural",
   "broadcastRate": "+8%",
@@ -136,6 +136,8 @@
     {"category":"player","grapheme":"Tyquan Lewis","mode":"english","language":"en-US","status":"provisional","sourceType":"official"},
     {"category":"player","grapheme":"Swift","mode":"english","language":"en-US","status":"provisional","sourceType":"official"},
     {"category":"term","grapheme":"roster","mode":"english","language":"en-US","narratorAlias":"róuster","status":"approved","sourceType":"owner-review"},
+    {"category":"term","grapheme":"PUP","mode":"spanish-broadcast","narratorAlias":"pí iú pí","status":"approved","sourceType":"nfl-standard"},
+    {"category":"venue","grapheme":"Paycor Stadium","mode":"english","language":"en-US","narratorAlias":"Péicor Stéidium","status":"approved","sourceType":"official"},
     {"category":"term","grapheme":"touchdown","mode":"spanish-broadcast","alias":"tóchdaun","status":"approved","sourceType":"owner-review"},
     {"category":"term","grapheme":"touchdowns","mode":"spanish-broadcast","alias":"tóchdauns","status":"approved","sourceType":"owner-review"},
     {"category":"term","grapheme":"quarterback","mode":"spanish-broadcast","alias":"cuórterbak","status":"approved","sourceType":"owner-review"},

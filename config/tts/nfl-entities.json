@@ -216,6 +216,14 @@
           ]
         },
         {
+          "name": "Marcus Davenport",
+          "nflPath": "/players/marcus-davenport/",
+          "language": "en-US",
+          "writtenForms": [
+            "Davenport"
+          ]
+        },
+        {
           "name": "Kaden Davis",
           "nflPath": "/players/kaden-davis/",
           "language": "en-US",
@@ -686,6 +694,14 @@
           "language": "en-US",
           "writtenForms": [
             "Owens"
+          ]
+        },
+        {
+          "name": "Deantre Prince",
+          "nflPath": "/players/deantre-prince/",
+          "language": "en-US",
+          "writtenForms": [
+            "Prince"
           ]
         },
         {
@@ -2644,6 +2660,14 @@
           ]
         },
         {
+          "name": "Kenny Dyson",
+          "nflPath": "/players/kenny-dyson/",
+          "language": "en-US",
+          "writtenForms": [
+            "Dyson"
+          ]
+        },
+        {
           "name": "Tai Felton",
           "nflPath": "/players/tai-felton/",
           "language": "en-US",
@@ -2935,6 +2959,14 @@
           "language": "en-US",
           "writtenForms": [
             "Pace"
+          ]
+        },
+        {
+          "name": "Bryce Phillips",
+          "nflPath": "/players/bryce-phillips/",
+          "language": "en-US",
+          "writtenForms": [
+            "Phillips"
           ]
         },
         {
@@ -4260,6 +4292,14 @@
           ]
         },
         {
+          "name": "Jake Haener",
+          "nflPath": "/players/jake-haener/",
+          "language": "en-US",
+          "writtenForms": [
+            "Haener"
+          ]
+        },
+        {
           "name": "Shelby Harris",
           "nflPath": "/players/shelby-harris/",
           "language": "en-US",
@@ -4401,6 +4441,14 @@
           "language": "en-US",
           "writtenForms": [
             "Mann"
+          ]
+        },
+        {
+          "name": "Chandler Martin",
+          "nflPath": "/players/chandler-martin/",
+          "language": "en-US",
+          "writtenForms": [
+            "Martin"
           ]
         },
         {
@@ -4802,6 +4850,14 @@
           "language": "en-US",
           "writtenForms": [
             "Blay"
+          ]
+        },
+        {
+          "name": "Isaiah Bolden",
+          "nflPath": "/players/isaiah-bolden/",
+          "language": "en-US",
+          "writtenForms": [
+            "Bolden"
           ]
         },
         {
@@ -6351,6 +6407,14 @@
           ]
         },
         {
+          "name": "Beaux Collins",
+          "nflPath": "/players/beaux-collins/",
+          "language": "en-US",
+          "writtenForms": [
+            "Collins"
+          ]
+        },
+        {
           "name": "Kendal Daniels",
           "nflPath": "/players/kendal-daniels/",
           "language": "en-US",
@@ -7736,6 +7800,14 @@
           ]
         },
         {
+          "name": "Darren Waller",
+          "nflPath": "/players/darren-waller/",
+          "language": "en-US",
+          "writtenForms": [
+            "Waller"
+          ]
+        },
+        {
           "name": "Casey Washington",
           "nflPath": "/players/casey-washington/",
           "language": "en-US",
@@ -8930,6 +9002,14 @@
           ]
         },
         {
+          "name": "Barika Kpeenu",
+          "nflPath": "/players/barika-kpeenu/",
+          "language": "en-US",
+          "writtenForms": [
+            "Kpeenu"
+          ]
+        },
+        {
           "name": "Chase Lucas",
           "nflPath": "/players/chase-lucas/",
           "language": "en-US",
@@ -8967,6 +9047,14 @@
           "language": "en-US",
           "writtenForms": [
             "McCollum"
+          ]
+        },
+        {
+          "name": "Robert McDaniel",
+          "nflPath": "/players/robert-mcdaniel/",
+          "language": "en-US",
+          "writtenForms": [
+            "McDaniel"
           ]
         },
         {
@@ -10957,6 +11045,14 @@
           ]
         },
         {
+          "name": "Victor Dimukeje",
+          "nflPath": "/players/victor-dimukeje/",
+          "language": "en-US",
+          "writtenForms": [
+            "Dimukeje"
+          ]
+        },
+        {
           "name": "Jaden Dugger",
           "nflPath": "/players/jaden-dugger/",
           "language": "en-US",
@@ -11619,6 +11715,14 @@
           "writtenForms": [
             "Worth"
           ]
+        },
+        {
+          "name": "Nick Zakelj",
+          "nflPath": "/players/nick-zakelj/",
+          "language": "en-US",
+          "writtenForms": [
+            "Zakelj"
+          ]
         }
       ]
     },
@@ -11750,6 +11854,14 @@
           ]
         },
         {
+          "name": "Power Echols",
+          "nflPath": "/players/power-echols/",
+          "language": "en-US",
+          "writtenForms": [
+            "Echols"
+          ]
+        },
+        {
           "name": "Nick Emmanwori",
           "nflPath": "/players/nick-emmanwori/",
           "language": "en-US",
@@ -11806,6 +11918,14 @@
           ]
         },
         {
+          "name": "Anthony Hankerson",
+          "nflPath": "/players/anthony-hankerson/",
+          "language": "en-US",
+          "writtenForms": [
+            "Hankerson"
+          ]
+        },
+        {
           "name": "TJ Harden",
           "nflPath": "/players/tj-harden/",
           "language": "en-US",
@@ -11835,6 +11955,14 @@
           "language": "en-US",
           "writtenForms": [
             "Henderson"
+          ]
+        },
+        {
+          "name": "Julian Hicks",
+          "nflPath": "/players/julian-hicks/",
+          "language": "en-US",
+          "writtenForms": [
+            "Hicks"
           ]
         },
         {
@@ -14499,6 +14627,14 @@
           ]
         },
         {
+          "name": "Jermaine Terry",
+          "nflPath": "/players/jermaine-terry/",
+          "language": "en-US",
+          "writtenForms": [
+            "Terry"
+          ]
+        },
+        {
           "name": "Daniel Thomas",
           "nflPath": "/players/daniel-thomas-2/",
           "language": "en-US",
@@ -15991,6 +16127,14 @@
           ]
         },
         {
+          "name": "Otis Reese",
+          "nflPath": "/players/otis-reese/",
+          "language": "en-US",
+          "writtenForms": [
+            "Reese"
+          ]
+        },
+        {
           "name": "Greg Rousseau",
           "nflPath": "/players/gregory-rousseau/",
           "language": "en-US",
@@ -16725,6 +16869,14 @@
           "language": "en-US",
           "writtenForms": [
             "Reiger"
+          ]
+        },
+        {
+          "name": "Cam Rice",
+          "nflPath": "/players/cam-rice/",
+          "language": "en-US",
+          "writtenForms": [
+            "Rice"
           ]
         },
         {
@@ -18667,6 +18819,14 @@
           ]
         },
         {
+          "name": "Bryce Hall",
+          "nflPath": "/players/bryce-hall/",
+          "language": "en-US",
+          "writtenForms": [
+            "Hall"
+          ]
+        },
+        {
           "name": "Logan Hall",
           "nflPath": "/players/logan-hall/",
           "language": "en-US",
@@ -20407,6 +20567,14 @@
           ]
         },
         {
+          "name": "Timothy McKay",
+          "nflPath": "/players/timothy-mckay/",
+          "language": "en-US",
+          "writtenForms": [
+            "McKay"
+          ]
+        },
+        {
           "name": "Jalen McLeod",
           "nflPath": "/players/jalen-mcleod/",
           "language": "en-US",
@@ -20580,6 +20748,14 @@
           "language": "en-US",
           "writtenForms": [
             "Silmon-Craig"
+          ]
+        },
+        {
+          "name": "Baylon Spector",
+          "nflPath": "/players/baylon-spector/",
+          "language": "en-US",
+          "writtenForms": [
+            "Spector"
           ]
         },
         {
@@ -21141,6 +21317,14 @@
           "language": "en-US",
           "writtenForms": [
             "Mausi"
+          ]
+        },
+        {
+          "name": "Corey Mayfield Jr.",
+          "nflPath": "/players/corey-mayfield-jr/",
+          "language": "en-US",
+          "writtenForms": [
+            "Mayfield"
           ]
         },
         {
@@ -23013,6 +23197,14 @@
           ]
         },
         {
+          "name": "Noah Brown",
+          "nflPath": "/players/noah-brown/",
+          "language": "en-US",
+          "writtenForms": [
+            "Brown"
+          ]
+        },
+        {
           "name": "Spencer Burford",
           "nflPath": "/players/spencer-burford/",
           "language": "en-US",
@@ -24598,6 +24790,14 @@
       "narratorAlias": "Chicágo",
       "status": "approved",
       "sourceType": "owner-review"
+    },
+    {
+      "category": "venue",
+      "grapheme": "Paycor Stadium",
+      "language": "en-US",
+      "narratorAlias": "Péicor Stéidium",
+      "status": "approved",
+      "sourceType": "official"
     }
   ],
   "terms": [

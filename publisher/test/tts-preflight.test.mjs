@@ -34,3 +34,13 @@ test("preflight blocks an unknown full proper name", () => {
   assert.deepEqual(result.unresolved, ["Mystery Player"]);
   assert.throws(() => requireTtsPreflight(draft, database, azure), /Mystery Player/);
 });
+
+test("preflight never joins a venue to the next sentence", () => {
+  const result = ttsPreflight(
+    { title: "Prueba", description: "", body: "El partido será en Paycor Stadium. La práctica será el jueves." },
+    database,
+    { entities: [{ grapheme: "Paycor Stadium", category: "venue", language: "en-US" }] },
+  );
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.unresolved, []);
+});

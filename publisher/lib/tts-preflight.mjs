@@ -1,5 +1,7 @@
 const ROMAN = /^(?:I|II|III|IV|V|VI|VII|VIII|IX|X)$/;
-const CAPITALIZED_SEQUENCE = /\b[\p{Lu}][\p{L}'’.-]+(?:\s+(?:[\p{Lu}][\p{L}'’.-]+|(?:Jr|Sr)\.|II|III|IV)){1,5}\b/gu;
+// A period ends an entity. It must never join “Paycor Stadium.” to the
+// capitalized first word of the next sentence or paragraph.
+const CAPITALIZED_SEQUENCE = /\b[\p{Lu}][\p{L}'’-]+(?:[ \t]+(?:[\p{Lu}][\p{L}'’-]+|(?:Jr|Sr)\.|II|III|IV)){1,5}\b/gu;
 const ACRONYM = /\b[A-Z]{2,6}\b/g;
 
 function escapePattern(value) {
