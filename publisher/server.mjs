@@ -311,6 +311,18 @@ export function createPublisherServer({
       }
       if (url.pathname === "/api/uploads" && request.method === "POST") {
         const contentType = request.headers["content-type"]?.split(";", 1)[0] ?? "";
+        if (contentType === "audio/mpeg") {
+          const articleId = String(request.headers["x-article-id"] ?? "");
+          const draft = await readDraft(draftsRoot, articleId);
+          const expectedRevision = Number(request.headers["x-draft-revision"]);
+          if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
+          const translation = await readTranslationState(statesRoot, draft.articleId);
+          const buffer = await requestBuffer(request, MAX_SPANISH_AUDIO_BYTES + 1);
+          const audio = await saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
+          await createNotification(notificationsRoot, { level: "success", event: "spanish-audio-uploaded", articleId: draft.articleId, message: "El MP3 en español fue validado y guardado.", replacePending: true });
+          if (audio.status === "completed") await audioCompleted(audio);
+          return json(response, 201, { audio });
+        }
         const upload = await saveImage(
           uploadsRoot,
           await requestBuffer(request, MAX_IMAGE_BYTES + 1),
@@ -352,17 +364,6 @@ export function createPublisherServer({
       if (ttsPreflightMatch && request.method === "GET") {
         const draft = await readDraft(draftsRoot, ttsPreflightMatch[1]);
         return json(response, 200, { preflight: await currentTtsPreflight(draft) });
-      }
-      if (audioMatch && request.method === "PUT" && audioMatch[2] === "es") {
-        const draft = await readDraft(draftsRoot, audioMatch[1]);
-        const expectedRevision = Number(request.headers["x-draft-revision"]);
-        if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
-        const translation = await readTranslationState(statesRoot, draft.articleId);
-        const buffer = await requestBuffer(request, MAX_SPANISH_AUDIO_BYTES + 1);
-        const audio = await saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
-        await createNotification(notificationsRoot, { level: "success", event: "spanish-audio-uploaded", articleId: draft.articleId, message: "El MP3 en español fue validado y guardado.", replacePending: true });
-        if (audio.status === "completed") await audioCompleted(audio);
-        return json(response, 201, { audio });
       }
       if (audioMatch && request.method === "POST" && audioMatch[2] === "en") {
         const value = await requestJson(request);
