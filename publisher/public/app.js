@@ -583,7 +583,7 @@ uploadSpanishAudio.addEventListener("click", async () => {
   uploadSpanishAudio.disabled = true;
   spanishAudioStatus.textContent = `Subiendo ${file.name}…`;
   try {
-    await request("/api/uploads", { method: "POST", headers: { "Content-Type": "audio/mpeg", "X-Article-Id": current.articleId, "X-Draft-Revision": String(current.revision) }, body: file });
+    await request(`/api/uploads?articleId=${encodeURIComponent(current.articleId)}&revision=${current.revision}`, { method: "POST", headers: { "Content-Type": "audio/mpeg" }, body: file });
     spanishAudioStatus.textContent = "MP3 validado. Preparando el audiograma y la vista previa…";
     await pollAudio();
   } catch (error) { spanishAudioStatus.textContent = `No se pudo cargar el MP3: ${error.message}`; showError(error.message); }

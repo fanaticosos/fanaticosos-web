@@ -312,9 +312,9 @@ export function createPublisherServer({
       if (url.pathname === "/api/uploads" && request.method === "POST") {
         const contentType = request.headers["content-type"]?.split(";", 1)[0] ?? "";
         if (contentType === "audio/mpeg") {
-          const articleId = String(request.headers["x-article-id"] ?? "");
+          const articleId = url.searchParams.get("articleId") ?? String(request.headers["x-article-id"] ?? "");
           const draft = await readDraft(draftsRoot, articleId);
-          const expectedRevision = Number(request.headers["x-draft-revision"]);
+          const expectedRevision = Number(url.searchParams.get("revision") ?? request.headers["x-draft-revision"]);
           if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
           const translation = await readTranslationState(statesRoot, draft.articleId);
           const buffer = await requestBuffer(request, MAX_SPANISH_AUDIO_BYTES + 1);
