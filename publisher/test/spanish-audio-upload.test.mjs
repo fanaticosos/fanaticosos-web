@@ -17,6 +17,7 @@ test("owner MP3 is revision-bound and completes bilingual audio when English is 
   const audio = await saveSpanishAudio({ draft, translation, buffer: Buffer.alloc(2048, 1), jobsRoot, statesRoot, policyRevision: "f".repeat(64), probe: async () => ({ streams: [{ codec_name: "mp3", sample_rate: "44100", channels: 2 }], format: { duration: "321.5" } }) });
   assert.equal(audio.status, "completed");
   assert.match(audio.jobs.es.jobId, /^upload-es-/);
+  assert.equal(audio.jobs.es.result.file, `es-${draft.articleId}.mp3`);
   assert.equal(audio.jobs.es.result.durationSeconds, 321.5);
   assert.equal((await readFile(join(jobsRoot, audio.jobs.es.jobId, "audio", audio.jobs.es.result.file))).length, 2048);
 });

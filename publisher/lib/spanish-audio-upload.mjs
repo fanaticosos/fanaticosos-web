@@ -21,7 +21,7 @@ export async function saveSpanishAudio({ draft, translation, buffer, jobsRoot, s
   const jobId = `upload-es-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
   const audioDir = join(jobsRoot, jobId, "audio");
   await mkdir(audioDir, { recursive: true, mode: 0o700 });
-  const file = `es-${draft.articleId}-${createHash("sha256").update(buffer).digest("hex").slice(0, 12)}.mp3`;
+  const file = `es-${draft.articleId}.mp3`;
   const path = join(audioDir, file);
   await writeFile(path, buffer, { mode: 0o600, flag: "wx" });
   let metadata;
