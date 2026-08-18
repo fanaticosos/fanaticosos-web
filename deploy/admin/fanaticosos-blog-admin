@@ -69,7 +69,7 @@ readonly supertonic_model="$data_root/models/supertonic-3/3cadd1ee6394adea1bd021
 readonly supertonic_candidate="$repository/config/tts/supertonic3-candidate.json"
 readonly supertonic_request="$jobs_root/poking-bear-w1s25-tts-es/request.json"
 readonly supertonic_output="$data_root/work/tts-supertonic3-poking-bear-w1s25-v1"
-readonly azure_voice_diagnostic="$data_root/work/tts-azure-multilingual-diagnostic-v1"
+readonly azure_voice_diagnostic="$data_root/work/tts-azure-multilingual-diagnostic-v2"
 
 usage() {
   cat <<'EOF'
@@ -1310,14 +1310,14 @@ command_run_azure_voice_diagnostic() {
     --property="ReadWritePaths=$data_root/work" \
     "$kokoro_venv/bin/python" "$repository/scripts/tts/diagnose_azure_multilingual.py" \
       --output "$azure_voice_diagnostic"
-  [[ "$(find "$azure_voice_diagnostic" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "6" ]] || \
-    stop "Azure voice diagnostic did not produce six MP3 files."
+  [[ "$(find "$azure_voice_diagnostic" -maxdepth 1 -type f -name '*.mp3' | wc -l)" == "4" ]] || \
+    stop "Azure voice diagnostic did not produce four MP3 files."
   echo "PASS: Azure multilingual voice diagnostic completed."
 }
 
 command_export_azure_voice_diagnostic() {
   local expected="$1"
-  local export_root="/home/sysadmin/fanaticosos-azure-multilingual-diagnostic-v1"
+  local export_root="/home/sysadmin/fanaticosos-azure-multilingual-diagnostic-v2"
   require_repository_commit "$expected"
   [[ -f "$azure_voice_diagnostic/summary.json" ]] || stop "Azure voice diagnostic is missing."
   [[ ! -e "$export_root" ]] || stop "Azure voice diagnostic export already exists."

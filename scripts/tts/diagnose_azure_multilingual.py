@@ -13,25 +13,35 @@ from render_article_azure import synthesize
 
 
 VOICES = (
-    "es-MX-JorgeMultilingualNeural",
-    "en-US-AndrewMultilingualNeural",
     "en-US-BrianMultilingualNeural",
+    "en-US-Brian:DragonHDLatestNeural",
 )
 
 SPANISH = (
-    "Prueba de pronunciación. Los Chicago Bears jugaron cerca del lago Michigan. "
-    "Xavier Woods, Beanie Bishop, Ozzy Trapilo, Deshaun Watson y Tyson Bagent."
+    "¡Qué manera de abrir la pretemporada a orillas del lago Michigan! "
+    "Los Chicago Bears arrancaron con dificultades, hicieron ajustes y terminaron "
+    "imponiéndose treinta y cuatro a diez a los Cleveland Browns en Soldier Field. "
+    "Chicago anotó treinta y cuatro puntos sin respuesta durante los últimos treinta "
+    "y nueve minutos del encuentro. Fue una actuación alentadora por la disciplina, "
+    "la capacidad de reacción y el rendimiento de varios jugadores que luchan por "
+    "ganarse un lugar en el roster."
 )
 
 
 def ssml(voice: str, language_switch: bool) -> bytes:
-    names = "Xavier Woods, Beanie Bishop, Ozzy Trapilo, Deshaun Watson y Tyson Bagent."
     if language_switch:
         body = (
-            "Prueba de pronunciación. Los "
-            '<lang xml:lang="en-US">Chicago Bears</lang> jugaron cerca del lago '
-            '<lang xml:lang="en-US">Michigan</lang>. '
-            f'<lang xml:lang="en-US">{html.escape(names)}</lang>'
+            "¡Qué manera de abrir la pretemporada a orillas del lago "
+            '<lang xml:lang="en-US">Michigan</lang>! Los '
+            '<lang xml:lang="en-US">Chicago Bears</lang> arrancaron con dificultades, '
+            "hicieron ajustes y terminaron imponiéndose treinta y cuatro a diez a los "
+            '<lang xml:lang="en-US">Cleveland Browns</lang> en '
+            '<lang xml:lang="en-US">Soldier Field</lang>. '
+            '<lang xml:lang="en-US">Chicago</lang> anotó treinta y cuatro puntos sin '
+            "respuesta durante los últimos treinta y nueve minutos del encuentro. Fue "
+            "una actuación alentadora por la disciplina, la capacidad de reacción y el "
+            "rendimiento de varios jugadores que luchan por ganarse un lugar en el "
+            '<lang xml:lang="en-US">roster</lang>.'
         )
     else:
         body = html.escape(SPANISH)
