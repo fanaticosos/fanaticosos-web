@@ -44,6 +44,14 @@ class QwenBenchmarkTests(unittest.TestCase):
         )
         self.assertEqual(actual, {"one": "One", "two": "Two"})
 
+    def test_recovers_complete_array_when_wrapper_closing_brace_is_truncated(self):
+        actual = extract_translations(
+            '{"translations":[{"id":"one","translation":"One"},'
+            '{"id":"two","translation":"Two"}]',
+            ["one", "two"],
+        )
+        self.assertEqual(actual, {"one": "One", "two": "Two"})
+
     def test_extracts_fenced_json_after_thinking(self):
         raw = (
             "<think>ignored</think>\n```json\n"

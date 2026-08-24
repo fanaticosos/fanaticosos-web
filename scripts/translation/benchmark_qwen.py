@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import resource
 import subprocess
 import tempfile
@@ -84,6 +85,21 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
         candidates.append({"translations": direct})
     elif isinstance(direct, dict) and isinstance(direct.get("translations"), list):
         candidates.append(direct)
+
+    # Long local-model responses occasionally reach the token limit after
+    # closing the translations array but before the wrapper's final `}`.
+    # The array is still complete and safe to validate against every expected
+    # id, so recover it instead of throwing away a finished translation.
+    translations_marker = re.search(r'"translations"\s*:\s*', text)
+    if translations_marker is not None:
+        array_start = text.find("[", translations_marker.end())
+        if array_start >= 0:
+            try:
+                decoded_array, _ = decoder.raw_decode(text[array_start:])
+            except json.JSONDecodeError:
+                decoded_array = None
+            if isinstance(decoded_array, list):
+                candidates.append({"translations": decoded_array})
 
     position = 0
     while True:
