@@ -8,6 +8,13 @@ async function atomicJson(path, value) {
   await rename(temporary, path);
 }
 
+const ACTIVE_PUBLICATION_LIMIT_MS = 30 * 60 * 1000;
+
+function isStale(state, now) {
+  const timestamp = Date.parse(state.updatedAt || state.createdAt || "");
+  return !Number.isFinite(timestamp) || now.getTime() - timestamp > ACTIVE_PUBLICATION_LIMIT_MS;
+}
+
 export async function queueMusicPublication({ settings, queueRoot, statesRoot, now = new Date() }) {
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
@@ -15,7 +22,9 @@ export async function queueMusicPublication({ settings, queueRoot, statesRoot, n
     if (error.code === "ENOENT") return null;
     throw error;
   });
-  if (existing && ["queued", "running"].includes(existing.status)) throw new Error("Ya hay una canción publicándose.");
+  if (existing && ["queued", "running"].includes(existing.status) && !isStale(existing, now)) {
+    throw new Error("Ya hay una canción publicándose.");
+  }
   const articleId = randomUUID();
   const jobId = `release-${articleId.replaceAll("-", "")}-r1-${randomUUID().slice(0, 8)}`;
   const request = { schemaVersion: 1, releaseKind: "music", articleId, draftRevision: 1, requestedAt: now.toISOString(), settings };
@@ -46,6 +55,11 @@ export async function readMusicPublication(statesRoot, releasesRoot) {
   }
   if (failure) {
     const failed = { ...state, status: "failed", error: failure.error, updatedAt: failure.failedAt };
+    await atomicJson(path, failed);
+    return failed;
+  }
+  if (isStale(state, new Date())) {
+    const failed = { ...state, status: "failed", error: "La publicación anterior se detuvo y fue liberada automáticamente.", updatedAt: new Date().toISOString() };
     await atomicJson(path, failed);
     return failed;
   }

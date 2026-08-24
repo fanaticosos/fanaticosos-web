@@ -256,6 +256,7 @@ export function createPublisherServer({
           weeklySongUrl: value.weeklySongUrl,
           resolver: musicResolver,
         });
+        await readMusicPublication(statesRoot, releasesRoot);
         const publication = await queueMusicPublication({ settings, queueRoot, statesRoot });
         await createNotification(notificationsRoot, { level: "info", event: "music-publication-started", message: `Publicación de la canción iniciada: ${settings.music.weeklySong.title}` });
         return json(response, 202, { settings, publication });
