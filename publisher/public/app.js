@@ -41,6 +41,8 @@ let translationTimer = null;
 let translationClockTimer = null;
 let audioTimer = null;
 let releaseTimer = null;
+let audiogramTimer = null;
+let deploymentTimer = null;
 let markdownPreviewTimer = null;
 
 function stopTranslationClock() {
@@ -49,7 +51,9 @@ function stopTranslationClock() {
 }
 
 function formatElapsed(startedAt) {
-  const seconds = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+  const started = new Date(startedAt).getTime();
+  if (!Number.isFinite(started)) return "tiempo desconocido";
+  const seconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
@@ -168,6 +172,10 @@ function setFields(draft) {
   audioTimer = null;
   if (releaseTimer) clearInterval(releaseTimer);
   releaseTimer = null;
+  if (audiogramTimer) clearTimeout(audiogramTimer);
+  audiogramTimer = null;
+  if (deploymentTimer) clearInterval(deploymentTimer);
+  deploymentTimer = null;
   form.elements.title.value = draft?.title ?? "";
   form.elements.description.value = draft?.description ?? "";
   form.elements.body.value = draft?.body ?? "";
@@ -391,8 +399,10 @@ form.addEventListener("submit", async (event) => {
 
 async function pollTranslation() {
   if (!current) return null;
+  const articleId = current.articleId;
   try {
-    const { translation } = await request(`/api/drafts/${current.articleId}/translation`);
+    const { translation } = await request(`/api/drafts/${articleId}/translation`);
+    if (current?.articleId !== articleId) return null;
     if (!translation) return null;
     if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
@@ -448,8 +458,10 @@ generateEnglish.addEventListener("click", async () => {
 
 async function pollAudio() {
   if (!current) return null;
+  const articleId = current.articleId;
   try {
-    const { audio } = await request(`/api/drafts/${current.articleId}/audio`);
+    const { audio } = await request(`/api/drafts/${articleId}/audio`);
+    if (current?.articleId !== articleId) return null;
     if (!audio) return null;
     audioResult.hidden = false;
     const spanishReady = audio.jobs?.es?.status === "completed";
@@ -457,13 +469,13 @@ async function pollAudio() {
     const spanishPlayer = document.querySelector("#audio-es");
     const englishPlayer = document.querySelector("#audio-en");
     if (spanishReady) {
-      spanishPlayer.src = `/api/drafts/${current.articleId}/audio/es?v=${encodeURIComponent(audio.jobs.es.jobId)}`;
-      spanishPlayer.load();
+      const source = `/api/drafts/${articleId}/audio/es?v=${encodeURIComponent(audio.jobs.es.jobId)}`;
+      if (spanishPlayer.getAttribute("src") !== source) spanishPlayer.src = source;
       spanishAudioStatus.textContent = "MP3 en español cargado y validado.";
     }
     if (englishReady) {
-      englishPlayer.src = `/api/drafts/${current.articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
-      englishPlayer.load();
+      const source = `/api/drafts/${articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
+      if (englishPlayer.getAttribute("src") !== source) englishPlayer.src = source;
     }
     if (audio.status === "completed") {
       if (audioTimer) clearInterval(audioTimer);
@@ -505,18 +517,25 @@ async function pollAudio() {
 
 async function pollAudiogram() {
   if (!current) return;
+  const articleId = current.articleId;
+  if (audiogramTimer) clearTimeout(audiogramTimer);
+  audiogramTimer = null;
   try {
-    const { audiogram } = await request(`/api/drafts/${current.articleId}/audiogram`);
+    const { audiogram } = await request(`/api/drafts/${articleId}/audiogram`);
+    if (current?.articleId !== articleId) return null;
     if (!audiogram) return null;
     audiogramResult.hidden = false;
     if (audiogram.status === "completed") {
       audiogramMetadata = audiogram.result;
       audiogramStatus.textContent = "Video completo listo para revisar y descargar.";
-      audiogramVideo.src = `/api/drafts/${current.articleId}/audiogram/video?v=${encodeURIComponent(audiogram.updatedAt)}`;
+      audiogramVideo.src = `/api/drafts/${articleId}/audiogram/video?v=${encodeURIComponent(audiogram.updatedAt)}`;
       audiogramVideo.hidden = false; downloadAudiogram.hidden = false; copyYoutube.hidden = false; copyArticleLink.hidden = false;
-      downloadAudiogram.href = `/api/drafts/${current.articleId}/audiogram/video?download=1`;
+      downloadAudiogram.href = `/api/drafts/${articleId}/audiogram/video?download=1`;
       downloadAudiogram.download = `${current.title || "fanaticosos-blog"}.mp4`;
-    } else { audiogramStatus.textContent = audiogram.status === "failed" ? audiogram.error : "Preparando video completo para YouTube…"; setTimeout(pollAudiogram, 5000); }
+    } else {
+      audiogramStatus.textContent = audiogram.status === "failed" ? audiogram.error : "Preparando video completo para YouTube…";
+      if (["queued", "running"].includes(audiogram.status)) audiogramTimer = setTimeout(pollAudiogram, 5000);
+    }
   } catch (error) { if (!/not found/i.test(error.message)) audiogramStatus.textContent = error.message; }
 }
 
@@ -621,8 +640,10 @@ saveEnglish.addEventListener("click", async () => {
 
 async function pollRelease() {
   if (!current) return null;
+  const articleId = current.articleId;
   try {
-    const { release } = await request(`/api/drafts/${current.articleId}/release`);
+    const { release } = await request(`/api/drafts/${articleId}/release`);
+    if (current?.articleId !== articleId) return null;
     if (!release) return null;
     if (release.status === "completed") {
       if (releaseTimer) clearInterval(releaseTimer);
@@ -677,7 +698,26 @@ publishRelease.addEventListener("click", async () => {
   try {
     await request(`/api/drafts/${current.articleId}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: current.revision }) });
     workflowState.textContent = "Publicación iniciada… el sitio actual permanece activo durante la validación.";
-    const timer = setInterval(async () => { const { deployment } = await request(`/api/drafts/${current.articleId}/publish`); if (!deployment) return; if (deployment.status === "completed") { clearInterval(timer); workflowState.textContent = "Publicado y verificado en fanaticosos.com."; } if (deployment.status === "failed") { clearInterval(timer); publishRelease.disabled = false; showError(deployment.error); } }, 4000);
+    const articleId = current.articleId;
+    if (deploymentTimer) clearInterval(deploymentTimer);
+    deploymentTimer = setInterval(async () => {
+      try {
+        const { deployment } = await request(`/api/drafts/${articleId}/publish`);
+        if (current?.articleId !== articleId || !deployment) return;
+        if (deployment.status === "completed") {
+          clearInterval(deploymentTimer); deploymentTimer = null;
+          workflowState.textContent = "Publicado y verificado en fanaticosos.com.";
+        } else if (deployment.status === "failed") {
+          clearInterval(deploymentTimer); deploymentTimer = null;
+          publishRelease.disabled = false;
+          showError(deployment.error || "La publicación no pudo completarse.");
+        }
+      } catch (error) {
+        clearInterval(deploymentTimer); deploymentTimer = null;
+        publishRelease.disabled = false;
+        showError(error.message);
+      }
+    }, 4000);
   } catch (error) { publishRelease.disabled = false; showError(error.message); }
 });
 
