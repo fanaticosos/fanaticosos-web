@@ -10,7 +10,7 @@ import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mj
 import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
-import { requireTtsPreflight, ttsPreflight } from "./lib/tts-preflight.mjs";
+import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
@@ -134,11 +134,9 @@ export function createPublisherServer({
     ]);
     return { azureEntities, entityDatabase };
   }
-  async function currentTtsPreflight(draft, required = false) {
+  async function currentTtsPreflight(draft) {
     const { azureEntities, entityDatabase } = await currentTtsReferences();
-    return required
-      ? requireTtsPreflight(draft, entityDatabase, azureEntities)
-      : ttsPreflight(draft, entityDatabase, azureEntities);
+    return ttsPreflight(draft, entityDatabase, azureEntities);
   }
   async function currentTtsPolicyRevision() {
     const [production, pronunciations, azureEntities, entityDatabase, spanishTerms] = await Promise.all([

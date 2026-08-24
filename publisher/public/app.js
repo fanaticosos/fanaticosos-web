@@ -198,13 +198,13 @@ async function refreshTtsPreflight() {
   if (!current) { ttsPreflightPanel.hidden = true; return null; }
   const { preflight } = await request(`/api/drafts/${current.articleId}/tts-preflight`);
   ttsPreflightPanel.hidden = false;
-  ttsPreflightPanel.className = `tts-preflight ${preflight.status}`;
+  ttsPreflightPanel.className = "tts-preflight ready";
   document.querySelector("#tts-preflight-title").textContent = preflight.status === "ready"
     ? "Nombres y lugares listos para TTS"
-    : "TTS detenido: faltan nombres o lugares";
+    : "Aviso de pronunciación en inglés";
   document.querySelector("#tts-preflight-summary").textContent = preflight.status === "ready"
     ? `${preflight.detected.length} entidades detectadas · ${preflight.rosterPlayers} jugadores NFL disponibles · temporada ${preflight.season}`
-    : `No se generará audio completo hasta resolver ${preflight.unresolved.length} entidad(es).`;
+    : `${preflight.unresolved.length} nombre(s) o lugar(es) no están en el glosario. Esto no bloquea la traducción, el audio ni la publicación.`;
   const unresolved = document.querySelector("#tts-preflight-unresolved");
   unresolved.replaceChildren(...preflight.unresolved.map((name) => {
     const item = document.createElement("li"); item.textContent = name; return item;
@@ -215,8 +215,7 @@ async function refreshTtsPreflight() {
     item.textContent = `${entity.written} · ${entity.category} · ${entity.language}`;
     return item;
   }));
-  generateEnglish.disabled = preflight.status !== "ready";
-  generateAudio.disabled = preflight.status !== "ready";
+  generateEnglish.disabled = false;
   return preflight;
 }
 

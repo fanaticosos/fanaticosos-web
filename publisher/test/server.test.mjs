@@ -178,6 +178,8 @@ test("editor shell is served with private security headers", async (context) => 
   const app = await (await fetch(`${base}/app.js`)).text();
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
+  assert.match(app, /Esto no bloquea la traducción, el audio ni la publicación/);
+  assert.doesNotMatch(app, /generateEnglish\.disabled = preflight\.status !== "ready"/);
   assert.match(app, /workflow: "preview"/);
   assert.match(app, /generateSeoPreview/);
   assert.match(app, /\/api\/music/);
