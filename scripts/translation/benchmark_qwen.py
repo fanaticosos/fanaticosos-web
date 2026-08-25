@@ -75,7 +75,17 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
     if "Assistant:" in text:
         text = text.rsplit("Assistant:", 1)[1].strip()
 
-    decoder = json.JSONDecoder()
+    # Qwen occasionally emits JavaScript-style escaped apostrophes inside
+    # otherwise valid JSON strings (for example, `Johnson\'s`). JSON does not
+    # define that escape; an apostrophe needs no escaping in a double-quoted
+    # string. Normalize this one invalid model escape before decoding.
+    text = text.replace("\\'", "'")
+
+    # Local-model output can also contain literal newlines inside quoted
+    # Markdown strings. Python's non-strict decoder accepts those control
+    # characters while all schema, id, order, and content validation below
+    # remains enforced.
+    decoder = json.JSONDecoder(strict=False)
     candidates: list[dict[str, Any]] = []
     try:
         direct, _ = decoder.raw_decode(text)

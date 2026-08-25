@@ -52,6 +52,21 @@ class QwenBenchmarkTests(unittest.TestCase):
         )
         self.assertEqual(actual, {"one": "One", "two": "Two"})
 
+    def test_normalizes_javascript_style_apostrophe_escape(self):
+        actual = extract_translations(
+            'Assistant:\n[{"id":"one","translation":"Johnson\\\'s offense"},'
+            '{"id":"two","translation":"Bears"}]',
+            ["one", "two"],
+        )
+        self.assertEqual(actual, {"one": "Johnson's offense", "two": "Bears"})
+
+    def test_accepts_literal_newlines_in_markdown_translation(self):
+        actual = extract_translations(
+            '[{"id":"one","translation":"Quote\n> attribution"}]',
+            ["one"],
+        )
+        self.assertEqual(actual, {"one": "Quote\n> attribution"})
+
     def test_recovers_complete_array_when_wrapper_closing_brace_is_truncated(self):
         actual = extract_translations(
             '{"translations":[{"id":"one","translation":"One"},'

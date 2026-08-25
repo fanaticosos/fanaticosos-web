@@ -86,6 +86,7 @@ Commands:
   translation-result JOB_ID
   translation-failure JOB_ID
   export-translation-failure JOB_ID
+  recover-translation EXPECTED_COMMIT JOB_ID
   host-health
   update-admin EXPECTED_COMMIT
   install-kokoro-runtime EXPECTED_COMMIT
@@ -378,6 +379,27 @@ command_export_translation_failure() {
   [[ -f "$failure" && ! -L "$failure" ]] || stop "Failure output is missing for $job_id."
   install -o sysadmin -g sysadmin -m 0600 "$failure" "$destination"
   echo "PASS: Failure output exported to $destination."
+}
+
+command_recover_translation() {
+  local expected="$1"
+  local job_id="$2"
+  local job_dir
+  require_repository_commit "$expected"
+  validate_job_id "$job_id"
+  [[ "$job_id" =~ ^translation-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || stop "Expected a translation job ID."
+  job_dir="$jobs_root/$job_id"
+  [[ -f "$job_dir/request.json" && -f "$job_dir/failed-output.json" ]] || stop "Recoverable translation artifacts are missing."
+  [[ ! -e "$job_dir/result.json" ]] || stop "Translation result already exists."
+  [[ "$(systemctl show "$(job_unit "$job_id")" --property=ActiveState --value)" == "failed" ]] || stop "Translation service is not failed."
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 \
+    "$repository/scripts/translation/recover_translation_failure.py" \
+    --request "$job_dir/request.json" \
+    --failure "$job_dir/failed-output.json" \
+    --glossary "$repository/config/translation/glossary.json" \
+    --output "$job_dir/result.json"
+  [[ -f "$job_dir/result.json" && ! -L "$job_dir/result.json" ]] || stop "Recovered result was not created."
+  echo "PASS: Completed translation recovered from $job_id."
 }
 
 command_host_health() {
@@ -1683,6 +1705,10 @@ case "$command" in
   export-translation-failure)
     [[ $# == 1 ]] || stop "export-translation-failure requires JOB_ID."
     command_export_translation_failure "$1"
+    ;;
+  recover-translation)
+    [[ $# == 2 ]] || stop "recover-translation requires EXPECTED_COMMIT JOB_ID."
+    command_recover_translation "$1" "$2"
     ;;
   host-health)
     [[ $# == 0 ]] || stop "host-health accepts no arguments."
