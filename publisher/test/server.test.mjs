@@ -278,7 +278,7 @@ test("stale browser revision returns a conflict", async (context) => {
   const update = () => fetch(`${base}/api/drafts/${created.articleId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ expectedRevision: 1, draft: fields }),
+    body: JSON.stringify({ expectedRevision: 1, draft: { ...fields, title: "Updated title" } }),
   });
   assert.equal((await update()).status, 200);
   assert.equal((await update()).status, 409);

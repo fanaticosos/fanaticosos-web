@@ -46,3 +46,12 @@ test("revision check prevents one browser from overwriting another", async () =>
     /another browser session/,
   );
 });
+
+test("saving an unchanged draft preserves its revision and completed artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-drafts-"));
+  const draft = newDraft(valid, new Date("2026-08-25T12:00:00Z"));
+  await writeDraft(root, draft);
+  const saved = await updateDraft(root, draft.articleId, 1, valid, new Date("2026-08-25T13:00:00Z"));
+  assert.equal(saved.revision, 1);
+  assert.equal(saved.updatedAt, "2026-08-25T12:00:00.000Z");
+});

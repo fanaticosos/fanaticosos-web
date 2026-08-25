@@ -87,6 +87,7 @@ Commands:
   translation-failure JOB_ID
   export-translation-failure JOB_ID
   recover-translation EXPECTED_COMMIT JOB_ID
+  repair-noop-draft EXPECTED_COMMIT ARTICLE_ID
   host-health
   update-admin EXPECTED_COMMIT
   install-kokoro-runtime EXPECTED_COMMIT
@@ -429,6 +430,18 @@ finally:
         os.unlink(temporary)
 PY
   echo "PASS: Completed translation recovered from $job_id."
+}
+
+command_repair_noop_draft() {
+  local expected="$1"
+  local article_id="$2"
+  require_repository_commit "$expected"
+  [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
+  run_as_service /opt/nodejs/current/bin/node \
+    "$repository/scripts/publisher/repair_noop_draft_revision.mjs" \
+    --article-id "$article_id" \
+    --publisher-root "$publisher_data" \
+    --repository "$repository"
 }
 
 command_host_health() {
@@ -1738,6 +1751,10 @@ case "$command" in
   recover-translation)
     [[ $# == 2 ]] || stop "recover-translation requires EXPECTED_COMMIT JOB_ID."
     command_recover_translation "$1" "$2"
+    ;;
+  repair-noop-draft)
+    [[ $# == 2 ]] || stop "repair-noop-draft requires EXPECTED_COMMIT ARTICLE_ID."
+    command_repair_noop_draft "$1" "$2"
     ;;
   host-health)
     [[ $# == 0 ]] || stop "host-health accepts no arguments."

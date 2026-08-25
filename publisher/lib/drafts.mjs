@@ -104,9 +104,12 @@ export async function updateDraft(root, articleId, expectedRevision, ownerFields
   if (existing.revision !== expectedRevision) {
     throw new Error("draft was changed in another browser session");
   }
+  const normalized = validateOwnerFields(ownerFields);
+  const existingOwnerFields = validateOwnerFields(existing);
+  if (JSON.stringify(normalized) === JSON.stringify(existingOwnerFields)) return existing;
   return writeDraft(root, {
     ...existing,
-    ...validateOwnerFields(ownerFields),
+    ...normalized,
     revision: existing.revision + 1,
     updatedAt: now.toISOString(),
   });
