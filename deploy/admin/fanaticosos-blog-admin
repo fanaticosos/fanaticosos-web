@@ -390,15 +390,44 @@ command_recover_translation() {
   [[ "$job_id" =~ ^translation-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || stop "Expected a translation job ID."
   job_dir="$jobs_root/$job_id"
   [[ -f "$job_dir/request.json" && -f "$job_dir/failed-output.json" ]] || stop "Recoverable translation artifacts are missing."
-  [[ ! -e "$job_dir/result.json" ]] || stop "Translation result already exists."
   [[ "$(systemctl show "$(job_unit "$job_id")" --property=ActiveState --value)" == "failed" ]] || stop "Translation service is not failed."
-  run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 \
-    "$repository/scripts/translation/recover_translation_failure.py" \
-    --request "$job_dir/request.json" \
-    --failure "$job_dir/failed-output.json" \
-    --glossary "$repository/config/translation/glossary.json" \
-    --output "$job_dir/result.json"
+  if [[ ! -e "$job_dir/result.json" ]]; then
+    run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 \
+      "$repository/scripts/translation/recover_translation_failure.py" \
+      --request "$job_dir/request.json" \
+      --failure "$job_dir/failed-output.json" \
+      --glossary "$repository/config/translation/glossary.json" \
+      --output "$job_dir/result.json"
+  fi
   [[ -f "$job_dir/result.json" && ! -L "$job_dir/result.json" ]] || stop "Recovered result was not created."
+  run_as_service env PYTHONDONTWRITEBYTECODE=1 python3 - \
+    "$job_dir/request.json" "$publisher_data/states" "$job_id" <<'PY'
+import json
+import os
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+state_path = Path(sys.argv[2]) / f"{request['articleId']}.json"
+state = json.loads(state_path.read_text(encoding="utf-8"))
+if state.get("jobId") != sys.argv[3] or state.get("status") != "failed":
+    raise SystemExit("publisher translation state is not the matching failed job")
+state["status"] = "running"
+state.pop("error", None)
+state["updatedAt"] = datetime.now(timezone.utc).isoformat()
+descriptor, temporary = tempfile.mkstemp(prefix=f".{state_path.name}.", dir=state_path.parent)
+try:
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        json.dump(state, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, state_path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
   echo "PASS: Completed translation recovered from $job_id."
 }
 
