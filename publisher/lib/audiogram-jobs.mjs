@@ -5,6 +5,7 @@ import { slugify } from "./release.mjs";
 
 const JOB_TIMEOUT_MS = 35 * 60 * 1000;
 const JOB_ID = /^audiogram-es-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
+let audiogramQueueBusy = false;
 
 async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.saving`;
@@ -13,11 +14,20 @@ async function atomicJson(path, value) {
 }
 
 export async function queueAudiogram({ draft, audio, queueRoot, statesRoot, now = new Date() }) {
+  if (audiogramQueueBusy) throw new Error("Ya hay un video preparándose.");
+  audiogramQueueBusy = true;
+  try {
   if (audio.status !== "completed" || audio.draftRevision !== draft.revision || audio.jobs?.es?.status !== "completed") {
     throw new Error("completed current Spanish audio is required for the audiogram");
   }
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
+  try {
+    const existing = JSON.parse(await readFile(join(statesRoot, `audiogram-${draft.articleId}.json`), "utf8"));
+    if (["queued", "running"].includes(existing.status)) throw new Error("Ya hay un video preparándose.");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
   const jobId = `audiogram-es-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
   if (!JOB_ID.test(jobId)) throw new Error("audiogram job identity is invalid");
   const canonicalUrl = `https://fanaticosos.com/blog/${slugify(draft.title)}/`;
@@ -36,6 +46,9 @@ export async function queueAudiogram({ draft, audio, queueRoot, statesRoot, now 
   await atomicJson(join(statesRoot, `audiogram-${draft.articleId}.json`), state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
   return state;
+  } finally {
+    audiogramQueueBusy = false;
+  }
 }
 
 export async function readAudiogramState(statesRoot, articleId) {

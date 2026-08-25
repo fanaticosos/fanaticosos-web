@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { ttsRequestsForDraft } from "./tts-jobs.mjs";
@@ -28,11 +28,15 @@ export async function saveSpanishAudio({ draft, translation, buffer, jobsRoot, s
   try {
     metadata = probe ? await probe(path) : JSON.parse((await execFileAsync("ffprobe", ["-v", "error", "-show_entries", "format=duration:stream=codec_name,sample_rate,channels", "-of", "json", path])).stdout);
   } catch {
+    await rm(join(jobsRoot, jobId), { recursive: true, force: true });
     throw new Error("El archivo no es un MP3 válido.");
   }
   const stream = metadata.streams?.find((value) => value.codec_name === "mp3");
   const durationSeconds = Number(metadata.format?.duration);
-  if (!stream || !Number.isFinite(durationSeconds) || durationSeconds <= 0) throw new Error("El archivo no es un MP3 válido.");
+  if (!stream || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    await rm(join(jobsRoot, jobId), { recursive: true, force: true });
+    throw new Error("El archivo no es un MP3 válido.");
+  }
   const sha256 = createHash("sha256").update(buffer).digest("hex");
   const result = { schemaVersion: 1, locale: "es", file, sizeBytes: buffer.length, sha256, durationSeconds, codec: "mp3", sampleRate: Number(stream.sample_rate) || null, channels: Number(stream.channels) || null, voice: "Audio proporcionado por el autor", engine: "MP3 uploaded", textHash: requests.es.sourceRevision, generatedAt: now.toISOString() };
   await atomicJson(join(audioDir, "result.json"), result);

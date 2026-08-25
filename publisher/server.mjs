@@ -223,10 +223,22 @@ export function createPublisherServer({
     });
   }
   async function reconcilePublisherJobs() {
-    await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
-    await reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed });
-    await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
-    await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
+    const operations = [
+      ["translations", () => reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed })],
+      ["audio", () => reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed })],
+      ["audiograms", () => reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed })],
+      ["releases", () => reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed })],
+    ];
+    const failures = [];
+    for (const [name, operation] of operations) {
+      try {
+        await operation();
+      } catch (error) {
+        failures.push({ name, error });
+        console.error(`publisher ${name} reconciliation failed`, error);
+      }
+    }
+    return failures;
   }
   const server = createServer(async (request, response) => {
     try {
@@ -312,6 +324,9 @@ export function createPublisherServer({
         const contentType = request.headers["content-type"]?.split(";", 1)[0] ?? "";
         if (contentType === "audio/mpeg") {
           const articleId = url.searchParams.get("articleId") ?? String(request.headers["x-article-id"] ?? "");
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(articleId)) {
+            throw new Error("El identificador del borrador no es válido.");
+          }
           let draft;
           try { draft = await readDraft(draftsRoot, articleId); } catch (error) { throw new Error(`No se encontró el borrador indicado (${error.code || "error"}).`); }
           const expectedRevision = Number(url.searchParams.get("revision") ?? request.headers["x-draft-revision"]);

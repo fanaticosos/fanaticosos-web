@@ -2,6 +2,22 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+const draftUpdates = new Map();
+
+async function exclusively(articleId, operation) {
+  const previous = draftUpdates.get(articleId) ?? Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => { release = resolve; });
+  draftUpdates.set(articleId, current);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (draftUpdates.get(articleId) === current) draftUpdates.delete(articleId);
+  }
+}
+
 const STATUSES = new Set(["draft", "review", "ready"]);
 
 function requiredText(value, field, maximum) {
@@ -82,7 +98,8 @@ export async function readDraft(root, articleId) {
 export async function listDrafts(root) {
   await mkdir(root, { recursive: true, mode: 0o700 });
   const names = (await readdir(root)).filter((name) => /^[0-9a-f-]{36}\.json$/.test(name));
-  const drafts = await Promise.all(names.map((name) => readDraft(root, name.slice(0, -5))));
+  const results = await Promise.allSettled(names.map((name) => readDraft(root, name.slice(0, -5))));
+  const drafts = results.filter(({ status }) => status === "fulfilled").map(({ value }) => value);
   return drafts.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
@@ -100,17 +117,19 @@ export async function writeDraft(root, draft) {
 }
 
 export async function updateDraft(root, articleId, expectedRevision, ownerFields, now = new Date()) {
-  const existing = await readDraft(root, articleId);
-  if (existing.revision !== expectedRevision) {
-    throw new Error("draft was changed in another browser session");
-  }
-  const normalized = validateOwnerFields(ownerFields);
-  const existingOwnerFields = validateOwnerFields(existing);
-  if (JSON.stringify(normalized) === JSON.stringify(existingOwnerFields)) return existing;
-  return writeDraft(root, {
-    ...existing,
-    ...normalized,
-    revision: existing.revision + 1,
-    updatedAt: now.toISOString(),
+  return exclusively(articleId, async () => {
+    const existing = await readDraft(root, articleId);
+    if (existing.revision !== expectedRevision) {
+      throw new Error("draft was changed in another browser session");
+    }
+    const normalized = validateOwnerFields(ownerFields);
+    const existingOwnerFields = validateOwnerFields(existing);
+    if (JSON.stringify(normalized) === JSON.stringify(existingOwnerFields)) return existing;
+    return writeDraft(root, {
+      ...existing,
+      ...normalized,
+      revision: existing.revision + 1,
+      updatedAt: now.toISOString(),
+    });
   });
 }

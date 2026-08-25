@@ -57,6 +57,9 @@ class AdminHelperTests(unittest.TestCase):
                 "translation-status",
                 "translation-result",
                 "translation-failure",
+                "export-translation-failure",
+                "recover-translation",
+                "repair-noop-draft",
                 "host-health",
                 "update-admin",
                 "install-kokoro-runtime",
@@ -116,6 +119,12 @@ class AdminHelperTests(unittest.TestCase):
                 "export-azure-voice-diagnostic",
             ],
         )
+
+    def test_translation_failure_export_refuses_existing_destination(self):
+        exporter = self.helper.split("command_export_translation_failure()", 1)[1].split(
+            "\n}\n", 1
+        )[0]
+        self.assertIn('[[ ! -e "$destination" && ! -L "$destination" ]]', exporter)
 
     def test_job_import_is_fixed_scoped_and_validated(self):
         importer = self.helper.split("command_import_job_request()", 1)[1].split(

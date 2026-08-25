@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtemp, stat } from "node:fs/promises";
+import { mkdtemp, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { newDraft, readDraft, updateDraft, validateOwnerFields, writeDraft } from "../lib/drafts.mjs";
+import { listDrafts, newDraft, readDraft, updateDraft, validateOwnerFields, writeDraft } from "../lib/drafts.mjs";
 
 const valid = {
   title: "Los Bears ganan",
@@ -45,6 +45,27 @@ test("revision check prevents one browser from overwriting another", async () =>
     updateDraft(root, draft.articleId, 1, { ...valid, title: "Edición vieja" }),
     /another browser session/,
   );
+});
+
+test("simultaneous edits cannot both overwrite the same revision", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-drafts-"));
+  const draft = newDraft(valid);
+  await writeDraft(root, draft);
+  const results = await Promise.allSettled([
+    updateDraft(root, draft.articleId, 1, { ...valid, title: "Primera edición" }),
+    updateDraft(root, draft.articleId, 1, { ...valid, title: "Segunda edición" }),
+  ]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  assert.equal(results.filter(({ status }) => status === "rejected").length, 1);
+  assert.equal((await readDraft(root, draft.articleId)).revision, 2);
+});
+
+test("one corrupt draft does not hide every valid draft", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-drafts-"));
+  const draft = newDraft(valid);
+  await writeDraft(root, draft);
+  await writeFile(join(root, "00000000-0000-4000-8000-000000000099.json"), "not-json");
+  assert.deepEqual((await listDrafts(root)).map(({ articleId }) => articleId), [draft.articleId]);
 });
 
 test("saving an unchanged draft preserves its revision and completed artifacts", async () => {

@@ -49,3 +49,22 @@ test("simultaneous release requests admit exactly one build", async () => {
   assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
   assert.equal(results.filter(({ status }) => status === "rejected").length, 1);
 });
+
+test("a stale release lock is failed and does not block a new build", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-release-stale-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  await mkdir(statesRoot, { recursive: true });
+  await writeFile(join(statesRoot, `release-${draft.articleId}.json`), JSON.stringify({
+    schemaVersion: 1,
+    articleId: draft.articleId,
+    draftRevision: draft.revision,
+    jobId: "release-00000000000040008000000000000001-r5-abcdef12",
+    status: "running",
+    createdAt: "2026-08-25T00:00:00.000Z",
+    updatedAt: "2026-08-25T00:00:00.000Z",
+  }));
+  const next = { ...draft, articleId: "00000000-0000-4000-8000-000000000004" };
+  await assert.doesNotReject(queueRelease({ draft: next, queueRoot, statesRoot, now: new Date("2026-08-25T00:13:00.000Z") }));
+  assert.equal((await readReleaseState(statesRoot, draft.articleId)).status, "failed");
+});

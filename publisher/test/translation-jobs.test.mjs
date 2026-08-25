@@ -71,3 +71,14 @@ test("translation queue records the requested automatic preview workflow", async
     /workflow is invalid/,
   );
 });
+
+test("simultaneous translation requests admit only one model job", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translation-race-"));
+  const queueRoot = join(root, "queue"); const statesRoot = join(root, "states");
+  const results = await Promise.allSettled([
+    queueTranslation({ draft, queueRoot, statesRoot }),
+    queueTranslation({ draft, queueRoot, statesRoot }),
+  ]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  assert.equal(results.filter(({ status }) => status === "rejected").length, 1);
+});

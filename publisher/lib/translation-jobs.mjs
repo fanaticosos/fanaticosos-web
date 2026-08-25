@@ -6,6 +6,7 @@ const JOB_ID = /^translation-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
 // The systemd worker has a 60-minute hard stop. Allow reconciliation two
 // additional minutes so systemd can record the authoritative result first.
 const JOB_TIMEOUT_MS = 62 * 60 * 1000;
+let translationQueueBusy = false;
 
 async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.saving`;
@@ -58,6 +59,9 @@ export function translationRequestForDraft(draft) {
 }
 
 export async function queueTranslation({ draft, queueRoot, statesRoot, workflow = "manual", now = new Date() }) {
+  if (translationQueueBusy) throw new Error("translation is already running");
+  translationQueueBusy = true;
+  try {
   if (!["manual", "preview"].includes(workflow)) throw new Error("translation workflow is invalid");
   const jobId = `translation-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
   if (!JOB_ID.test(jobId)) throw new Error("translation job identity is invalid");
@@ -85,6 +89,9 @@ export async function queueTranslation({ draft, queueRoot, statesRoot, workflow 
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
   return state;
+  } finally {
+    translationQueueBusy = false;
+  }
 }
 
 export async function readTranslationState(statesRoot, articleId) {

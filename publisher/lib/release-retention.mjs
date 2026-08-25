@@ -8,7 +8,7 @@ async function optionalJson(path) {
   try {
     return JSON.parse(await readFile(path, "utf8"));
   } catch (error) {
-    if (error.code === "ENOENT" || error instanceof SyntaxError) return null;
+    if (["ENOENT", "EACCES", "EPERM"].includes(error.code) || error instanceof SyntaxError) return null;
     throw error;
   }
 }

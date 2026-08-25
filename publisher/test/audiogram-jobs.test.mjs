@@ -21,3 +21,14 @@ test("queues and reconciles a full Spanish audiogram", async () => {
   const state = JSON.parse(await readFile(join(statesRoot, `audiogram-${articleId}.json`), "utf8"));
   assert.equal(state.status, "completed");
 });
+
+test("simultaneous audiogram requests admit only one video job", async () => {
+  const root = await mkdtemp(join(tmpdir(), "audiogram-race-"));
+  const queueRoot = join(root, "queue"); const statesRoot = join(root, "states");
+  const results = await Promise.allSettled([
+    queueAudiogram({ draft, audio, queueRoot, statesRoot }),
+    queueAudiogram({ draft, audio, queueRoot, statesRoot }),
+  ]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  assert.equal(results.filter(({ status }) => status === "rejected").length, 1);
+});

@@ -60,6 +60,8 @@ for path, checksum in items:
     local = os.path.join(dist_root, path.lstrip("/"))
     if path.endswith("/"):
         local = os.path.join(local, "index.html")
+    if os.path.commonpath((os.path.realpath(dist_root), os.path.realpath(local))) != os.path.realpath(dist_root):
+        raise SystemExit(f"release output escapes dist root: {path}")
     if not os.path.isfile(local) or os.path.getsize(local) == 0:
         raise SystemExit(f"release output is missing: {path}")
     if checksum:

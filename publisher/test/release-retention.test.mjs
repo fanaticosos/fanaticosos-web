@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -44,6 +44,17 @@ test("retention removes nothing while an active or unknown job exists", async ()
   assert.equal(plan.deferred, true);
   assert.deepEqual(plan.remove, []);
   assert.ok(plan.protected.some(({ jobId, reason }) => jobId === job(30) && reason === "active-or-unknown"));
+});
+
+test("an unreadable artifact defers one job without crashing retention", async (context) => {
+  if (process.getuid?.() === 0) context.skip("root can read mode-000 fixtures");
+  const root = await mkdtemp(join(tmpdir(), "release-retention-unreadable-"));
+  await success(root, job(1), "2026-01-01T12:00:00Z");
+  await failure(root, job(2), "2026-01-02T12:00:00Z");
+  await chmod(join(root, job(2), "failure.json"), 0o000);
+  const plan = await retentionPlan({ releasesRoot: root, keepSuccessful: 1 });
+  assert.equal(plan.deferred, true);
+  assert.ok(plan.protected.some(({ jobId, reason }) => jobId === job(2) && reason === "active-or-unknown"));
 });
 
 test("dry-run changes nothing and apply removes only planned directories", async () => {

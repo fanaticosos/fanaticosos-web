@@ -180,6 +180,17 @@ test("audio queue preserves the automatic preview workflow", async () => {
   assert.equal(state.workflow, "preview");
 });
 
+test("simultaneous audio requests admit only one English TTS job", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-tts-race-"));
+  const queueRoot = join(root, "queue"); const statesRoot = join(root, "states");
+  const results = await Promise.allSettled([
+    queueTts({ draft, translation, queueRoot, statesRoot, policyRevision }),
+    queueTts({ draft, translation, queueRoot, statesRoot, policyRevision }),
+  ]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  assert.equal(results.filter(({ status }) => status === "rejected").length, 1);
+});
+
 test("Spanish regeneration is replaced by MP3 upload", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-es-only-"));
   const queueRoot = join(root, "queue");

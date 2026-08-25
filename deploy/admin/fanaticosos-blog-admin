@@ -378,6 +378,7 @@ command_export_translation_failure() {
   failure="$jobs_root/$job_id/failed-output.json"
   destination="/home/sysadmin/$job_id-failed-output.json"
   [[ -f "$failure" && ! -L "$failure" ]] || stop "Failure output is missing for $job_id."
+  [[ ! -e "$destination" && ! -L "$destination" ]] || stop "Export destination already exists: $destination"
   install -o sysadmin -g sysadmin -m 0600 "$failure" "$destination"
   echo "PASS: Failure output exported to $destination."
 }

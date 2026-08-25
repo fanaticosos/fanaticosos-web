@@ -5,6 +5,11 @@ import { join } from "node:path";
 const TIMEOUT_MS = 12 * 60 * 1000;
 let releaseQueueBusy = false;
 
+function isStale(state, now) {
+  const timestamp = Date.parse(state.updatedAt || state.createdAt);
+  return !Number.isFinite(timestamp) || now.getTime() - timestamp > TIMEOUT_MS;
+}
+
 async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.saving`;
   await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
@@ -20,7 +25,15 @@ export async function queueRelease({ draft, queueRoot, statesRoot, now = new Dat
     const active = [];
     for (const name of (await readdir(statesRoot)).filter((name) => /^release-[0-9a-f-]{36}\.json$/.test(name))) {
       const state = JSON.parse(await readFile(join(statesRoot, name), "utf8"));
-      if (["queued", "running"].includes(state.status)) active.push(state);
+      if (!["queued", "running"].includes(state.status)) continue;
+      if (isStale(state, now)) {
+        state.status = "failed";
+        state.error = "La preparación privada anterior dejó de responder y fue liberada automáticamente.";
+        state.updatedAt = now.toISOString();
+        await atomicJson(join(statesRoot, name), state);
+      } else {
+        active.push(state);
+      }
     }
     if (active.length) throw new Error("Ya hay una preparación de publicación en curso.");
     const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;

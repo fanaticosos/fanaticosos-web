@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 
 const JOB_TIMEOUT_MS = 17 * 60 * 1000;
 const JOB_ID = /^tts-(es|en)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
+let ttsQueueBusy = false;
 
 async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.saving`;
@@ -89,6 +90,9 @@ export function ttsRequestsForDraft(draft, translation) {
 }
 
 export async function queueTts({ draft, translation, queueRoot, statesRoot, policyRevision, workflow = "manual", now = new Date() }) {
+  if (ttsQueueBusy) throw new Error("audio generation is already running");
+  ttsQueueBusy = true;
+  try {
   if (!["manual", "preview"].includes(workflow)) throw new Error("audio workflow is invalid");
   if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
@@ -125,9 +129,15 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
   return state;
+  } finally {
+    ttsQueueBusy = false;
+  }
 }
 
 export async function queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision, now = new Date() }) {
+  if (ttsQueueBusy) throw new Error("audio generation is already running");
+  ttsQueueBusy = true;
+  try {
   if (locale !== "en") throw new Error("Spanish audio must be uploaded as an MP3");
   if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
@@ -158,6 +168,9 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
   return state;
+  } finally {
+    ttsQueueBusy = false;
+  }
 }
 
 export async function readTtsState(statesRoot, articleId) {

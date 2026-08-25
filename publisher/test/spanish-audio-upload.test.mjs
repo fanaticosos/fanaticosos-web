@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -20,4 +20,20 @@ test("owner MP3 is revision-bound and completes bilingual audio when English is 
   assert.equal(audio.jobs.es.result.file, `es-${draft.articleId}.mp3`);
   assert.equal(audio.jobs.es.result.durationSeconds, 321.5);
   assert.equal((await readFile(join(jobsRoot, audio.jobs.es.jobId, "audio", audio.jobs.es.result.file))).length, 2048);
+});
+
+test("invalid Spanish audio is removed after validation fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "spanish-upload-invalid-"));
+  const statesRoot = join(root, "states"); const jobsRoot = join(root, "jobs");
+  await assert.rejects(saveSpanishAudio({
+    draft,
+    translation,
+    buffer: Buffer.alloc(2048, 1),
+    jobsRoot,
+    statesRoot,
+    policyRevision: "f".repeat(64),
+    probe: async () => { throw new Error("bad audio"); },
+  }), /no es un MP3 válido/);
+  await access(jobsRoot);
+  assert.deepEqual(await readdir(jobsRoot), []);
 });
