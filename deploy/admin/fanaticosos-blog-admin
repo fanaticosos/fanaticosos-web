@@ -85,6 +85,7 @@ Commands:
   translation-status JOB_ID
   translation-result JOB_ID
   translation-failure JOB_ID
+  export-translation-failure JOB_ID
   host-health
   update-admin EXPECTED_COMMIT
   install-kokoro-runtime EXPECTED_COMMIT
@@ -365,6 +366,18 @@ print(f"Error: {failure['error']}")
 print("Final 4000 characters:")
 print(failure["lastRawOutput"][-4000:])
 PY
+}
+
+command_export_translation_failure() {
+  local job_id="$1"
+  local failure
+  local destination
+  validate_job_id "$job_id"
+  failure="$jobs_root/$job_id/failed-output.json"
+  destination="/home/sysadmin/$job_id-failed-output.json"
+  [[ -f "$failure" && ! -L "$failure" ]] || stop "Failure output is missing for $job_id."
+  install -o sysadmin -g sysadmin -m 0600 "$failure" "$destination"
+  echo "PASS: Failure output exported to $destination."
 }
 
 command_host_health() {
@@ -1666,6 +1679,10 @@ case "$command" in
   translation-failure)
     [[ $# == 1 ]] || stop "translation-failure requires JOB_ID."
     command_translation_failure "$1"
+    ;;
+  export-translation-failure)
+    [[ $# == 1 ]] || stop "export-translation-failure requires JOB_ID."
+    command_export_translation_failure "$1"
     ;;
   host-health)
     [[ $# == 0 ]] || stop "host-health accepts no arguments."
