@@ -101,6 +101,24 @@ def extract_translations(raw_output: str, expected_ids: list[str]) -> dict[str, 
             if isinstance(decoded_array, list):
                 candidates.append({"translations": decoded_array})
 
+    # Some model builds prefix a complete bare array with commentary or
+    # thinking text. Scan for decodable arrays just as we scan for wrapped
+    # objects below; the expected-id validation later prevents an unrelated
+    # array from being accepted.
+    position = 0
+    while True:
+        start = text.find("[", position)
+        if start < 0:
+            break
+        try:
+            decoded, consumed = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            position = start + 1
+            continue
+        if isinstance(decoded, list):
+            candidates.append({"translations": decoded})
+        position = start + max(consumed, 1)
+
     position = 0
     while True:
         start = text.find("{", position)
