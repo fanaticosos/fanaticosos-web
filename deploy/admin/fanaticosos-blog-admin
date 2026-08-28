@@ -120,6 +120,7 @@ Commands:
   azure-speech-credential-status
   install-openai-credential EXPECTED_COMMIT
   openai-credential-status
+  run-openai-tts-samples EXPECTED_COMMIT ARTICLE_ID
   install-cloudflare-pages-credential EXPECTED_COMMIT
   cloudflare-pages-credential-status
   install-pages-deployment-runtime EXPECTED_COMMIT
@@ -865,6 +866,25 @@ command_openai_credential_status() {
   [[ "$(stat -c '%U:%G:%a' "$openai_credential_file")" == "root:root:600" ]] || stop "OpenAI credential permissions are incorrect."
   [[ "$(sed -n 's/^OPENAI_API_KEY=//p' "$openai_credential_file" | wc -c)" -ge 24 ]] || stop "OpenAI API key is missing."
   echo "PASS: OpenAI credential exists with root-only permissions."
+}
+
+command_run_openai_tts_samples() {
+  local expected="$1"
+  local article_id="$2"
+  local api_key
+  local draft="$publisher_data/drafts/$article_id.json"
+  local translation="$publisher_data/states/$article_id.json"
+  local output="$data_root/work/openai-tts-samples-$article_id"
+  require_repository_commit "$expected"
+  [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
+  command_openai_credential_status >/dev/null
+  [[ -f "$draft" && -f "$translation" ]] || stop "Draft or translation is missing."
+  [[ ! -e "$output" ]] || stop "OpenAI sample output already exists."
+  api_key="$(sed -n 's/^OPENAI_API_KEY=//p' "$openai_credential_file")"
+  run_as_service env OPENAI_API_KEY="$api_key" PYTHONDONTWRITEBYTECODE=1 python3 \
+    "$repository/scripts/tts/generate_openai_samples.py" --draft "$draft" --translation "$translation" --output "$output"
+  unset api_key
+  echo "PASS: Private OpenAI TTS samples created at $output."
 }
 
 command_install_cloudflare_pages_credential() {
@@ -1910,6 +1930,10 @@ case "$command" in
   openai-credential-status)
     [[ $# == 0 ]] || stop "openai-credential-status takes no arguments."
     command_openai_credential_status
+    ;;
+  run-openai-tts-samples)
+    [[ $# == 2 ]] || stop "run-openai-tts-samples requires EXPECTED_COMMIT ARTICLE_ID."
+    command_run_openai_tts_samples "$1" "$2"
     ;;
   install-cloudflare-pages-credential)
     [[ $# == 1 ]] || stop "install-cloudflare-pages-credential requires EXPECTED_COMMIT."
