@@ -79,7 +79,7 @@ export function releaseArtifactsEligible({ draft, audio, requests, release, depl
     && audio.sourceRevisions?.en === requests.en.sourceRevision;
   if (sourcesAreCurrent && audio.policyRevision === currentPolicyRevision) return true;
 
-  return audio?.status === "completed"
+  const exactReleasedArtifact = audio?.status === "completed"
     && audio.draftRevision === draft.revision
     && release?.status === "completed"
     && release.draftRevision === draft.revision
@@ -88,6 +88,22 @@ export function releaseArtifactsEligible({ draft, audio, requests, release, depl
     && deployment.releaseJobId === release.jobId
     && (!release.manifest?.assets?.esAudio || release.manifest.assets.esAudio.sha256 === audio.jobs?.es?.result?.sha256)
     && release.manifest?.assets?.enAudio?.sha256 === audio.jobs?.en?.result?.sha256;
+  if (exactReleasedArtifact) return true;
+
+  const deployedAt = Date.parse(deployment?.receipt?.validatedAt ?? "");
+  return audio?.status === "completed"
+    && audio.draftRevision === draft.revision
+    && deployment?.status === "completed"
+    && deployment.draftRevision === draft.revision
+    && Number.isFinite(deployedAt)
+    && ["es", "en"].every((locale) => {
+      const result = audio.jobs?.[locale]?.result;
+      const generatedAt = Date.parse(result?.generatedAt ?? "");
+      return /^[0-9a-f]{64}$/.test(result?.sha256 ?? "")
+        && result?.sourceRevision === audio.sourceRevisions?.[locale]
+        && Number.isFinite(generatedAt)
+        && generatedAt <= deployedAt;
+    });
 }
 
 export function translationWithFreshness(translation, draft) {

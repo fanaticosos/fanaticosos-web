@@ -69,6 +69,21 @@ test("release preparation accepts current audio policy or an exact previously pu
   assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment: { ...deployment, releaseJobId: "another-release" }, currentPolicyRevision: "current-policy" }), false);
 });
 
+test("release preparation can recover a deployed revision after its retained release record is gone", () => {
+  const draft = { revision: 1 };
+  const requests = { es: { sourceRevision: "new-es" }, en: { sourceRevision: "new-en" } };
+  const result = (sourceRevision, hashCharacter) => ({ sourceRevision, sha256: hashCharacter.repeat(64), generatedAt: "2026-08-01T11:00:00Z" });
+  const audio = {
+    status: "completed", draftRevision: 1, policyRevision: "historic-policy",
+    sourceRevisions: { es: "historic-es", en: "historic-en" },
+    jobs: { es: { result: result("historic-es", "e") }, en: { result: result("historic-en", "b") } },
+  };
+  const deployment = { status: "completed", draftRevision: 1, receipt: { validatedAt: "2026-08-01T12:00:00Z" } };
+  assert.equal(releaseArtifactsEligible({ draft, audio, requests, release: null, deployment, currentPolicyRevision: "current-policy" }), true);
+  audio.jobs.en.result.generatedAt = "2026-08-01T13:00:00Z";
+  assert.equal(releaseArtifactsEligible({ draft, audio, requests, release: null, deployment, currentPolicyRevision: "current-policy" }), false);
+});
+
 test("translation freshness follows article text revisions", () => {
   const translation = { status: "completed", draftRevision: 2 };
   assert.equal(translationWithFreshness(translation, { revision: 2 }).status, "completed");
