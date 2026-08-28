@@ -17,7 +17,13 @@ export function validateGeneratedMedia(outputFiles, environment = process.env) {
   const expected = [`audio/en-${articleId}.mp3`, `audio/es-${articleId}.mp3`];
   const failures = [];
   for (const file of generatedMedia) {
-    if (!expected.includes(file)) failures.push(`private release dist contains unexpected generated audio: ${file}`);
+    const match = /^audio\/(en|es)-([0-9a-f-]{36})\.mp3$/.exec(file);
+    if (!match || !articleIdPattern.test(match[2])) {
+      failures.push(`private release dist contains unexpected generated audio: ${file}`);
+      continue;
+    }
+    const companion = `audio/${match[1] === "en" ? "es" : "en"}-${match[2]}.mp3`;
+    if (match[2] !== articleId && !generatedMedia.includes(companion)) failures.push(`private release dist has an incomplete bilingual audio pair: ${file}`);
   }
   for (const file of expected) {
     if (!generatedMedia.includes(file)) failures.push(`private release dist is missing required generated audio: ${file}`);
