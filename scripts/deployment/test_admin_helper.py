@@ -92,6 +92,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-openai-credential",
                 "openai-credential-status",
                 "run-openai-tts-sample",
+                "export-openai-tts-sample",
                 "install-cloudflare-pages-credential",
                 "cloudflare-pages-credential-status",
                 "install-pages-deployment-runtime",
