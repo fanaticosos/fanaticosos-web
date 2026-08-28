@@ -1,0 +1,25 @@
+---
+import BackLink from "../../../components/BackLink.astro";
+import SiteFooter from "../../../components/SiteFooter.astro";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import "../../../styles/info-page.css";
+---
+
+<BaseLayout title="Terms of Use — FanaticOSOS" lang="en" description="Terms of use for the FanaticOSOS website." canonicalPath="/en/pages/terms" bodyClass="info-page terms-page" alternatePaths={{ es: "/pages/terms", en: "/en/pages/terms", "x-default": "/pages/terms" }}>
+  <div class="page-wrap">
+    <BackLink locale="en" />
+    <a class="back-link" href="/pages/terms" lang="es" hreflang="es">Leer en español</a>
+    <p class="page-eyebrow">FanaticOSOS</p>
+    <h1 class="page-title">Terms of Use</h1>
+    <p class="page-date">Last updated: June 2025</p>
+    <div class="terms-body">
+      <h2>1. Acceptance</h2><p>By accessing and using fanaticosos.com, you agree to these terms of use. If you do not agree, please do not use the site.</p>
+      <h2>2. Content</h2><p>FanaticOSOS is an independent Chicago Bears fan-content site. We are not officially affiliated with the Chicago Bears, the NFL, or any of their trademarks.</p><p>All content produced by FanaticOSOS—including podcasts, articles, and videos—is the property of its creators and may not be reproduced without express permission.</p>
+      <h2>3. User conduct</h2><p>When interacting with our community on Discord or social media, you agree to maintain a respectful environment. Offensive, discriminatory, or spam content is prohibited.</p>
+      <h2>4. Third-party services</h2><p>This site links to external platforms including YouTube, Twitch, and RedCircle. We are not responsible for their content or policies.</p>
+      <h2>5. Changes</h2><p>We may modify these terms at any time. Changes take effect when published on this page.</p>
+      <h2>6. Contact</h2><p>For questions about these terms, contact <a href="mailto:podcast@fanaticosos.com">podcast@fanaticosos.com</a>.</p>
+    </div>
+  </div>
+  <SiteFooter locale="en" />
+</BaseLayout>

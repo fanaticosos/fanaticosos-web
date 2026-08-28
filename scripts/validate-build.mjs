@@ -32,6 +32,7 @@ const routes = [
     lang: "es",
     canonical: "https://fanaticosos.com/pages/contact",
     requiredLinks: ["/", "/pages/contact", "/pages/terms"],
+    alternates: { es: "https://fanaticosos.com/pages/contact", en: "https://fanaticosos.com/en/pages/contact", "x-default": "https://fanaticosos.com/pages/contact" },
   },
   {
     route: "/pages/terms",
@@ -40,6 +41,25 @@ const routes = [
     lang: "es",
     canonical: "https://fanaticosos.com/pages/terms",
     requiredLinks: ["/", "/pages/contact", "/pages/terms"],
+    alternates: { es: "https://fanaticosos.com/pages/terms", en: "https://fanaticosos.com/en/pages/terms", "x-default": "https://fanaticosos.com/pages/terms" },
+  },
+  {
+    route: "/en/pages/contact",
+    file: "en/pages/contact/index.html",
+    title: "Contact — FanaticOSOS",
+    lang: "en",
+    canonical: "https://fanaticosos.com/en/pages/contact",
+    requiredLinks: ["/", "/pages/contact", "/en/pages/contact", "/en/pages/terms"],
+    alternates: { es: "https://fanaticosos.com/pages/contact", en: "https://fanaticosos.com/en/pages/contact", "x-default": "https://fanaticosos.com/pages/contact" },
+  },
+  {
+    route: "/en/pages/terms",
+    file: "en/pages/terms/index.html",
+    title: "Terms of Use — FanaticOSOS",
+    lang: "en",
+    canonical: "https://fanaticosos.com/en/pages/terms",
+    requiredLinks: ["/", "/pages/terms", "/en/pages/contact", "/en/pages/terms"],
+    alternates: { es: "https://fanaticosos.com/pages/terms", en: "https://fanaticosos.com/en/pages/terms", "x-default": "https://fanaticosos.com/pages/terms" },
   },
   {
     route: "/blog/",
@@ -60,7 +80,7 @@ const routes = [
     title: "Blog — FanaticOSOS",
     lang: "en",
     canonical: "https://fanaticosos.com/en/blog/",
-    requiredLinks: ["/", "/blog/", "/pages/contact", "/pages/terms"],
+    requiredLinks: ["/", "/blog/", "/en/pages/contact", "/en/pages/terms"],
     alternates: {
       es: "https://fanaticosos.com/blog/",
       en: "https://fanaticosos.com/en/blog/",
@@ -250,6 +270,7 @@ await requireOutput("rss.xml", [/<language>es<\/language>/, /<title>FanaticOSOS<
 await requireOutput("en/rss.xml", [/<language>en<\/language>/, /<title>FanaticOSOS<\/title>/]);
 await requireOutput("robots.txt", [/User-agent: \*/, /Sitemap: https:\/\/fanaticosos\.com\/sitemap-index\.xml/]);
 await requireOutput("sitemap-index.xml", [/https:\/\/fanaticosos\.com\/sitemap-0\.xml/]);
+await requireOutput("404.html", [/Página no encontrada/, /Error 404/]);
 await requireOutput("sitemap-0.xml", [
   /https:\/\/fanaticosos\.com\/blog\//,
   /https:\/\/fanaticosos\.com\/en\/blog\//,

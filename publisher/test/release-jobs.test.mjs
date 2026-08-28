@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -36,6 +36,22 @@ test("a second release cannot overlap an active release", async () => {
     /Ya hay una preparación de publicación en curso/,
   );
   await assert.doesNotReject(stat(join(queueRoot, ".wake")));
+});
+
+test("rebuilding a published article preserves its original publication date", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-release-date-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  await mkdir(statesRoot, { recursive: true });
+  await writeFile(join(statesRoot, `release-${draft.articleId}.json`), JSON.stringify({
+    schemaVersion: 1, articleId: draft.articleId, draftRevision: 5,
+    jobId: "release-00000000000040008000000000000001-r5-abcdef12", status: "completed",
+    createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:01:00.000Z",
+    manifest: { publishedAt: "2026-07-31T09:00:00-05:00" },
+  }));
+  const state = await queueRelease({ draft, queueRoot, statesRoot, now: new Date("2026-08-28T23:00:00Z") });
+  const request = JSON.parse(await readFile(join(queueRoot, state.jobId, "request.json"), "utf8"));
+  assert.equal(request.publishedAt, "2026-07-31T09:00:00-05:00");
 });
 
 test("simultaneous release requests admit exactly one build", async () => {

@@ -22,6 +22,10 @@ export async function queueRelease({ draft, queueRoot, statesRoot, now = new Dat
   try {
     await mkdir(queueRoot, { recursive: true, mode: 0o700 });
     await mkdir(statesRoot, { recursive: true, mode: 0o700 });
+    const previous = await readFile(join(statesRoot, `release-${draft.articleId}.json`), "utf8").then(JSON.parse).catch((error) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
     const active = [];
     for (const name of (await readdir(statesRoot)).filter((name) => /^release-[0-9a-f-]{36}\.json$/.test(name))) {
       const state = JSON.parse(await readFile(join(statesRoot, name), "utf8"));
@@ -37,7 +41,10 @@ export async function queueRelease({ draft, queueRoot, statesRoot, now = new Dat
     }
     if (active.length) throw new Error("Ya hay una preparación de publicación en curso.");
     const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
-    const request = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: zonedIso(now, "America/Chicago") };
+    const publishedAt = previous?.status === "completed" && !Number.isNaN(Date.parse(previous.manifest?.publishedAt))
+      ? previous.manifest.publishedAt
+      : zonedIso(now, "America/Chicago");
+    const request = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt };
     const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
     await mkdir(temporary, { mode: 0o700 });
     await atomicJson(join(temporary, "request.json"), request);

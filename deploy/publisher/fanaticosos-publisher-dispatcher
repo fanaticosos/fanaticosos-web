@@ -81,7 +81,7 @@ for queued in "$queue_root"/release-*-r*-*; do
   if [[ "$release_kind" == "music" ]]; then
     runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_music_release.mjs" --request "$queued/request.json" --repository "$repository" --releases-root "$releases_root" --output "$releases_root/$job_id/release" --validate-only
   else
-    runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_release.mjs" --request "$queued/request.json" --repository "$repository" --publisher-root /opt/fanaticosos-blog/publisher --jobs-root "$jobs_root" --output "$releases_root/$job_id/release" --validate-only
+    runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_release.mjs" --request "$queued/request.json" --repository "$repository" --publisher-root /opt/fanaticosos-blog/publisher --jobs-root "$jobs_root" --releases-root "$releases_root" --output "$releases_root/$job_id/release" --validate-only
   fi
   mv "$queued" "$releases_root/$job_id"
   chown -R "$service_account:$service_account" "$releases_root/$job_id"

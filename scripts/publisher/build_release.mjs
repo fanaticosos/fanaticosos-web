@@ -38,6 +38,7 @@ async function main() {
   const repository = argument("--repository");
   const publisherRoot = argument("--publisher-root");
   const jobsRoot = argument("--jobs-root");
+  const releasesRoot = argument("--releases-root");
   const output = argument("--output");
   const request = validateRequest(await json(requestPath));
   if (process.argv.includes("--validate-only")) return;
@@ -54,6 +55,21 @@ async function main() {
     recursive: true,
     filter: (source) => ![".git", ".astro", "node_modules", "dist"].includes(basename(source)),
   });
+  const selected = join(releasesRoot, "current");
+  const hasSelectedRelease = await lstat(selected).then((value) => value.isSymbolicLink()).catch((error) => {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  });
+  if (hasSelectedRelease) {
+    for (const relative of ["src/content/articles", "public/audio", "public/images", "public/uploads"]) {
+      const source = join(selected, relative);
+      const exists = await lstat(source).then(() => true).catch((error) => {
+        if (error.code === "ENOENT") return false;
+        throw error;
+      });
+      if (exists) await cp(source, join(temporary, relative), { recursive: true, force: true });
+    }
+  }
   const stageModules = join(temporary, "node_modules");
   const repositoryModules = join(repository, "node_modules");
   await mkdir(stageModules, { mode: 0o700 });
@@ -64,7 +80,7 @@ async function main() {
   for (const [relative, contents] of Object.entries(release.files)) {
     const target = join(temporary, relative);
     await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, contents, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    await writeFile(target, contents, { encoding: "utf8", mode: 0o600 });
   }
   const siteSettings = await optionalFile(join(publisherRoot, "site-settings.json"));
   if (siteSettings) {
@@ -82,7 +98,7 @@ async function main() {
     }
     const target = join(temporary, asset.publicPath);
     await mkdir(dirname(target), { recursive: true });
-    await cp(source, target, { force: false, errorOnExist: true });
+    await cp(source, target, { force: true });
     copiedAssets[key] = { path: asset.publicPath, sha256: await sha256(target) };
   }
   const environment = {

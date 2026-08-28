@@ -1,0 +1,16 @@
+---
+import BackLink from "../components/BackLink.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/info-page.css";
+---
+
+<BaseLayout title="Página no encontrada — FanaticOSOS" description="La página solicitada no existe." canonicalPath="/404" bodyClass="info-page">
+  <div class="page-wrap">
+    <BackLink />
+    <p class="page-eyebrow">Error 404</p>
+    <h1 class="page-title">Página no encontrada</h1>
+    <p>El enlace puede haber cambiado o la página ya no está disponible.</p>
+  </div>
+  <SiteFooter />
+</BaseLayout>

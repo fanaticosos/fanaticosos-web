@@ -4,10 +4,13 @@ interface Props {
 }
 
 const { locale = "es" } = Astro.props;
+const year = new Date().getFullYear();
+const contactPath = locale === "es" ? "/pages/contact" : "/en/pages/contact";
+const termsPath = locale === "es" ? "/pages/terms" : "/en/pages/terms";
 ---
 
 <footer>
-  <span>© 2025 FanaticOSOS</span>
-  <a href="/pages/contact">{locale === "es" ? "Contacto" : "Contact"}</a>
-  <a href="/pages/terms">{locale === "es" ? "Términos" : "Terms"}</a>
+  <span>© {year} FanaticOSOS</span>
+  <a href={contactPath}>{locale === "es" ? "Contacto" : "Contact"}</a>
+  <a href={termsPath}>{locale === "es" ? "Términos" : "Terms"}</a>
 </footer>

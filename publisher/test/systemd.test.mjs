@@ -36,6 +36,7 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(dispatcher, /systemctl start --no-block/);
   assert.match(dispatcher, /fanaticosos-tts@\$job_id\.service/);
   assert.match(dispatcher, /fanaticosos-release@\$job_id\.service/);
+  assert.match(dispatcher, /build_release\.mjs[^\n]*--releases-root "\$releases_root"/);
   assert.match(dispatcher, /fanaticosos-music-release@\$job_id\.service/);
   assert.doesNotMatch(dispatcher, /eval /);
 });
@@ -59,6 +60,14 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /--releases-root "\$data_root\/publisher\/releases" --job-id "\$job_id"/);
   assert.doesNotMatch(music, /select_release\.mjs/);
   assert.match(musicBuild, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);
+});
+
+test("article releases preserve the selected production content set", async () => {
+  const build = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");
+  const releaseUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-release@.service", import.meta.url), "utf8");
+  assert.match(build, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);
+  assert.match(build, /join\(releasesRoot, "current"\)/);
+  assert.match(releaseUnit, /--releases-root \/opt\/fanaticosos-blog\/publisher\/releases/);
 });
 
 test("release retention is fixed, private, and bounded by the approved policy", async () => {

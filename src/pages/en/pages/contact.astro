@@ -1,0 +1,22 @@
+---
+import BackLink from "../../../components/BackLink.astro";
+import SiteFooter from "../../../components/SiteFooter.astro";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import "../../../styles/info-page.css";
+---
+
+<BaseLayout title="Contact — FanaticOSOS" lang="en" description="Contact FanaticOSOS by email, YouTube, X, or Discord." canonicalPath="/en/pages/contact" bodyClass="info-page contact-page" alternatePaths={{ es: "/pages/contact", en: "/en/pages/contact", "x-default": "/pages/contact" }}>
+  <div class="page-wrap">
+    <BackLink locale="en" />
+    <a class="back-link" href="/pages/contact" lang="es" hreflang="es">Leer en español</a>
+    <p class="page-eyebrow">FanaticOSOS</p>
+    <h1 class="page-title">Contact</h1>
+    <div class="contact-card">
+      <div class="contact-item"><div><div class="contact-label">General email</div><div class="contact-value"><a href="mailto:podcast@fanaticosos.com">podcast@fanaticosos.com</a></div></div></div>
+      <div class="contact-item"><div><div class="contact-label">YouTube</div><div class="contact-value"><a href="https://www.youtube.com/@fanaticosos" target="_blank" rel="noopener">@fanaticosos</a></div></div></div>
+      <div class="contact-item"><div><div class="contact-label">Twitter / X</div><div class="contact-value"><a href="https://x.com/fanaticososcom" target="_blank" rel="noopener">@fanaticososcom</a></div></div></div>
+      <div class="contact-item"><div><div class="contact-label">Discord</div><div class="contact-value"><a href="https://discord.gg/dRKEhxvsjH" target="_blank" rel="noopener">Join the server</a></div></div></div>
+    </div>
+  </div>
+  <SiteFooter locale="en" />
+</BaseLayout>
