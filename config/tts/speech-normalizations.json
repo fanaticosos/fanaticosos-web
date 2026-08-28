@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "name": "FanaticOSOS brand",
+      "pattern": "\\bFanatic(?:OSOS|-OSOS| OSOS)\\b",
+      "replacement": "fanaticosos",
+      "locales": ["es", "en"]
+    }
+  ]
+}
