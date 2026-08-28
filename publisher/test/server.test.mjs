@@ -62,9 +62,10 @@ test("release preparation accepts current audio policy or an exact previously pu
 
   assert.equal(releaseArtifactsEligible({ draft, audio: { ...audio, policyRevision: "current-policy" }, requests, release: null, deployment: null, currentPolicyRevision: "current-policy" }), true);
   assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment, currentPolicyRevision: "current-policy" }), true);
+  assert.equal(releaseArtifactsEligible({ draft, audio: { ...audio, sourceRevisions: { es: "historic-es", en: "historic-en" } }, requests, release, deployment, currentPolicyRevision: "current-policy" }), true);
   assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment: null, currentPolicyRevision: "current-policy" }), false);
   assert.equal(releaseArtifactsEligible({ draft, audio, requests, release: { ...release, manifest: { assets: { enAudio: { sha256: "changed" } } } }, deployment, currentPolicyRevision: "current-policy" }), false);
-  assert.equal(releaseArtifactsEligible({ draft, audio: { ...audio, sourceRevisions: { ...audio.sourceRevisions, en: "stale" } }, requests, release, deployment, currentPolicyRevision: "current-policy" }), false);
+  assert.equal(releaseArtifactsEligible({ draft, audio: { ...audio, sourceRevisions: { ...audio.sourceRevisions, en: "stale" } }, requests, release: null, deployment: null, currentPolicyRevision: "current-policy" }), false);
   assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment: { ...deployment, releaseJobId: "another-release" }, currentPolicyRevision: "current-policy" }), false);
 });
 

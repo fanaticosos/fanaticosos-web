@@ -77,10 +77,11 @@ export function releaseArtifactsEligible({ draft, audio, requests, release, depl
     && audio.draftRevision === draft.revision
     && audio.sourceRevisions?.es === requests.es.sourceRevision
     && audio.sourceRevisions?.en === requests.en.sourceRevision;
-  if (!sourcesAreCurrent) return false;
-  if (audio.policyRevision === currentPolicyRevision) return true;
+  if (sourcesAreCurrent && audio.policyRevision === currentPolicyRevision) return true;
 
-  return release?.status === "completed"
+  return audio?.status === "completed"
+    && audio.draftRevision === draft.revision
+    && release?.status === "completed"
     && release.draftRevision === draft.revision
     && deployment?.status === "completed"
     && deployment.draftRevision === draft.revision
