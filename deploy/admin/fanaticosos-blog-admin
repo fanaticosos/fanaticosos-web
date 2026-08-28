@@ -120,7 +120,7 @@ Commands:
   azure-speech-credential-status
   install-openai-credential EXPECTED_COMMIT
   openai-credential-status
-  run-openai-tts-samples EXPECTED_COMMIT ARTICLE_ID
+  run-openai-tts-sample EXPECTED_COMMIT ARTICLE_ID LOCALE
   install-cloudflare-pages-credential EXPECTED_COMMIT
   cloudflare-pages-credential-status
   install-pages-deployment-runtime EXPECTED_COMMIT
@@ -868,21 +868,24 @@ command_openai_credential_status() {
   echo "PASS: OpenAI credential exists with root-only permissions."
 }
 
-command_run_openai_tts_samples() {
+command_run_openai_tts_sample() {
   local expected="$1"
   local article_id="$2"
+  local locale="$3"
   local api_key
   local draft="$publisher_data/drafts/$article_id.json"
   local translation="$publisher_data/states/$article_id.json"
-  local output="$data_root/work/openai-tts-samples-$article_id"
+  local output="$data_root/work/openai-tts-sample-$article_id-$locale"
   require_repository_commit "$expected"
   [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
+  [[ "$locale" == "es" || "$locale" == "en" ]] || stop "Locale must be es or en."
   command_openai_credential_status >/dev/null
-  [[ -f "$draft" && -f "$translation" ]] || stop "Draft or translation is missing."
+  [[ -f "$draft" ]] || stop "Draft is missing."
+  [[ "$locale" == "es" || -f "$translation" ]] || stop "English translation is missing."
   [[ ! -e "$output" ]] || stop "OpenAI sample output already exists."
   api_key="$(sed -n 's/^OPENAI_API_KEY=//p' "$openai_credential_file")"
   run_as_service env OPENAI_API_KEY="$api_key" PYTHONDONTWRITEBYTECODE=1 python3 \
-    "$repository/scripts/tts/generate_openai_samples.py" --draft "$draft" --translation "$translation" --output "$output"
+    "$repository/scripts/tts/generate_openai_samples.py" --draft "$draft" --translation "$translation" --locale "$locale" --output "$output"
   unset api_key
   echo "PASS: Private OpenAI TTS samples created at $output."
 }
@@ -1931,9 +1934,9 @@ case "$command" in
     [[ $# == 0 ]] || stop "openai-credential-status takes no arguments."
     command_openai_credential_status
     ;;
-  run-openai-tts-samples)
-    [[ $# == 2 ]] || stop "run-openai-tts-samples requires EXPECTED_COMMIT ARTICLE_ID."
-    command_run_openai_tts_samples "$1" "$2"
+  run-openai-tts-sample)
+    [[ $# == 3 ]] || stop "run-openai-tts-sample requires EXPECTED_COMMIT ARTICLE_ID LOCALE."
+    command_run_openai_tts_sample "$1" "$2" "$3"
     ;;
   install-cloudflare-pages-credential)
     [[ $# == 1 ]] || stop "install-cloudflare-pages-credential requires EXPECTED_COMMIT."
