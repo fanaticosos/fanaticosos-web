@@ -16,7 +16,7 @@ async function atomicJson(path, value) {
   await rename(temporary, path);
 }
 
-export async function queueRelease({ draft, queueRoot, statesRoot, now = new Date() }) {
+export async function queueRelease({ draft, queueRoot, statesRoot, publishedAt: deployedAt, now = new Date() }) {
   if (releaseQueueBusy) throw new Error("Ya hay una preparación de publicación en curso.");
   releaseQueueBusy = true;
   try {
@@ -43,6 +43,8 @@ export async function queueRelease({ draft, queueRoot, statesRoot, now = new Dat
     const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
     const publishedAt = previous?.status === "completed" && !Number.isNaN(Date.parse(previous.manifest?.publishedAt))
       ? previous.manifest.publishedAt
+      : !Number.isNaN(Date.parse(deployedAt))
+        ? zonedIso(new Date(deployedAt), "America/Chicago")
       : zonedIso(now, "America/Chicago");
     const request = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt };
     const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);

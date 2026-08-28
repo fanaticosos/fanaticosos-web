@@ -54,6 +54,16 @@ test("rebuilding a published article preserves its original publication date", a
   assert.equal(request.publishedAt, "2026-07-31T09:00:00-05:00");
 });
 
+test("rebuilding after retention recovers the production deployment date", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-release-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  const draft = { articleId: "00000000-0000-4000-8000-000000000003", revision: 1 };
+  const release = await queueRelease({ draft, queueRoot, statesRoot, publishedAt: "2026-08-07T18:41:19Z", now: new Date("2026-08-28T23:00:00Z") });
+  const request = JSON.parse(await readFile(join(queueRoot, release.jobId, "request.json"), "utf8"));
+  assert.equal(request.publishedAt, "2026-08-07T13:41:19-05:00");
+});
+
 test("simultaneous release requests admit exactly one build", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-release-race-"));
   const queueRoot = join(root, "queue");

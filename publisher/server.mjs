@@ -542,7 +542,7 @@ export function createPublisherServer({
           draft, audio, requests, release: previousRelease, deployment: previousDeployment,
           currentPolicyRevision: await currentTtsPolicyRevision(),
         })) throw new Error("current bilingual audio is required before preparing publication");
-        const release = await queueRelease({ draft, queueRoot, statesRoot });
+        const release = await queueRelease({ draft, queueRoot, statesRoot, publishedAt: previousDeployment?.receipt?.validatedAt });
         await createNotification(notificationsRoot, { level: "info", event: "release-started", articleId: draft.articleId, message: `Preparación privada iniciada: ${draft.title}` });
         return json(response, 202, { release });
       }
