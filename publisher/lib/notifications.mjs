@@ -60,3 +60,9 @@ export async function acknowledgeNotification(root, id, now = new Date()) {
   await atomicWrite(path, value);
   return value;
 }
+
+export async function acknowledgeAllNotifications(root, now = new Date()) {
+  const pending = (await listNotifications(root)).filter((item) => !item.acknowledgedAt);
+  await Promise.all(pending.map((item) => acknowledgeNotification(root, item.id, now)));
+  return pending.length;
+}

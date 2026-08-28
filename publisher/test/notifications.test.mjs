@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { acknowledgeNotification, createNotification, listNotifications } from "../lib/notifications.mjs";
+import { acknowledgeAllNotifications, acknowledgeNotification, createNotification, listNotifications } from "../lib/notifications.mjs";
 
 test("notification persists until explicitly acknowledged", async () => {
   const root = await mkdtemp(join(tmpdir(), "fanaticosos-notifications-"));
@@ -32,4 +32,14 @@ test("a regeneration status replaces its previous pending status", async () => {
   const pending = (await listNotifications(root)).filter((item) => !item.acknowledgedAt);
   assert.equal(pending.length, 1);
   assert.equal(pending[0].message, "Audio listo.");
+});
+
+test("all pending activity can be acknowledged without deleting history", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-notification-all-"));
+  await createNotification(root, { level: "info", event: "first", message: "First" });
+  await createNotification(root, { level: "success", event: "second", message: "Second" });
+  assert.equal(await acknowledgeAllNotifications(root, new Date("2026-08-28T22:00:00Z")), 2);
+  const notifications = await listNotifications(root);
+  assert.equal(notifications.length, 2);
+  assert.equal(notifications.every((item) => item.acknowledgedAt === "2026-08-28T22:00:00.000Z"), true);
 });

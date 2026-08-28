@@ -172,6 +172,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /id="article-title"/);
   assert.match(html, />Crear traducción y audio en inglés</);
   assert.match(html, /<details class="activity-panel">/);
+  assert.match(html, /id="acknowledge-all"/);
   assert.doesNotMatch(html, /name="imageCaption"/);
   assert.match(html, /Crédito o pie de foto/);
   assert.match(html, /SEO y apariencia al compartir/);

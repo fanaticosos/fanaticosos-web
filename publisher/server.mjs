@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 
 import { listDrafts, newDraft, readDraft, updateDraft, writeDraft } from "./lib/drafts.mjs";
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
-import { acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
+import { acknowledgeAllNotifications, acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
@@ -293,6 +293,9 @@ export function createPublisherServer({
       }
       if (request.method === "GET" && url.pathname === "/api/notifications") {
         return json(response, 200, { notifications: await listNotifications(notificationsRoot) });
+      }
+      if (request.method === "POST" && url.pathname === "/api/notifications/acknowledge-all") {
+        return json(response, 200, { acknowledged: await acknowledgeAllNotifications(notificationsRoot) });
       }
       const notificationMatch = /^\/api\/notifications\/([0-9a-f-]{36})\/acknowledge$/.exec(url.pathname);
       if (notificationMatch && request.method === "POST") {

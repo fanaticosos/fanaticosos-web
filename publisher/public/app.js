@@ -252,6 +252,7 @@ async function refreshNotifications() {
   const count = document.querySelector("#notification-count");
   const activity = document.querySelector(".activity-panel");
   const errorCount = pending.filter((item) => item.level === "error").length;
+  document.querySelector("#acknowledge-all").hidden = pending.length < 2;
   count.textContent = !pending.length ? "Sin avisos" : errorCount ? `${errorCount} error${errorCount === 1 ? "" : "es"} · ${pending.length} en total` : `${pending.length} aviso${pending.length === 1 ? "" : "s"}`;
   activity.classList.toggle("has-error", errorCount > 0);
   if (!pending.length) {
@@ -274,6 +275,15 @@ async function refreshNotifications() {
     return row;
   }));
 }
+
+document.querySelector("#acknowledge-all").addEventListener("click", async () => {
+  try {
+    await request("/api/notifications/acknowledge-all", { method: "POST" });
+    await refreshNotifications();
+  } catch (error) {
+    showError(error.message);
+  }
+});
 
 async function uploadImage(file) {
   message.hidden = true;
