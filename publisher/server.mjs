@@ -72,6 +72,23 @@ export function releaseWithFreshness(release, audio) {
   return current ? release : { ...release, status: "stale" };
 }
 
+export function releaseArtifactsEligible({ draft, audio, requests, release, deployment, currentPolicyRevision }) {
+  const sourcesAreCurrent = audio?.status === "completed"
+    && audio.draftRevision === draft.revision
+    && audio.sourceRevisions?.es === requests.es.sourceRevision
+    && audio.sourceRevisions?.en === requests.en.sourceRevision;
+  if (!sourcesAreCurrent) return false;
+  if (audio.policyRevision === currentPolicyRevision) return true;
+
+  return release?.status === "completed"
+    && release.draftRevision === draft.revision
+    && deployment?.status === "completed"
+    && deployment.draftRevision === draft.revision
+    && deployment.releaseJobId === release.jobId
+    && (!release.manifest?.assets?.esAudio || release.manifest.assets.esAudio.sha256 === audio.jobs?.es?.result?.sha256)
+    && release.manifest?.assets?.enAudio?.sha256 === audio.jobs?.en?.result?.sha256;
+}
+
 export function translationWithFreshness(translation, draft) {
   if (!translation || translation.status !== "completed") return translation;
   return translation.draftRevision === draft.revision
@@ -497,12 +514,17 @@ export function createPublisherServer({
       const releaseMatch = RELEASE_PATH.exec(url.pathname);
       if (releaseMatch && request.method === "POST") {
         const value = await requestJson(request);
-        const [draft, translation, audio] = await Promise.all([
+        const [draft, translation, audio, previousRelease, previousDeployment] = await Promise.all([
           readDraft(draftsRoot, releaseMatch[1]), readTranslationState(statesRoot, releaseMatch[1]), readTtsState(statesRoot, releaseMatch[1]),
+          readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])),
+          readOptionalState(() => readDeploymentState(statesRoot, releaseMatch[1])),
         ]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before preparing publication");
         const requests = ttsRequestsForDraft(draft, translation);
-        if (audio.status !== "completed" || audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("current bilingual audio is required before preparing publication");
+        if (!releaseArtifactsEligible({
+          draft, audio, requests, release: previousRelease, deployment: previousDeployment,
+          currentPolicyRevision: await currentTtsPolicyRevision(),
+        })) throw new Error("current bilingual audio is required before preparing publication");
         const release = await queueRelease({ draft, queueRoot, statesRoot });
         await createNotification(notificationsRoot, { level: "info", event: "release-started", articleId: draft.articleId, message: `Preparación privada iniciada: ${draft.title}` });
         return json(response, 202, { release });

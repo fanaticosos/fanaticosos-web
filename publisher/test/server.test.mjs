@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
+import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -44,6 +44,28 @@ test("completed preview becomes stale when either accepted audio changes", () =>
   delete release.manifest.assets.esAudio;
   audio.jobs.es.result.sha256 = "ignored-es";
   assert.equal(releaseWithFreshness(release, audio).status, "completed");
+});
+
+test("release preparation accepts current audio policy or an exact previously published artifact", () => {
+  const draft = { revision: 3 };
+  const requests = { es: { sourceRevision: "es-current" }, en: { sourceRevision: "en-current" } };
+  const audio = {
+    status: "completed", draftRevision: 3, policyRevision: "old-policy",
+    sourceRevisions: { es: "es-current", en: "en-current" },
+    jobs: { es: { result: { sha256: "es-hash" } }, en: { result: { sha256: "en-hash" } } },
+  };
+  const release = {
+    status: "completed", draftRevision: 3, jobId: "release-old",
+    manifest: { assets: { esAudio: { sha256: "es-hash" }, enAudio: { sha256: "en-hash" } } },
+  };
+  const deployment = { status: "completed", draftRevision: 3, releaseJobId: "release-old" };
+
+  assert.equal(releaseArtifactsEligible({ draft, audio: { ...audio, policyRevision: "current-policy" }, requests, release: null, deployment: null, currentPolicyRevision: "current-policy" }), true);
+  assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment, currentPolicyRevision: "current-policy" }), true);
+  assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment: null, currentPolicyRevision: "current-policy" }), false);
+  assert.equal(releaseArtifactsEligible({ draft, audio, requests, release: { ...release, manifest: { assets: { enAudio: { sha256: "changed" } } } }, deployment, currentPolicyRevision: "current-policy" }), false);
+  assert.equal(releaseArtifactsEligible({ draft, audio: { ...audio, sourceRevisions: { ...audio.sourceRevisions, en: "stale" } }, requests, release, deployment, currentPolicyRevision: "current-policy" }), false);
+  assert.equal(releaseArtifactsEligible({ draft, audio, requests, release, deployment: { ...deployment, releaseJobId: "another-release" }, currentPolicyRevision: "current-policy" }), false);
 });
 
 test("translation freshness follows article text revisions", () => {
