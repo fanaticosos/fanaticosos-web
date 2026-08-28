@@ -7,7 +7,7 @@ import { previewPage, renderMarkdown } from "../lib/preview.mjs";
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 1,
   title: "Los Bears <ganan>", description: "Resumen & análisis", body: "## Encabezado\n\nTexto <script>alert(1)</script>.",
-  category: "Chicago Bears", season: 2026, tags: ["#BearDown"], featuredImage: {},
+  category: "Chicago Bears", season: 2026, tags: ["#BearDown"], featuredImage: { path: "/uploads/test.png", alt: "" },
 };
 const translation = {
   status: "completed", draftRevision: 1,
@@ -20,12 +20,14 @@ test("private preview switches the complete article and escapes owner text", () 
   const english = previewPage({ draft, translation, audio, locale: "en", settings });
   assert.match(spanish, /lang="es"/);
   assert.match(spanish, /Los Bears &lt;ganan&gt;/);
+  assert.match(spanish, /alt="Los Bears &lt;ganan&gt;"/);
   assert.doesNotMatch(spanish, /<script>/);
   assert.match(spanish, /¡Gracias por acompañarnos!/);
   assert.match(spanish, /class="social-bar"/);
   assert.match(spanish, /English version →/);
   assert.match(english, /lang="en"/);
   assert.match(english, /The Bears win/);
+  assert.match(english, /alt="The Bears win"/);
   assert.match(english, /Thank you for joining us!/);
   assert.match(english, /← Versión en español/);
   assert.match(english, /audio\/en/);

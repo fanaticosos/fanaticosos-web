@@ -43,6 +43,10 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
   const en = {
     ...shared, locale: "en", slug: slugify(translation.result.title), title: translation.result.title,
     description: translation.result.description, category: draft.category,
+    ...(shared.featuredImage ? { featuredImage: {
+      ...shared.featuredImage,
+      alt: draft.featuredImage.alt || translation.result.title,
+    } } : {}),
     translation: {
       sourceRevision: translation.sourceRevision,
       engine: translation.provenance.engine,

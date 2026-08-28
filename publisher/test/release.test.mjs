@@ -8,7 +8,7 @@ import { serializeArticlePair, slugify } from "../lib/release.mjs";
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 2,
   title: "Los Bears ganan en Chicago", description: "Resumen", body: "Contenido.",
-  category: "Chicago Bears", tags: ["#BearDown"], featuredImage: {},
+  category: "Chicago Bears", tags: ["#BearDown"], featuredImage: { path: "/uploads/test.png", alt: "" },
 };
 const translation = {
   status: "completed", draftRevision: 2, sourceRevision: "a".repeat(64),
@@ -24,7 +24,10 @@ test("accepted draft serializes as a bilingual publishable pair", () => {
   const spanish = release.files[`src/content/articles/es/${draft.articleId}.md`];
   const english = release.files[`src/content/articles/en/${draft.articleId}.md`];
   const data = yaml.load(spanish.match(/^---\n([\s\S]*?)\n---/)[1]);
+  const englishData = yaml.load(english.match(/^---\n([\s\S]*?)\n---/)[1]);
   assert.equal(data.status, "published");
+  assert.equal(data.featuredImage.alt, "Los Bears ganan en Chicago");
+  assert.equal(englishData.featuredImage.alt, "The Bears win in Chicago");
   assert.match(data.audio.path, /audio\/es-/);
   assert.doesNotMatch(spanish, /¡Gracias por acompañarnos!/);
   assert.doesNotMatch(english, /Thank you for joining us!/);
