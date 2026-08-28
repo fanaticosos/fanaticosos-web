@@ -876,7 +876,7 @@ command_run_openai_tts_sample() {
   local api_key
   local draft="$publisher_data/drafts/$article_id.json"
   local translation="$publisher_data/states/$article_id.json"
-  local output="$data_root/work/openai-tts-sample-$article_id-$locale"
+  local output="$data_root/work/openai-tts-sample-$article_id-$locale-v2"
   require_repository_commit "$expected"
   [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
   [[ "$locale" == "es" || "$locale" == "en" ]] || stop "Locale must be es or en."
@@ -894,8 +894,8 @@ command_run_openai_tts_sample() {
 command_export_openai_tts_sample() {
   local article_id="$1"
   local locale="$2"
-  local source="$data_root/work/openai-tts-sample-$article_id-$locale/sample-$locale.mp3"
-  local destination="/home/sysadmin/fanaticosos-openai-sample-$article_id-$locale.mp3"
+  local source="$data_root/work/openai-tts-sample-$article_id-$locale-v2/sample-$locale.mp3"
+  local destination="/home/sysadmin/fanaticosos-openai-sample-$article_id-$locale-v2.mp3"
   [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
   [[ "$locale" == "es" || "$locale" == "en" ]] || stop "Locale must be es or en."
   [[ -f "$source" && ! -L "$source" ]] || stop "OpenAI sample is missing."
