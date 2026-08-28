@@ -123,6 +123,7 @@ Commands:
   openai-credential-status
   install-elevenlabs-credential EXPECTED_COMMIT
   elevenlabs-credential-status
+  run-elevenlabs-tts-sample EXPECTED_COMMIT ARTICLE_ID
   run-openai-tts-sample EXPECTED_COMMIT ARTICLE_ID LOCALE
   export-openai-tts-sample ARTICLE_ID LOCALE
   install-cloudflare-pages-credential EXPECTED_COMMIT
@@ -897,6 +898,17 @@ command_elevenlabs_credential_status() {
   [[ "$(stat -c '%U:%G:%a' "$elevenlabs_credential_file")" == "root:root:600" ]] || stop "ElevenLabs credential permissions are incorrect."
   [[ "$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file" | wc -c)" -ge 21 ]] || stop "ElevenLabs API key is missing."
   echo "PASS: ElevenLabs credential exists with root-only permissions."
+}
+
+command_run_elevenlabs_tts_sample() {
+  local expected="$1" article_id="$2" api_key output="$data_root/work/elevenlabs-tts-sample-$2"
+  require_repository_commit "$expected"
+  [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
+  command_elevenlabs_credential_status >/dev/null; [[ ! -e "$output" ]] || stop "ElevenLabs sample output already exists."
+  api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
+  run_as_service env ELEVENLABS_API_KEY="$api_key" python3 "$repository/scripts/tts/generate_elevenlabs_sample.py" --draft "$publisher_data/drafts/$article_id.json" --output "$output"
+  unset api_key
+  install -o sysadmin -g sysadmin -m 0600 "$output/sample-es.mp3" "/home/sysadmin/fanaticosos-elevenlabs-sample-$article_id-es.mp3"
 }
 
 command_run_openai_tts_sample() {
@@ -1985,6 +1997,10 @@ case "$command" in
   elevenlabs-credential-status)
     [[ $# == 0 ]] || stop "elevenlabs-credential-status takes no arguments."
     command_elevenlabs_credential_status
+    ;;
+  run-elevenlabs-tts-sample)
+    [[ $# == 2 ]] || stop "run-elevenlabs-tts-sample requires EXPECTED_COMMIT ARTICLE_ID."
+    command_run_elevenlabs_tts_sample "$1" "$2"
     ;;
   run-openai-tts-sample)
     [[ $# == 3 ]] || stop "run-openai-tts-sample requires EXPECTED_COMMIT ARTICLE_ID LOCALE."
