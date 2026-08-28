@@ -176,6 +176,35 @@ test("English TTS waits for the owner-provided Spanish MP3", async () => {
   assert.equal(regenerated.policyRevision, "e".repeat(64));
 });
 
+test("English completion is reconciled after Spanish is uploaded first", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-tts-awaiting-english-"));
+  const statesRoot = join(root, "states");
+  const jobsRoot = join(root, "jobs");
+  const englishJobId = "tts-en-awaiting-english";
+  const englishAudioRoot = join(jobsRoot, englishJobId, "audio");
+  await mkdir(statesRoot, { recursive: true });
+  await mkdir(englishAudioRoot, { recursive: true });
+  await writeFile(join(englishAudioRoot, "en.mp3"), "audio");
+  await writeFile(join(englishAudioRoot, "result.json"), JSON.stringify({ file: "en.mp3", sizeBytes: 5 }));
+  await writeFile(join(statesRoot, `audio-${draft.articleId}.json`), JSON.stringify({
+    schemaVersion: 1,
+    articleId: draft.articleId,
+    draftRevision: draft.revision,
+    status: "awaiting-english",
+    createdAt: new Date().toISOString(),
+    jobs: {
+      es: { jobId: "upload-es", status: "completed", result: { file: "es.mp3" } },
+      en: { jobId: englishJobId, status: "queued" },
+    },
+  }));
+  let completed = 0;
+  await reconcileTts({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
+  const result = await readTtsState(statesRoot, draft.articleId);
+  assert.equal(result.status, "completed");
+  assert.equal(result.jobs.en.status, "completed");
+  assert.equal(completed, 1);
+});
+
 test("audio queue preserves the automatic preview workflow", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-workflow-"));
   const state = await queueTts({

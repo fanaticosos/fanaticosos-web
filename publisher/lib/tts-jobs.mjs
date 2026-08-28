@@ -188,7 +188,7 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
   for (const name of names) {
     const path = join(statesRoot, name);
     const state = JSON.parse(await readFile(path, "utf8"));
-    if (!["queued", "running"].includes(state.status)) continue;
+    if (!["queued", "running", "awaiting-english"].includes(state.status)) continue;
     let completed = 0;
     for (const locale of ["es", "en"]) {
       const job = state.jobs[locale];
