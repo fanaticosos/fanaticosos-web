@@ -82,6 +82,7 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .drop-zone span { color: #7f94a8; font-weight: 500; }
 .drop-zone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .image-preview { display: block; width: min(100%, 540px); max-height: 320px; margin: 0 0 18px; border-radius: 10px; object-fit: cover; }
+.secondary-action { border: 1px solid #42617d; border-radius: 7px; color: #dce6ee; background: transparent; cursor: pointer; margin: -7px 0 18px; padding: 8px 11px; }
 .future { opacity: .72; }
 .workflow-explanation { max-width: 720px; margin: -8px 0 16px; }
 .workflow-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; counter-reset: workflow; }

@@ -3,6 +3,7 @@ const ROMAN = /^(?:I|II|III|IV|V|VI|VII|VIII|IX|X)$/;
 // capitalized first word of the next sentence or paragraph.
 const CAPITALIZED_SEQUENCE = /\b[\p{Lu}][\p{L}'’-]+(?:[ \t]+(?:[\p{Lu}][\p{L}'’-]+|(?:Jr|Sr)\.|II|III|IV)){1,5}\b/gu;
 const ACRONYM = /\b[A-Z]{2,6}\b/g;
+const LEGACY_NFL_NAMES = ["Jay Cutler"];
 
 function escapePattern(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -21,7 +22,7 @@ function addEntity(target, seen, entity) {
   target.push(entity);
 }
 
-function inventory(database, azureEntities) {
+function inventory(database, azureEntities, spanishTerms = {}) {
   const values = [];
   const seen = new Set();
   const push = (written, category, source, language = "en-US", caseSensitive = false) => {
@@ -41,13 +42,21 @@ function inventory(database, azureEntities) {
   for (const entity of azureEntities.entities ?? []) {
     push(entity.grapheme, entity.category, "reviewed-override", entity.language ?? "es-MX");
     for (const form of entity.writtenForms ?? []) push(form, entity.category, "reviewed-override", entity.language ?? "es-MX");
+    if (entity.grapheme.toLocaleLowerCase("es-MX") === "fanaticosos") {
+      for (const form of ["FanaticOSOS", "Fanatic-OSOS", "Fanatic OSOS"]) push(form, "brand", "approved-brand-variant", "es-MX");
+    }
   }
+  for (const term of spanishTerms.terms ?? []) {
+    push(term.canonical, "football-term", "approved-terminology", "en-US");
+    for (const form of term.acceptedSpanish ?? []) push(form, "football-term", "approved-terminology", "es-MX");
+  }
+  for (const name of LEGACY_NFL_NAMES) push(name, "player", "legacy-nfl-name", "en-US", true);
   return values.sort((left, right) => right.written.length - left.written.length);
 }
 
-export function ttsPreflight(draft, database, azureEntities) {
+export function ttsPreflight(draft, database, azureEntities, spanishTerms = {}) {
   if (database?.schemaVersion !== 1 || database?.teams?.length !== 32) throw new Error("NFL entity database is invalid");
-  const entities = inventory(database, azureEntities);
+  const entities = inventory(database, azureEntities, spanishTerms);
   const original = articleText(draft);
   let masked = original;
   const detected = [];

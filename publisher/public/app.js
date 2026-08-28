@@ -11,6 +11,7 @@ let publisherSettings = null;
 const dropZone = document.querySelector("#drop-zone");
 const imageFile = document.querySelector("#image-file");
 const imagePreview = document.querySelector("#image-preview");
+const removeImage = document.querySelector("#remove-image");
 const generateEnglish = document.querySelector("#generate-english");
 const workflowState = document.querySelector("#workflow-state");
 const englishResult = document.querySelector("#english-result");
@@ -124,7 +125,8 @@ function renderMusic(settings) {
 }
 
 function renderSeoPreview() {
-  const seo = generateSeoPreview(fields());
+  const ownerFields = fields();
+  const seo = generateSeoPreview({ ...ownerFields, imagePath: ownerFields.featuredImage.path });
   document.querySelector("#seo-url").textContent = seo.canonicalUrl;
   document.querySelector("#seo-search-title").textContent = seo.title || "Título del artículo";
   document.querySelector("#seo-search-description").textContent = seo.description || "El resumen aparecerá aquí.";
@@ -187,6 +189,7 @@ function setFields(draft) {
   form.elements.imageCredit.value = draft?.featuredImage?.caption || draft?.featuredImage?.credit || "";
   imagePreview.src = draft?.featuredImage?.path ?? "";
   imagePreview.hidden = !draft?.featuredImage?.path;
+  removeImage.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
   generateEnglish.disabled = !draft;
@@ -198,6 +201,15 @@ function setFields(draft) {
   generateAudio.disabled = true;
   openPreview.disabled = true;
   prepareRelease.disabled = true;
+  publishRelease.disabled = true;
+  generateEnglish.textContent = "Crear traducción y audio en inglés";
+  document.querySelector("#english-title").value = "";
+  document.querySelector("#english-description").value = "";
+  document.querySelector("#english-body").value = "";
+  document.querySelector("#audio-es").removeAttribute("src");
+  document.querySelector("#audio-en").removeAttribute("src");
+  spanishAudioFile.value = "";
+  audiogramMetadata = null;
   renderSeoPreview();
   scheduleBodyPreview();
 }
@@ -277,6 +289,8 @@ async function uploadImage(file) {
     form.elements.imagePath.value = value.upload.path;
     imagePreview.src = value.upload.path;
     imagePreview.hidden = false;
+    removeImage.hidden = false;
+    imageFile.value = "";
     renderSeoPreview();
     saveState.textContent = "Imagen lista · guarda el borrador";
   } catch (error) {
@@ -365,7 +379,9 @@ form.addEventListener("input", (event) => {
   saveState.textContent = "Cambios sin guardar";
   generateEnglish.disabled = true;
   generateAudio.disabled = true;
+  openPreview.disabled = true;
   prepareRelease.disabled = true;
+  publishRelease.disabled = true;
   message.hidden = true;
   renderSeoPreview();
 });
@@ -414,17 +430,29 @@ async function pollTranslation() {
       document.querySelector("#english-description").value = translation.result.description;
       document.querySelector("#english-body").value = translation.result.body;
       englishResult.hidden = false;
-      generateEnglish.disabled = false;
+      generateEnglish.disabled = true;
+      generateEnglish.textContent = "Traducción y audio creados";
       await refreshNotifications();
       generateAudio.disabled = translation.workflow === "preview";
       const audioStatus = await pollAudio();
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
+    } else if (translation.status === "stale") {
+      stopTranslationClock();
+      workflowState.textContent = "El texto cambió · crea una nueva traducción y audio en inglés.";
+      englishResult.hidden = true;
+      audioResult.hidden = true;
+      audiogramResult.hidden = true;
+      generateEnglish.disabled = false;
+      generateEnglish.textContent = "Crear nueva traducción y audio en inglés";
+      openPreview.disabled = true;
+      publishRelease.disabled = true;
     } else if (translation.status === "failed") {
       stopTranslationClock();
       workflowState.textContent = "La traducción se detuvo.";
       clearInterval(translationTimer);
       translationTimer = null;
       generateEnglish.disabled = false;
+      generateEnglish.textContent = "Reintentar traducción y audio en inglés";
       showError(translation.error || "La traducción no pasó la validación.");
       await refreshNotifications();
     }
@@ -487,6 +515,8 @@ async function pollAudio() {
       generateAudio.disabled = false;
       openPreview.disabled = false;
       prepareRelease.disabled = false;
+      publishRelease.disabled = true;
+      generateEnglish.disabled = true;
       await refreshNotifications();
       const releaseStatus = await pollRelease();
       if (["queued", "running"].includes(releaseStatus) && !releaseTimer) releaseTimer = setInterval(pollRelease, 5000);
@@ -532,6 +562,13 @@ async function pollAudiogram() {
       audiogramVideo.hidden = false; downloadAudiogram.hidden = false; copyYoutube.hidden = false; copyArticleLink.hidden = false;
       downloadAudiogram.href = `/api/drafts/${articleId}/audiogram/video?download=1`;
       downloadAudiogram.download = `${current.title || "fanaticosos-blog"}.mp4`;
+    } else if (audiogram.status === "stale") {
+      audiogramMetadata = null;
+      audiogramStatus.textContent = "La imagen o el artículo cambió · crea un video actualizado antes de descargarlo.";
+      audiogramVideo.hidden = true;
+      downloadAudiogram.hidden = true;
+      copyYoutube.hidden = true;
+      copyArticleLink.hidden = true;
     } else {
       audiogramStatus.textContent = audiogram.status === "failed" ? audiogram.error : "Preparando video completo para YouTube…";
       if (["queued", "running"].includes(audiogram.status)) audiogramTimer = setTimeout(pollAudiogram, 5000);
@@ -608,8 +645,28 @@ uploadSpanishAudio.addEventListener("click", async () => {
   finally { uploadSpanishAudio.disabled = false; }
 });
 
-openPreview.addEventListener("click", () => {
-  if (current) window.open(`/preview/${current.articleId}/es`, "_blank", "noopener,noreferrer");
+openPreview.addEventListener("click", async () => {
+  if (!current) return;
+  window.open(`/preview/${current.articleId}/es`, "_blank", "noopener,noreferrer");
+  openPreview.disabled = true;
+  publishRelease.disabled = true;
+  try {
+    const { release } = await request(`/api/drafts/${current.articleId}/release`);
+    let status = release?.status ?? null;
+    if (!release || ["failed", "stale"].includes(release.status)) {
+      await request(`/api/drafts/${current.articleId}/release`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedRevision: current.revision }),
+      });
+      status = "queued";
+    }
+    const releaseStatus = await pollRelease();
+    if (["queued", "running"].includes(releaseStatus || status) && !releaseTimer) releaseTimer = setInterval(pollRelease, 5000);
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    openPreview.disabled = false;
+  }
 });
 
 saveEnglish.addEventListener("click", async () => {
@@ -733,6 +790,17 @@ document.querySelector("#new-draft").addEventListener("click", () => {
 
 imageFile.addEventListener("change", () => {
   if (imageFile.files[0]) uploadImage(imageFile.files[0]);
+});
+removeImage.addEventListener("click", () => {
+  form.elements.imagePath.value = "";
+  imagePreview.removeAttribute("src");
+  imagePreview.hidden = true;
+  removeImage.hidden = true;
+  saveState.textContent = "Imagen quitada · guarda el borrador";
+  generateEnglish.disabled = true;
+  openPreview.disabled = true;
+  publishRelease.disabled = true;
+  renderSeoPreview();
 });
 for (const eventName of ["dragenter", "dragover"]) {
   dropZone.addEventListener(eventName, (event) => {

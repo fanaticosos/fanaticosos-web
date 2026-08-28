@@ -89,6 +89,7 @@
               <input id="image-file" type="file" accept="image/jpeg,image/png,image/webp">
             </label>
             <img id="image-preview" class="image-preview" alt="" hidden>
+            <button id="remove-image" class="secondary-action" type="button" hidden>Quitar imagen</button>
             <input name="imagePath" type="hidden">
             <label>Descripción accesible <span>opcional</span><input name="imageAlt" maxlength="500" placeholder="Si la dejas vacía, usaremos el título del artículo"></label>
             <label>Crédito o pie de foto <span>opcional</span><input name="imageCredit" maxlength="500" placeholder="Ejemplo: Bailey Black/Chicago Bears"></label>
@@ -133,7 +134,7 @@
             <div class="future-actions">
               <button id="generate-english" class="workflow-primary" disabled type="button">Crear traducción y audio en inglés</button>
               <button id="generate-audio" disabled hidden type="button">Generar audios</button>
-              <button id="open-preview" disabled type="button">Revisar vista previa</button>
+              <button id="open-preview" disabled type="button">Revisar vista previa y validar</button>
               <button id="prepare-release" disabled hidden type="button">Preparar publicación</button>
               <button id="publish-release" disabled type="button">Publicar</button>
             </div>

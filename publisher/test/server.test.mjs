@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioByteRange, createPublisherServer, releaseWithFreshness } from "../server.mjs";
+import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -44,6 +44,21 @@ test("completed preview becomes stale when either accepted audio changes", () =>
   delete release.manifest.assets.esAudio;
   audio.jobs.es.result.sha256 = "ignored-es";
   assert.equal(releaseWithFreshness(release, audio).status, "completed");
+});
+
+test("translation freshness follows article text revisions", () => {
+  const translation = { status: "completed", draftRevision: 2 };
+  assert.equal(translationWithFreshness(translation, { revision: 2 }).status, "completed");
+  assert.equal(translationWithFreshness(translation, { revision: 3 }).status, "stale");
+});
+
+test("audiogram freshness follows the draft image and Spanish audio", () => {
+  const draft = { revision: 2 };
+  const audio = { jobs: { es: { result: { sha256: "current" } } } };
+  const audiogram = { status: "completed", draftRevision: 2, audioSha256: "current" };
+  assert.equal(audiogramWithFreshness(audiogram, draft, audio).status, "completed");
+  assert.equal(audiogramWithFreshness({ ...audiogram, draftRevision: 1 }, draft, audio).status, "stale");
+  assert.equal(audiogramWithFreshness({ ...audiogram, audioSha256: "old" }, draft, audio).status, "stale");
 });
 
 async function fixture() {
@@ -174,6 +189,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /id="regenerate-audiogram"/);
   assert.match(html, /Copiar título y descripción para YouTube/);
   assert.match(html, /id="prepare-release" disabled hidden/);
+  assert.match(html, /id="remove-image"/);
+  assert.match(html, /Revisar vista previa y validar/);
 
   const app = await (await fetch(`${base}/app.js`)).text();
   assert.match(app, /articleTitle\.scrollIntoView/);
@@ -182,6 +199,9 @@ test("editor shell is served with private security headers", async (context) => 
   assert.doesNotMatch(app, /generateEnglish\.disabled = preflight\.status !== "ready"/);
   assert.match(app, /workflow: "preview"/);
   assert.match(app, /generateSeoPreview/);
+  assert.match(app, /imagePath: ownerFields\.featuredImage\.path/);
+  assert.match(app, /publishRelease\.disabled = true/);
+  assert.match(app, /release\.status/);
   assert.match(app, /\/api\/music/);
   assert.match(app, /\/api\/markdown-preview/);
 

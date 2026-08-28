@@ -72,6 +72,20 @@ export function releaseWithFreshness(release, audio) {
   return current ? release : { ...release, status: "stale" };
 }
 
+export function translationWithFreshness(translation, draft) {
+  if (!translation || translation.status !== "completed") return translation;
+  return translation.draftRevision === draft.revision
+    ? translation
+    : { ...translation, status: "stale" };
+}
+
+export function audiogramWithFreshness(audiogram, draft, audio) {
+  if (!audiogram || audiogram.status !== "completed") return audiogram;
+  const current = audiogram.draftRevision === draft.revision
+    && audiogram.audioSha256 === audio?.jobs?.es?.result?.sha256;
+  return current ? audiogram : { ...audiogram, status: "stale" };
+}
+
 export function audioByteRange(value, size) {
   if (!value) return null;
   const match = /^bytes=(\d+)-(\d*)$/.exec(value);
@@ -136,8 +150,11 @@ export function createPublisherServer({
     return { azureEntities, entityDatabase };
   }
   async function currentTtsPreflight(draft) {
-    const { azureEntities, entityDatabase } = await currentTtsReferences();
-    return ttsPreflight(draft, entityDatabase, azureEntities);
+    const [{ azureEntities, entityDatabase }, spanishTerms] = await Promise.all([
+      currentTtsReferences(),
+      readFile(ttsSpanishTermsPath, "utf8").then(JSON.parse),
+    ]);
+    return ttsPreflight(draft, entityDatabase, azureEntities, spanishTerms);
   }
   async function currentTtsPolicyRevision() {
     const [production, pronunciations, azureEntities, entityDatabase, spanishTerms] = await Promise.all([
@@ -377,7 +394,10 @@ export function createPublisherServer({
       }
       if (translationMatch && request.method === "GET") {
         await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
-        return json(response, 200, { translation: await readOptionalState(() => readTranslationState(statesRoot, translationMatch[1])) });
+        const draft = await readDraft(draftsRoot, translationMatch[1]);
+        await rebaseReusableArtifacts({ draft, statesRoot });
+        const translation = await readOptionalState(() => readTranslationState(statesRoot, translationMatch[1]));
+        return json(response, 200, { translation: translationWithFreshness(translation, draft) });
       }
       if (translationMatch && request.method === "PUT") {
         const value = await requestJson(request);
@@ -451,7 +471,12 @@ export function createPublisherServer({
       }
       if (audiogramMatch && request.method === "GET" && !audiogramMatch[2]) {
         await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
-        return json(response, 200, { audiogram: await readOptionalState(() => readAudiogramState(statesRoot, audiogramMatch[1])) });
+        const [audiogram, draft, audio] = await Promise.all([
+          readOptionalState(() => readAudiogramState(statesRoot, audiogramMatch[1])),
+          readDraft(draftsRoot, audiogramMatch[1]),
+          readOptionalState(() => readTtsState(statesRoot, audiogramMatch[1])),
+        ]);
+        return json(response, 200, { audiogram: audiogramWithFreshness(audiogram, draft, audio) });
       }
       if (audiogramMatch && request.method === "GET" && audiogramMatch[2] === "video") {
         const state = await readAudiogramState(statesRoot, audiogramMatch[1]);

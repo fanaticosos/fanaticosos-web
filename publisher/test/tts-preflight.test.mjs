@@ -44,3 +44,18 @@ test("preflight never joins a venue to the next sentence", () => {
   assert.equal(result.status, "ready");
   assert.deepEqual(result.unresolved, []);
 });
+
+test("approved brand variants, legacy players, and NFL terms are not false warnings", () => {
+  const result = ttsPreflight(
+    {
+      title: "FanaticOSOS celebra",
+      description: "Fanatic-OSOS recuerda a Jay Cutler.",
+      body: "La meta sigue siendo el Super Bowl.",
+    },
+    database,
+    { entities: [...azure.entities, { grapheme: "Fanaticosos", category: "brand", language: "es-MX" }] },
+    { terms: [{ canonical: "Super Bowl", preferredSpanish: "Super Bowl", acceptedSpanish: ["Super Bowl"] }] },
+  );
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.unresolved, []);
+});
