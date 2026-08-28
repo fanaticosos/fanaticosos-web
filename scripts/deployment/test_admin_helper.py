@@ -94,6 +94,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-elevenlabs-credential",
                 "elevenlabs-credential-status",
                 "run-elevenlabs-tts-sample",
+                "run-elevenlabs-tts-full",
                 "run-openai-tts-sample",
                 "export-openai-tts-sample",
                 "install-cloudflare-pages-credential",
