@@ -20,6 +20,7 @@ readonly audiogram_source_unit="$repository/deploy/systemd/fanaticosos-audiogram
 readonly audiogram_installed_unit="/etc/systemd/system/fanaticosos-audiogram@.service"
 readonly azure_credential_dir="/etc/fanaticosos-blog"
 readonly azure_credential_file="$azure_credential_dir/azure-speech.env"
+readonly openai_credential_file="$azure_credential_dir/openai.env"
 readonly cloudflare_credential_file="$azure_credential_dir/cloudflare-pages.env"
 readonly publisher_source_unit="$repository/deploy/systemd/fanaticosos-publisher.service"
 readonly publisher_installed_unit="/etc/systemd/system/fanaticosos-publisher.service"
@@ -117,6 +118,8 @@ Commands:
   install-tts-template EXPECTED_COMMIT
   install-azure-speech-credential EXPECTED_COMMIT
   azure-speech-credential-status
+  install-openai-credential EXPECTED_COMMIT
+  openai-credential-status
   install-cloudflare-pages-credential EXPECTED_COMMIT
   cloudflare-pages-credential-status
   install-pages-deployment-runtime EXPECTED_COMMIT
@@ -835,6 +838,33 @@ command_azure_speech_credential_status() {
   [[ "$(sed -n 's/^AZURE_SPEECH_KEY=//p' "$azure_credential_file" | wc -c)" -ge 33 ]] || \
     stop "Azure Speech key is missing."
   echo "PASS: Azure Speech credential exists with root-only permissions in eastus."
+}
+
+command_install_openai_credential() {
+  local expected="$1"
+  local api_key
+  local temporary
+  require_repository_commit "$expected"
+  IFS= read -r api_key || stop "OpenAI API key was not received on standard input."
+  [[ "$api_key" =~ ^sk-[A-Za-z0-9_-]{20,200}$ ]] || stop "OpenAI API key has an invalid format."
+  install -d -o root -g root -m 0700 "$azure_credential_dir"
+  umask 0077
+  temporary="$(mktemp "$azure_credential_dir/.openai.env.XXXXXX")"
+  trap 'rm -f "$temporary"' ERR
+  printf 'OPENAI_API_KEY=%s\n' "$api_key" > "$temporary"
+  chown root:root "$temporary"
+  chmod 0600 "$temporary"
+  mv -f "$temporary" "$openai_credential_file"
+  trap - ERR
+  unset api_key
+  echo "PASS: OpenAI credential installed with root-only permissions."
+}
+
+command_openai_credential_status() {
+  [[ -f "$openai_credential_file" && ! -L "$openai_credential_file" ]] || stop "OpenAI credential is not installed."
+  [[ "$(stat -c '%U:%G:%a' "$openai_credential_file")" == "root:root:600" ]] || stop "OpenAI credential permissions are incorrect."
+  [[ "$(sed -n 's/^OPENAI_API_KEY=//p' "$openai_credential_file" | wc -c)" -ge 24 ]] || stop "OpenAI API key is missing."
+  echo "PASS: OpenAI credential exists with root-only permissions."
 }
 
 command_install_cloudflare_pages_credential() {
@@ -1872,6 +1902,14 @@ case "$command" in
   azure-speech-credential-status)
     [[ $# == 0 ]] || stop "azure-speech-credential-status takes no arguments."
     command_azure_speech_credential_status
+    ;;
+  install-openai-credential)
+    [[ $# == 1 ]] || stop "install-openai-credential requires EXPECTED_COMMIT."
+    command_install_openai_credential "$1"
+    ;;
+  openai-credential-status)
+    [[ $# == 0 ]] || stop "openai-credential-status takes no arguments."
+    command_openai_credential_status
     ;;
   install-cloudflare-pages-credential)
     [[ $# == 1 ]] || stop "install-cloudflare-pages-credential requires EXPECTED_COMMIT."

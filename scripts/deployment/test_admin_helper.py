@@ -89,6 +89,8 @@ class AdminHelperTests(unittest.TestCase):
                 "install-tts-template",
                 "install-azure-speech-credential",
                 "azure-speech-credential-status",
+                "install-openai-credential",
+                "openai-credential-status",
                 "install-cloudflare-pages-credential",
                 "cloudflare-pages-credential-status",
                 "install-pages-deployment-runtime",
