@@ -44,22 +44,26 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
 test("music publication builds privately then deploys through a root-only unit", async () => {
   const build = await readFile(new URL("../../deploy/systemd/fanaticosos-music-release@.service", import.meta.url), "utf8");
   const deploy = await readFile(new URL("../../deploy/systemd/fanaticosos-music-deploy@.service", import.meta.url), "utf8");
+  const failureRecorder = await readFile(new URL("../../scripts/publisher/record_music_deploy_exit.mjs", import.meta.url), "utf8");
   assert.match(build, /User=fanaticosos-blog/);
   assert.match(build, /PrivateNetwork=yes/);
   assert.match(build, /OnSuccess=fanaticosos-music-deploy@%i\.service/);
   assert.match(deploy, /deploy_music_release\.sh/);
   assert.match(deploy, /record_music_deploy_exit\.mjs/);
   assert.doesNotMatch(deploy, /User=fanaticosos-blog/);
+  assert.match(failureRecorder, /await chown\(temporary, owner\.uid, owner\.gid\)/);
 });
 
 test("every validated production deployment becomes the source for later music builds", async () => {
   const production = await readFile(new URL("../../scripts/deployment/deploy_cloudflare_production.sh", import.meta.url), "utf8");
   const productionUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-production-deploy@.service", import.meta.url), "utf8");
+  const failureRecorder = await readFile(new URL("../../scripts/publisher/record_production_deploy_exit.mjs", import.meta.url), "utf8");
   const music = await readFile(new URL("../../scripts/deployment/deploy_music_release.sh", import.meta.url), "utf8");
   const musicBuild = await readFile(new URL("../../scripts/publisher/build_music_release.mjs", import.meta.url), "utf8");
   assert.match(production, /scripts\/publisher\/select_release\.mjs/);
   assert.match(production, /--releases-root "\$data_root\/publisher\/releases" --job-id "\$job_id"/);
   assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases(?:\n|$)/);
+  assert.match(failureRecorder, /await chown\(temporary, owner\.uid, owner\.gid\)/);
   assert.doesNotMatch(music, /select_release\.mjs/);
   assert.match(musicBuild, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);
 });
