@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -47,4 +47,22 @@ test("reconciliation fails a deployment that exceeds its timeout", async () => {
   const reconciled = await reconcileDeployment({ state, statesRoot, releasesRoot, now: new Date("2026-08-24T12:00:00Z") });
   assert.equal(reconciled.status, "failed");
   assert.match(reconciled.error, /límite automático/);
+});
+
+test("legacy root-only deployment failure records do not wedge the queue", async (context) => {
+  if (process.getuid?.() === 0) context.skip("root can read mode-000 fixtures");
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-deployment-"));
+  const statesRoot = join(root, "states");
+  const releasesRoot = join(root, "releases");
+  const releaseRoot = join(releasesRoot, releaseJobId);
+  await mkdir(statesRoot, { recursive: true });
+  await mkdir(releaseRoot, { recursive: true });
+  const failurePath = join(releaseRoot, "production-failure.json");
+  await writeFile(failurePath, "{}", { mode: 0o600 });
+  await chmod(failurePath, 0o000);
+  context.after(() => chmod(failurePath, 0o600));
+  const state = { schemaVersion: 1, articleId, draftRevision: 1, releaseJobId, status: "running", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const reconciled = await reconcileDeployment({ state, statesRoot, releasesRoot });
+  assert.equal(reconciled.status, "failed");
+  assert.match(reconciled.error, /sitio anterior permanece activo/);
 });

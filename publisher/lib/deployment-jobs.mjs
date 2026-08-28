@@ -62,7 +62,17 @@ export async function reconcileDeployment({ state, statesRoot, releasesRoot, now
       state.status = "failed";
       state.error = failure.error;
     } catch (failureError) {
-      if (failureError.code !== "ENOENT") throw failureError;
+      if (failureError.code === "EACCES") {
+        state.status = "failed";
+        state.error = "La publicación pública no pudo completarse. El sitio anterior permanece activo.";
+      } else if (failureError.code !== "ENOENT") {
+        throw failureError;
+      }
+      if (state.status === "failed") {
+        state.updatedAt = now.toISOString();
+        await atomicJson(join(statesRoot, `deployment-${state.articleId}.json`), state);
+        return state;
+      }
       try {
         await readFile(join(root, "production-request.json"));
         state.status = "running";
