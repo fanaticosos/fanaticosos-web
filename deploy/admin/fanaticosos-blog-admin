@@ -21,6 +21,7 @@ readonly audiogram_installed_unit="/etc/systemd/system/fanaticosos-audiogram@.se
 readonly azure_credential_dir="/etc/fanaticosos-blog"
 readonly azure_credential_file="$azure_credential_dir/azure-speech.env"
 readonly openai_credential_file="$azure_credential_dir/openai.env"
+readonly elevenlabs_credential_file="$azure_credential_dir/elevenlabs.env"
 readonly cloudflare_credential_file="$azure_credential_dir/cloudflare-pages.env"
 readonly publisher_source_unit="$repository/deploy/systemd/fanaticosos-publisher.service"
 readonly publisher_installed_unit="/etc/systemd/system/fanaticosos-publisher.service"
@@ -120,6 +121,8 @@ Commands:
   azure-speech-credential-status
   install-openai-credential EXPECTED_COMMIT
   openai-credential-status
+  install-elevenlabs-credential EXPECTED_COMMIT
+  elevenlabs-credential-status
   run-openai-tts-sample EXPECTED_COMMIT ARTICLE_ID LOCALE
   export-openai-tts-sample ARTICLE_ID LOCALE
   install-cloudflare-pages-credential EXPECTED_COMMIT
@@ -867,6 +870,33 @@ command_openai_credential_status() {
   [[ "$(stat -c '%U:%G:%a' "$openai_credential_file")" == "root:root:600" ]] || stop "OpenAI credential permissions are incorrect."
   [[ "$(sed -n 's/^OPENAI_API_KEY=//p' "$openai_credential_file" | wc -c)" -ge 24 ]] || stop "OpenAI API key is missing."
   echo "PASS: OpenAI credential exists with root-only permissions."
+}
+
+command_install_elevenlabs_credential() {
+  local expected="$1"
+  local api_key
+  local temporary
+  require_repository_commit "$expected"
+  IFS= read -r api_key || stop "ElevenLabs API key was not received on standard input."
+  [[ "$api_key" =~ ^[A-Za-z0-9_-]{20,200}$ ]] || stop "ElevenLabs API key has an invalid format."
+  install -d -o root -g root -m 0700 "$azure_credential_dir"
+  umask 0077
+  temporary="$(mktemp "$azure_credential_dir/.elevenlabs.env.XXXXXX")"
+  trap 'rm -f "$temporary"' ERR
+  printf 'ELEVENLABS_API_KEY=%s\n' "$api_key" > "$temporary"
+  chown root:root "$temporary"
+  chmod 0600 "$temporary"
+  mv -f "$temporary" "$elevenlabs_credential_file"
+  trap - ERR
+  unset api_key
+  echo "PASS: ElevenLabs credential installed with root-only permissions."
+}
+
+command_elevenlabs_credential_status() {
+  [[ -f "$elevenlabs_credential_file" && ! -L "$elevenlabs_credential_file" ]] || stop "ElevenLabs credential is not installed."
+  [[ "$(stat -c '%U:%G:%a' "$elevenlabs_credential_file")" == "root:root:600" ]] || stop "ElevenLabs credential permissions are incorrect."
+  [[ "$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file" | wc -c)" -ge 21 ]] || stop "ElevenLabs API key is missing."
+  echo "PASS: ElevenLabs credential exists with root-only permissions."
 }
 
 command_run_openai_tts_sample() {
@@ -1947,6 +1977,14 @@ case "$command" in
   openai-credential-status)
     [[ $# == 0 ]] || stop "openai-credential-status takes no arguments."
     command_openai_credential_status
+    ;;
+  install-elevenlabs-credential)
+    [[ $# == 1 ]] || stop "install-elevenlabs-credential requires EXPECTED_COMMIT."
+    command_install_elevenlabs_credential "$1"
+    ;;
+  elevenlabs-credential-status)
+    [[ $# == 0 ]] || stop "elevenlabs-credential-status takes no arguments."
+    command_elevenlabs_credential_status
     ;;
   run-openai-tts-sample)
     [[ $# == 3 ]] || stop "run-openai-tts-sample requires EXPECTED_COMMIT ARTICLE_ID LOCALE."
