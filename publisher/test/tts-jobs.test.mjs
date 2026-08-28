@@ -57,14 +57,25 @@ test("TTS requests bind approved Spanish and English text to one revision", () =
   assert.equal(requests.en.locale, "en");
   assert.match(requests.en.sourceRevision, /^[0-9a-f]{64}$/);
   assert.notEqual(requests.en.sourceRevision, translation.sourceRevision);
-  assert.equal(requests.es.segments[1].text, "Primer cuarto");
-  assert.equal(requests.es.segments[0].kind, "description");
-  assert.equal(requests.es.segments[1].kind, "heading");
-  assert.equal(requests.es.segments[2].kind, "paragraph");
-  assert.equal(requests.en.segments[2].text, "Caleb Williams threw a touchdown.");
+  assert.equal(requests.es.segments[0].text, "Primer cuarto");
+  assert.equal(requests.es.segments[0].kind, "heading");
+  assert.equal(requests.es.segments[1].kind, "paragraph");
+  assert.equal(requests.en.segments[1].text, "Caleb Williams threw a touchdown.");
   const corrected = structuredClone(translation);
   corrected.result.body += " Correction.";
   assert.notEqual(ttsRequestsForDraft(draft, corrected).en.sourceRevision, requests.en.sourceRevision);
+});
+
+test("SEO and social summaries are never narrated or included in TTS source revisions", () => {
+  const requests = ttsRequestsForDraft(draft, translation);
+  const changedDraft = { ...draft, description: "Un resumen completamente diferente." };
+  const changedTranslation = structuredClone(translation);
+  changedTranslation.result.description = "A completely different summary.";
+  const changed = ttsRequestsForDraft(changedDraft, changedTranslation);
+  assert.equal(changed.es.sourceRevision, requests.es.sourceRevision);
+  assert.equal(changed.en.sourceRevision, requests.en.sourceRevision);
+  assert.equal(requests.es.segments.some(({ text }) => text.includes("Resumen")), false);
+  assert.equal(requests.en.segments.some(({ text }) => text.includes("summary")), false);
 });
 
 test("TTS requests never send inline Markdown to either narrator", () => {
@@ -83,12 +94,10 @@ test("TTS requests never send inline Markdown to either narrator", () => {
   };
   const requests = ttsRequestsForDraft(formattedDraft, formattedTranslation);
   assert.deepEqual(requests.es.segments.map(({ text }) => text), [
-    "Resumen con énfasis.",
     "Porque los Bears necesitan un quarterback.",
     "Go Bears!",
   ]);
   assert.deepEqual(requests.en.segments.map(({ text }) => text), [
-    "Summary with emphasis.",
     "The Bears need a quarterback.",
     "Go Bears!",
   ]);
@@ -110,10 +119,10 @@ test("section numbers remain visual and are omitted from bilingual narration", (
   };
   const requests = ttsRequestsForDraft(numberedDraft, numberedTranslation);
   assert.deepEqual(requests.es.segments.map(({ text }) => text), [
-    "Resumen del partido.", "El mensaje", "Texto I. permanece intacto.", "La respuesta",
+    "El mensaje", "Texto I. permanece intacto.", "La respuesta",
   ]);
   assert.deepEqual(requests.en.segments.map(({ text }) => text), [
-    "Game summary.", "The message", "Text I. remains intact.", "The response",
+    "The message", "Text I. remains intact.", "The response",
   ]);
 });
 
@@ -127,7 +136,7 @@ test("English player-name suffixes are spoken as ordinals", () => {
   };
   const requests = ttsRequestsForDraft(draft, suffixTranslation);
   assert.equal(
-    requests.en.segments[1].text,
+    requests.en.segments[0].text,
     "Luther Burden the Third met Robert Griffin the Second. Rocky III remains a title.",
   );
 });

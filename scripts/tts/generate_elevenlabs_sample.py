@@ -17,7 +17,7 @@ voices=json.loads(raw).get("voices",[]); voice=next((v for v in voices if v.get(
 if not voice: raise SystemExit("Will - Relaxed Optimist voice was not found")
 settings_raw,_=api(f"https://api.elevenlabs.io/v1/voices/{voice['voice_id']}/settings",key); settings=json.loads(settings_raw)
 paras=[clean(x) for x in draft["body"].split("\n\n") if clean(x)]
-text="\n\n".join([clean(draft["title"]),clean(draft["description"]),*(paras if a.full else paras[:3])])
+text="\n\n".join([clean(draft["title"]),*(paras if a.full else paras[:3])])
 if len(text) > 5000: raise SystemExit("article exceeds one-request ElevenLabs Multilingual v2 limit")
 audio,_=api(f"https://api.elevenlabs.io/v1/text-to-speech/{voice['voice_id']}?output_format=mp3_44100_128",key,{"text":text,"model_id":"eleven_multilingual_v2","voice_settings":settings})
 a.output.mkdir(parents=True,mode=0o700); target=a.output/("full-es.mp3" if a.full else "sample-es.mp3"); target.write_bytes(audio); target.chmod(0o600)

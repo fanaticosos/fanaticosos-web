@@ -48,9 +48,9 @@ function englishNameSuffixes(text) {
   );
 }
 
-function narrationSegments(description, body) {
+function narrationSegments(body) {
   const spoken = (text) => englishNameSuffixes(text);
-  const segments = [{ id: "description", kind: "description", text: spoken(narrationText(description)) }];
+  const segments = [];
   let sequence = 0;
   for (const part of body.split(/\n\s*\n/)) {
     if (!part.trim()) continue;
@@ -74,17 +74,22 @@ export function ttsRequestsForDraft(draft, translation) {
   if (translation.status !== "completed" || translation.draftRevision !== draft.revision) {
     throw new Error("the current draft revision needs an accepted English translation");
   }
-  const source = { articleId: draft.articleId, revision: draft.revision, title: draft.title, description: draft.description, body: draft.body };
-  const englishSource = { articleId: draft.articleId, revision: draft.revision, ...translation.result };
+  const source = { articleId: draft.articleId, revision: draft.revision, title: draft.title, body: draft.body };
+  const englishSource = {
+    articleId: draft.articleId,
+    revision: draft.revision,
+    title: translation.result.title,
+    body: translation.result.body,
+  };
   return {
     es: {
       schemaVersion: 1, articleId: draft.articleId, locale: "es", sourceRevision: digest(source),
-      title: draft.title, segments: narrationSegments(draft.description, draft.body, "es"),
+      title: draft.title, segments: narrationSegments(draft.body),
     },
     en: {
       schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: digest(englishSource),
       title: translation.result.title,
-      segments: narrationSegments(translation.result.description, translation.result.body, "en"),
+      segments: narrationSegments(translation.result.body),
     },
   };
 }
