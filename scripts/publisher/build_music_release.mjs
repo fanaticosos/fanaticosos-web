@@ -25,7 +25,7 @@ async function main() {
   await cp(repository, temporary, { recursive: true, filter: (source) => ![".git", "node_modules", ".astro", "dist"].includes(basename(source)) });
   const selected = join(releasesRoot, "current");
   const manifest = JSON.parse(await readFile(join(selected, "release-manifest.json"), "utf8"));
-  for (const relative of ["src/content/articles", "public/audio", "public/uploads"]) {
+  for (const relative of ["src/content/articles", "public/audio", "public/images", "public/uploads"]) {
     const source = join(selected, relative);
     const exists = await lstat(source).then(() => true).catch((error) => { if (error.code === "ENOENT") return false; throw error; });
     if (exists) await cp(source, join(temporary, relative), { recursive: true, force: true });
