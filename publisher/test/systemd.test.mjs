@@ -51,6 +51,14 @@ test("music publication builds privately then deploys through a root-only unit",
   assert.doesNotMatch(deploy, /User=fanaticosos-blog/);
 });
 
+test("every validated production deployment becomes the source for later music builds", async () => {
+  const production = await readFile(new URL("../../scripts/deployment/deploy_cloudflare_production.sh", import.meta.url), "utf8");
+  const music = await readFile(new URL("../../scripts/deployment/deploy_music_release.sh", import.meta.url), "utf8");
+  assert.match(production, /scripts\/publisher\/select_release\.mjs/);
+  assert.match(production, /--releases-root "\$data_root\/publisher\/releases" --job-id "\$job_id"/);
+  assert.doesNotMatch(music, /select_release\.mjs/);
+});
+
 test("release retention is fixed, private, and bounded by the approved policy", async () => {
   const service = await readFile(new URL("../../deploy/systemd/fanaticosos-release-retention.service", import.meta.url), "utf8");
   const timer = await readFile(new URL("../../deploy/systemd/fanaticosos-release-retention.timer", import.meta.url), "utf8");

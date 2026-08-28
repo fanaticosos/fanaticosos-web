@@ -156,6 +156,13 @@ for domain in "${domains[@]}"; do
   done
 done
 
+# The locally selected release is the source for later music-only builds. Keep it
+# aligned with the production bundle that just passed validation, regardless of
+# whether this deployment was initiated by an article or a music update.
+runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+  "$repository/scripts/publisher/select_release.mjs" \
+  --releases-root "$data_root/publisher/releases" --job-id "$job_id"
+
 mv "$temporary_log" "$log_file"; chown "$service_account:$service_account" "$log_file"; chmod 0600 "$log_file"
 python3 - "$receipt" "$job_id" "$deployment_url" "$commit" "$rollback_id" "$rollback_url" <<'PY'
 import json, os, sys, tempfile

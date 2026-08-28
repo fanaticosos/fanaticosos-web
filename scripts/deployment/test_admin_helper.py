@@ -244,6 +244,8 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('https://fanaticosos.com', script)
         self.assertIn('https://www.fanaticosos.com', script)
         self.assertIn('sha256sum "$temporary_body"', script)
+        self.assertIn('scripts/publisher/select_release.mjs', script)
+        self.assertIn('--releases-root "$data_root/publisher/releases" --job-id "$job_id"', script)
         self.assertNotIn("eval ", script)
 
         self.assertNotIn('readonly release_root="$job_root/release" dist_root=', script)
