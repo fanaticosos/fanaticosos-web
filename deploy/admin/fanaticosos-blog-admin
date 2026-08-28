@@ -913,14 +913,14 @@ command_run_elevenlabs_tts_sample() {
 }
 
 command_run_elevenlabs_tts_full() {
-  local expected="$1" article_id="$2" api_key output="$data_root/work/elevenlabs-tts-full-$2"
+  local expected="$1" article_id="$2" api_key output="$data_root/work/elevenlabs-tts-full-$2-v2"
   require_repository_commit "$expected"
   [[ "$article_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || stop "Invalid article ID."
   command_elevenlabs_credential_status >/dev/null; [[ ! -e "$output" ]] || stop "ElevenLabs full output already exists."
   api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
   run_as_service env ELEVENLABS_API_KEY="$api_key" python3 "$repository/scripts/tts/generate_elevenlabs_sample.py" --full --draft "$publisher_data/drafts/$article_id.json" --output "$output"
   unset api_key
-  install -o sysadmin -g sysadmin -m 0600 "$output/full-es.mp3" "/home/sysadmin/fanaticosos-elevenlabs-full-$article_id-es.mp3"
+  install -o sysadmin -g sysadmin -m 0600 "$output/full-es.mp3" "/home/sysadmin/fanaticosos-elevenlabs-full-$article_id-es-v2.mp3"
 }
 
 command_run_openai_tts_sample() {
