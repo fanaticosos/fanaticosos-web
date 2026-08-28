@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
+import { translationSourceRevision } from "./translation-jobs.mjs";
+
 const JOB_TIMEOUT_MS = 17 * 60 * 1000;
 const JOB_ID = /^tts-(es|en)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
 let ttsQueueBusy = false;
@@ -71,7 +73,9 @@ function narrationSegments(body) {
 }
 
 export function ttsRequestsForDraft(draft, translation) {
-  if (translation.status !== "completed" || translation.draftRevision !== draft.revision) {
+  const translationMatchesDraft = translation.draftRevision === draft.revision
+    || translation.sourceRevision === translationSourceRevision(draft);
+  if (translation.status !== "completed" || !translationMatchesDraft) {
     throw new Error("the current draft revision needs an accepted English translation");
   }
   const source = { articleId: draft.articleId, revision: draft.revision, title: draft.title, body: draft.body };

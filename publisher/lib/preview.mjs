@@ -32,6 +32,10 @@ export function renderMarkdown(source) {
   }).join("\n");
 }
 
+export function previewErrorPage() {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Vista previa no disponible</title><link rel="stylesheet" href="/preview.css"></head><body><header><a class="brand" href="/">FANATICOSOS</a><span>Vista previa privada</span></header><main><article><h1>La vista previa todavía no está lista</h1><p class="description">Regresa al editor. Allí verás el paso pendiente y podrás continuar sin perder tu trabajo.</p><p><a href="/">Volver al editor</a></p></article></main></body></html>`;
+}
+
 export function previewPage({ draft, translation, audio, locale, settings }) {
   if (translation.status !== "completed" || audio.status !== "completed") throw new Error("preview requires accepted translation and audio");
   if (translation.draftRevision !== draft.revision || audio.draftRevision !== draft.revision) throw new Error("preview outputs are stale");

@@ -11,7 +11,8 @@ import { acknowledgeNotification, createNotification, listNotifications } from "
 import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
-import { previewPage, renderMarkdown } from "./lib/preview.mjs";
+import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
+import { rebaseReusableArtifacts } from "./lib/artifact-revisions.mjs";
 import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
 import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
@@ -296,21 +297,32 @@ export function createPublisherServer({
       }
       const previewMatch = /^\/preview\/([0-9a-f-]{36})\/(es|en)$/.exec(url.pathname);
       if (previewMatch && request.method === "GET") {
-        const [draft, translation, audio, settings] = await Promise.all([
-          readDraft(draftsRoot, previewMatch[1]),
-          readTranslationState(statesRoot, previewMatch[1]),
-          readTtsState(statesRoot, previewMatch[1]),
-          readFile(settingsPath, "utf8").then(JSON.parse),
-        ]);
-        const requests = ttsRequestsForDraft(draft, translation);
-        if (audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
-        const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
-        response.writeHead(200, {
-          "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
-          "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self'; script-src 'none'",
-          "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
-        });
-        return response.end(body);
+        try {
+          const draft = await readDraft(draftsRoot, previewMatch[1]);
+          await rebaseReusableArtifacts({ draft, statesRoot });
+          const [translation, audio, settings] = await Promise.all([
+            readTranslationState(statesRoot, previewMatch[1]),
+            readTtsState(statesRoot, previewMatch[1]),
+            readFile(settingsPath, "utf8").then(JSON.parse),
+          ]);
+          const requests = ttsRequestsForDraft(draft, translation);
+          if (audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
+          const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
+          response.writeHead(200, {
+            "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
+            "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self'; script-src 'none'",
+            "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+          });
+          return response.end(body);
+        } catch {
+          const body = Buffer.from(previewErrorPage());
+          response.writeHead(409, {
+            "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
+            "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'self'; style-src 'self'; script-src 'none'",
+            "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+          });
+          return response.end(body);
+        }
       }
       if (url.pathname === "/api/drafts" && request.method === "GET") {
         return json(response, 200, { drafts: await listDrafts(draftsRoot) });
@@ -515,6 +527,7 @@ export function createPublisherServer({
           value.expectedRevision,
           value.draft,
         );
+        await rebaseReusableArtifacts({ draft, statesRoot });
         return json(response, 200, { draft });
       }
       return json(response, 404, { error: "not found" });

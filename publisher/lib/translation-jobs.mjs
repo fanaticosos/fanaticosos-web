@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -56,6 +56,23 @@ export function translationRequestForDraft(draft) {
     },
     bodyLayout: body.layout,
   };
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function translationSourceRevision(draft) {
+  const request = translationRequestForDraft(draft).request;
+  const normalized = {
+    ...request,
+    segments: request.segments.map((segment) => ({ ...segment, preserve: segment.preserve ?? [] })),
+  };
+  return createHash("sha256").update(canonicalJson(normalized)).digest("hex");
 }
 
 export async function queueTranslation({ draft, queueRoot, statesRoot, workflow = "manual", now = new Date() }) {
