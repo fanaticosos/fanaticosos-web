@@ -18,8 +18,8 @@ function digest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-export function ttsPolicyRevision(production, pronunciations, azureEntities = {}, spanishTerms = {}) {
-  return digest({ production, pronunciations, azureEntities, spanishTerms });
+export function ttsPolicyRevision(production, pronunciations, azureEntities = {}, spanishTerms = {}, spanishProvider = {}) {
+  return digest({ production, pronunciations, azureEntities, spanishTerms, spanishProvider });
 }
 
 export function narrationText(markdown) {
@@ -116,13 +116,8 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  let existingSpanish = { status: "awaiting-upload" };
-  try {
-    const existing = JSON.parse(await readFile(statePath, "utf8"));
-    if (existing.draftRevision === draft.revision && existing.sourceRevisions?.es === sourceRevisions.es && existing.jobs?.es?.status === "completed") existingSpanish = existing.jobs.es;
-  } catch (error) { if (error.code !== "ENOENT") throw error; }
-  const jobs = { es: existingSpanish };
-  for (const locale of ["en"]) {
+  const jobs = {};
+  for (const locale of ["es", "en"]) {
     const jobId = `tts-${locale}-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
     if (!JOB_ID.test(jobId)) throw new Error("TTS job identity is invalid");
     const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
@@ -147,17 +142,16 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   if (ttsQueueBusy) throw new Error("audio generation is already running");
   ttsQueueBusy = true;
   try {
-  if (locale !== "en") throw new Error("Spanish audio must be uploaded as an MP3");
+  if (!["es", "en"].includes(locale)) throw new Error("audio locale is invalid");
   if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
   const existing = JSON.parse(await readFile(statePath, "utf8"));
-  if (existing.status !== "completed" || existing.draftRevision !== draft.revision || existing.jobs?.es?.status !== "completed" || existing.jobs?.en?.status !== "completed") {
-    throw new Error("completed bilingual audio is required before regenerating one language");
-  }
+  if (existing.draftRevision !== draft.revision) throw new Error("the saved audio belongs to an older draft revision");
   const requests = ttsRequestsForDraft(draft, translation);
-  const preservedLocale = "es";
+  const preservedLocale = locale === "es" ? "en" : "es";
+  if (existing.jobs?.[preservedLocale]?.status !== "completed") throw new Error(`completed ${preservedLocale} audio is required`);
   if (existing.sourceRevisions?.[preservedLocale] !== requests[preservedLocale].sourceRevision) {
     throw new Error("the preserved audio is stale; regenerate both audios");
   }
@@ -169,7 +163,7 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   await rename(temporary, join(queueRoot, jobId));
   const state = {
     ...existing,
-    status: "queued", workflow: "audio-regeneration", regeneratedLocale: locale,
+    status: "queued", workflow: existing.status === "awaiting-upload" && locale === "es" && existing.workflow === "preview" ? "preview" : "audio-regeneration", regeneratedLocale: locale,
     createdAt: now.toISOString(), updatedAt: now.toISOString(), policyRevision,
     sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
     jobs: { ...existing.jobs, [locale]: { jobId, status: "queued" } },
@@ -196,7 +190,7 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
     let completed = 0;
     for (const locale of ["es", "en"]) {
       const job = state.jobs[locale];
-      if (!job || job.status === "awaiting-upload") continue;
+      if (!job) continue;
       if (job.status === "completed") { completed += 1; continue; }
       try {
         const result = JSON.parse(await readFile(join(jobsRoot, job.jobId, "audio", "result.json"), "utf8"));
@@ -216,7 +210,7 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
         }
       }
     }
-    state.status = completed === 2 ? "completed" : state.jobs.en?.status === "completed" ? "awaiting-upload" : "running";
+    state.status = completed === 2 ? "completed" : "running";
     if (state.status === "running" && now.getTime() - new Date(state.createdAt).getTime() > JOB_TIMEOUT_MS) {
       state.status = "failed";
       state.error = "La generación de audio excedió su límite automático y fue detenida.";

@@ -148,9 +148,12 @@
             </section>
             <section id="audio-result" class="english-result" hidden>
               <h3>Audios · escuchar antes de publicar</h3>
-              <label>Tu MP3 en español<input id="spanish-audio-file" type="file" accept=".mp3,audio/mpeg"></label>
-              <button id="upload-spanish-audio" type="button">Subir MP3 en español</button>
-              <p id="spanish-audio-status">Selecciona el MP3 completo que preparaste.</p>
+              <button id="generate-spanish-audio" type="button">Generar audio en español</button>
+              <p id="spanish-audio-status">El audio en español se genera automáticamente con ElevenLabs.</p>
+              <details><summary>Reemplazar manualmente el audio en español</summary>
+                <label>MP3 en español<input id="spanish-audio-file" type="file" accept=".mp3,audio/mpeg"></label>
+                <button id="upload-spanish-audio" type="button">Subir MP3 en español</button>
+              </details>
               <label>Español<audio id="audio-es" controls preload="metadata"></audio></label>
               <label>English<audio id="audio-en" controls preload="metadata"></audio></label>
               <button id="regenerate-english-audio" type="button">Regenerar audio en inglés</button>

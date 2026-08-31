@@ -221,6 +221,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
   assert.match(html, /id="upload-spanish-audio"/);
+  assert.match(html, /id="generate-spanish-audio"/);
   assert.match(html, /id="regenerate-english-audio"/);
   assert.match(html, /id="audiogram-result"/);
   assert.match(html, /class="audiogram-preview"/);
@@ -359,7 +360,7 @@ test("saved draft can queue one private translation job", async (context) => {
   assert.equal((await readFile(join(queueRoot, translation.jobId, "request.json"), "utf8")).includes(draft.title), true);
 });
 
-test("accepted English revision queues only the English audio job", async (context) => {
+test("accepted English revision queues bilingual audio jobs", async (context) => {
   const { server, base, queueRoot, statesRoot } = await fixture();
   context.after(() => server.close());
   const draft = (await (await fetch(`${base}/api/drafts`, {
@@ -376,7 +377,7 @@ test("accepted English revision queues only the English audio job", async (conte
   });
   assert.equal(response.status, 202);
   const queued = (await readdir(queueRoot)).filter((name) => name.startsWith("tts-"));
-  assert.equal(queued.length, 1);
-  assert.equal(queued.some((name) => name.startsWith("tts-es-")), false);
+  assert.equal(queued.length, 2);
+  assert.equal(queued.some((name) => name.startsWith("tts-es-")), true);
   assert.equal(queued.some((name) => name.startsWith("tts-en-")), true);
 });

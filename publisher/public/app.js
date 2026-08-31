@@ -20,6 +20,7 @@ const audioResult = document.querySelector("#audio-result");
 const ttsPreflightPanel = document.querySelector("#tts-preflight");
 const spanishAudioFile = document.querySelector("#spanish-audio-file");
 const uploadSpanishAudio = document.querySelector("#upload-spanish-audio");
+const generateSpanishAudio = document.querySelector("#generate-spanish-audio");
 const spanishAudioStatus = document.querySelector("#spanish-audio-status");
 const regenerateEnglishAudio = document.querySelector("#regenerate-english-audio");
 const audiogramResult = document.querySelector("#audiogram-result");
@@ -509,7 +510,7 @@ async function pollAudio() {
     if (spanishReady) {
       const source = `/api/drafts/${articleId}/audio/es?v=${encodeURIComponent(audio.jobs.es.jobId)}`;
       if (spanishPlayer.getAttribute("src") !== source) spanishPlayer.src = source;
-      spanishAudioStatus.textContent = "MP3 en español cargado y validado.";
+      spanishAudioStatus.textContent = audio.jobs.es.result?.engine === "ElevenLabs" ? "Audio en español generado con ElevenLabs." : "MP3 en español cargado y validado.";
     }
     if (englishReady) {
       const source = `/api/drafts/${articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
@@ -518,9 +519,10 @@ async function pollAudio() {
     if (audio.status === "completed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
-      workflowState.textContent = "Tu MP3 en español y el audio en inglés están listos.";
+      workflowState.textContent = "Los audios en español e inglés están listos.";
       pollAudiogram();
       uploadSpanishAudio.disabled = false;
+      generateSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
       generateAudio.disabled = false;
       openPreview.disabled = false;
@@ -533,9 +535,10 @@ async function pollAudio() {
     } else if (audio.status === "awaiting-upload") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
-      workflowState.textContent = "Audio en inglés listo · falta subir tu MP3 en español.";
-      spanishAudioStatus.textContent = "Selecciona y sube tu MP3 completo en español.";
+      workflowState.textContent = "Audio en inglés listo · genera el audio en español.";
+      spanishAudioStatus.textContent = "Pulsa Generar audio en español para completar la vista previa.";
       uploadSpanishAudio.disabled = false;
+      generateSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
     } else if (audio.status === "failed") {
       if (audioTimer) clearInterval(audioTimer);
@@ -544,8 +547,9 @@ async function pollAudio() {
       showError(audio.error || "La generación de audio no pasó la validación.");
       await refreshNotifications();
     } else {
-      workflowState.textContent = audio.status === "queued" ? "Audio en inglés en cola…" : "Generando audio en inglés…";
+      workflowState.textContent = audio.status === "queued" ? "Audios en cola…" : "Generando audios…";
       uploadSpanishAudio.disabled = false;
+      generateSpanishAudio.disabled = true;
       regenerateEnglishAudio.disabled = true;
     }
     return audio.status;
@@ -619,8 +623,8 @@ generateAudio.addEventListener("click", async () => {
 
 async function regenerateLocaleAudio(locale) {
   if (!current) return;
-  const button = regenerateEnglishAudio;
-  const language = "inglés";
+  const button = locale === "es" ? generateSpanishAudio : regenerateEnglishAudio;
+  const language = locale === "es" ? "español" : "inglés";
   button.disabled = true;
   message.hidden = true;
   workflowState.textContent = `Regenerando únicamente el audio en ${language}…`;
@@ -640,6 +644,7 @@ async function regenerateLocaleAudio(locale) {
 }
 
 regenerateEnglishAudio.addEventListener("click", () => regenerateLocaleAudio("en"));
+generateSpanishAudio.addEventListener("click", () => regenerateLocaleAudio("es"));
 
 uploadSpanishAudio.addEventListener("click", async () => {
   if (!current || !spanishAudioFile.files?.[0]) return showError("Selecciona primero tu archivo MP3 en español.");

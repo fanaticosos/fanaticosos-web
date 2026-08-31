@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "voiceName": "Will - Relaxed Optimist",
+  "model": "eleven_multilingual_v2",
+  "outputFormat": "mp3_44100_128",
+  "maximumCharactersPerRequest": 4500,
+  "voiceSettings": {
+    "stability": 0.5,
+    "similarity_boost": 0.75,
+    "style": 0.0,
+    "use_speaker_boost": true
+  }
+}

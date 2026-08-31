@@ -27,6 +27,7 @@ const DEFAULT_TTS_PRONUNCIATIONS = join(HERE, "..", "config", "tts", "pronunciat
 const DEFAULT_TTS_AZURE_ENTITIES = join(HERE, "..", "config", "tts", "azure-nfl-entities.json");
 const DEFAULT_TTS_ENTITY_DATABASE = join(HERE, "..", "config", "tts", "nfl-entities.json");
 const DEFAULT_TTS_SPANISH_TERMS = join(HERE, "..", "config", "tts", "spanish-nfl-terms.json");
+const DEFAULT_TTS_ELEVENLABS = join(HERE, "..", "config", "tts", "elevenlabs-production.json");
 const DEFAULT_SITE_SETTINGS = join(HERE, "..", "src", "data", "site-settings.json");
 const UUID_PATH = /^\/api\/drafts\/([0-9a-f-]{36})$/;
 const TRANSLATION_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/translation$/;
@@ -172,6 +173,7 @@ export function createPublisherServer({
   ttsAzureEntitiesPath = DEFAULT_TTS_AZURE_ENTITIES,
   ttsEntityDatabasePath = DEFAULT_TTS_ENTITY_DATABASE,
   ttsSpanishTermsPath = DEFAULT_TTS_SPANISH_TERMS,
+  ttsElevenLabsPath = DEFAULT_TTS_ELEVENLABS,
   siteSettingsPath = join(draftsRoot, "site-settings.json"),
   siteSettingsFallbackPath = DEFAULT_SITE_SETTINGS,
   musicResolver = resolveWeeklySong,
@@ -191,14 +193,15 @@ export function createPublisherServer({
     return ttsPreflight(draft, entityDatabase, azureEntities, spanishTerms);
   }
   async function currentTtsPolicyRevision() {
-    const [production, pronunciations, azureEntities, entityDatabase, spanishTerms] = await Promise.all([
+    const [production, pronunciations, azureEntities, entityDatabase, spanishTerms, elevenLabs] = await Promise.all([
       readFile(ttsProductionPath, "utf8").then(JSON.parse),
       readFile(ttsPronunciationsPath, "utf8").then(JSON.parse),
       readFile(ttsAzureEntitiesPath, "utf8").then(JSON.parse),
       readFile(ttsEntityDatabasePath, "utf8").then(JSON.parse),
       readFile(ttsSpanishTermsPath, "utf8").then(JSON.parse),
+      readFile(ttsElevenLabsPath, "utf8").then(JSON.parse),
     ]);
-    return ttsPolicyRevision(production, pronunciations, { azureEntities, entityDatabase }, spanishTerms);
+    return ttsPolicyRevision(production, pronunciations, { azureEntities, entityDatabase }, spanishTerms, elevenLabs);
   }
   async function translationCompleted(state) {
     await createNotification(notificationsRoot, {

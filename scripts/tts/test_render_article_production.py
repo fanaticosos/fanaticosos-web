@@ -22,10 +22,10 @@ def request(locale):
 
 
 class ProductionRouterTests(unittest.TestCase):
-    def test_spanish_routes_only_to_azure(self):
+    def test_spanish_routes_only_to_elevenlabs(self):
         command = worker_arguments(request("es"), Path("/repo"), Path("/jobs/1/audio"))
         joined = " ".join(command)
-        self.assertIn("render_article_azure_production.py", joined)
+        self.assertIn("render_article_elevenlabs.py", joined)
         self.assertNotIn("render_article_kokoro.py", joined)
 
     def test_english_routes_only_to_kokoro(self):
@@ -42,9 +42,9 @@ class ProductionRouterTests(unittest.TestCase):
         )
         self.assertEqual(environment, {"PATH": "/usr/bin"})
 
-    def test_spanish_worker_retains_azure_credentials(self):
-        environment = worker_environment("es", {"AZURE_SPEECH_KEY": "secret"})
-        self.assertEqual(environment["AZURE_SPEECH_KEY"], "secret")
+    def test_spanish_worker_keeps_only_elevenlabs_credentials(self):
+        environment = worker_environment("es", {"AZURE_SPEECH_KEY": "old", "AZURE_SPEECH_REGION": "old", "ELEVENLABS_API_KEY": "secret"})
+        self.assertEqual(environment, {"ELEVENLABS_API_KEY": "secret"})
 
 
 if __name__ == "__main__":

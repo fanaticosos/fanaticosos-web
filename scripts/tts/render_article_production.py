@@ -21,9 +21,9 @@ def worker_arguments(request: dict, repository: Path, output: Path) -> list[str]
     if request["locale"] == "es":
         return [
             sys.executable,
-            str(repository / "scripts/tts/render_article_azure_production.py"),
+            str(repository / "scripts/tts/render_article_elevenlabs.py"),
             "--request", str(request_path),
-            "--configuration", str(repository / "config/tts/azure-nfl-entities.json"),
+            "--configuration", str(repository / "config/tts/elevenlabs-production.json"),
             "--output", str(output),
         ]
     return [
@@ -41,6 +41,10 @@ def worker_arguments(request: dict, repository: Path, output: Path) -> list[str]
 def worker_environment(locale: str, environment: dict[str, str]) -> dict[str, str]:
     selected = dict(environment)
     if locale == "en":
+        selected.pop("AZURE_SPEECH_KEY", None)
+        selected.pop("AZURE_SPEECH_REGION", None)
+        selected.pop("ELEVENLABS_API_KEY", None)
+    else:
         selected.pop("AZURE_SPEECH_KEY", None)
         selected.pop("AZURE_SPEECH_REGION", None)
     return selected

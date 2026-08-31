@@ -12,6 +12,7 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=HF_HUB_OFFLINE=1
 Environment=HF_HUB_DISABLE_TELEMETRY=1
 EnvironmentFile=-/etc/fanaticosos-blog/azure-speech.env
+EnvironmentFile=-/etc/fanaticosos-blog/elevenlabs.env
 ExecStartPre=/usr/bin/test -f /opt/fanaticosos-blog/jobs/%i/request.json
 ExecStartPre=/usr/bin/test ! -e /opt/fanaticosos-blog/jobs/%i/audio
 ExecStart=/opt/fanaticosos-blog/runtimes/tts-benchmark-kokoro-v1/bin/python /opt/fanaticosos-blog/repository/scripts/tts/render_article_production.py --request /opt/fanaticosos-blog/jobs/%i/request.json --repository /opt/fanaticosos-blog/repository --output /opt/fanaticosos-blog/jobs/%i/audio
