@@ -203,7 +203,7 @@ function setFields(draft) {
   openPreview.disabled = true;
   prepareRelease.disabled = true;
   publishRelease.disabled = true;
-  generateEnglish.textContent = "Crear traducción y audio en inglés";
+  generateEnglish.textContent = "Crear traducción y ambos audios";
   document.querySelector("#english-title").value = "";
   document.querySelector("#english-description").value = "";
   document.querySelector("#english-body").value = "";
@@ -449,12 +449,12 @@ async function pollTranslation() {
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
       stopTranslationClock();
-      workflowState.textContent = "El texto cambió · crea una nueva traducción y audio en inglés.";
+      workflowState.textContent = "El texto cambió · crea una nueva traducción y ambos audios.";
       englishResult.hidden = true;
       audioResult.hidden = true;
       audiogramResult.hidden = true;
       generateEnglish.disabled = false;
-      generateEnglish.textContent = "Crear nueva traducción y audio en inglés";
+      generateEnglish.textContent = "Crear nueva traducción y ambos audios";
       openPreview.disabled = true;
       publishRelease.disabled = true;
     } else if (translation.status === "failed") {
@@ -463,7 +463,7 @@ async function pollTranslation() {
       clearInterval(translationTimer);
       translationTimer = null;
       generateEnglish.disabled = false;
-      generateEnglish.textContent = "Reintentar traducción y audio en inglés";
+      generateEnglish.textContent = "Reintentar traducción y ambos audios";
       showError(translation.error || "La traducción no pasó la validación.");
       await refreshNotifications();
     }
