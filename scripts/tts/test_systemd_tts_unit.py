@@ -17,6 +17,7 @@ class TtsSystemdUnitTests(unittest.TestCase):
         self.assertIn("scripts/tts/render_article_production.py", self.unit)
         self.assertIn("--repository /opt/fanaticosos-blog/repository", self.unit)
         self.assertIn("EnvironmentFile=-/etc/fanaticosos-blog/azure-speech.env", self.unit)
+        self.assertIn("EnvironmentFile=-/etc/fanaticosos-blog/elevenlabs.env", self.unit)
         self.assertNotIn("--voice", self.unit)
 
     def test_unit_has_automatic_resource_boundaries(self):
@@ -41,7 +42,7 @@ class TtsSystemdUnitTests(unittest.TestCase):
         ):
             self.assertIn(directive, self.unit)
 
-    def test_network_is_available_for_bounded_spanish_azure_jobs(self):
+    def test_network_is_available_for_bounded_spanish_elevenlabs_jobs(self):
         self.assertNotIn("PrivateNetwork=yes", self.unit)
 
     def test_unit_uses_service_account_and_fixed_job_paths(self):
