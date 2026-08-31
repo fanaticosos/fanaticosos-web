@@ -381,3 +381,36 @@ test("accepted English revision queues bilingual audio jobs", async (context) =>
   assert.equal(queued.some((name) => name.startsWith("tts-es-")), true);
   assert.equal(queued.some((name) => name.startsWith("tts-en-")), true);
 });
+
+test("an old upload-waiting draft can generate Spanish audio", async (context) => {
+  const { server, base, queueRoot, statesRoot } = await fixture();
+  context.after(() => server.close());
+  const draft = (await (await fetch(`${base}/api/drafts`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields),
+  })).json()).draft;
+  await writeFile(join(statesRoot, `${draft.articleId}.json`), JSON.stringify({
+    schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
+    status: "completed", sourceRevision: "a".repeat(64),
+    result: { title: "The Bears win", description: "Game summary.", body: "Complete article text." },
+  }), { mode: 0o600 });
+  const initial = await fetch(`${base}/api/drafts/${draft.articleId}/audio`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: draft.revision, workflow: "preview" }),
+  });
+  const state = (await initial.json()).audio;
+  state.status = "awaiting-upload";
+  state.jobs.es = { status: "awaiting-upload" };
+  state.jobs.en = { ...state.jobs.en, status: "completed", result: { file: "en.mp3", sha256: "e".repeat(64) } };
+  await writeFile(join(statesRoot, `audio-${draft.articleId}.json`), JSON.stringify(state), { mode: 0o600 });
+
+  const response = await fetch(`${base}/api/drafts/${draft.articleId}/audio/es`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: draft.revision }),
+  });
+  assert.equal(response.status, 202);
+  const recovered = (await response.json()).audio;
+  assert.equal(recovered.workflow, "preview");
+  assert.equal(recovered.jobs.en.status, "completed");
+  assert.match(recovered.jobs.es.jobId, /^tts-es-/);
+  assert.equal((await readdir(queueRoot)).filter((name) => name.startsWith("tts-es-")).length, 2);
+});

@@ -456,13 +456,13 @@ export function createPublisherServer({
         const draft = await readDraft(draftsRoot, ttsPreflightMatch[1]);
         return json(response, 200, { preflight: await currentTtsPreflight(draft) });
       }
-      if (audioMatch && request.method === "POST" && audioMatch[2] === "en") {
+      if (audioMatch && request.method === "POST" && ["es", "en"].includes(audioMatch[2])) {
         const value = await requestJson(request);
         const draft = await readDraft(draftsRoot, audioMatch[1]);
-        if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before regenerating English audio");
-        const translation = await readTranslationState(statesRoot, draft.articleId);
         const locale = audioMatch[2];
-        const language = "inglés";
+        const language = locale === "es" ? "español" : "inglés";
+        if (value.expectedRevision !== draft.revision) throw new Error(`save the current draft revision before regenerating ${language} audio`);
+        const translation = await readTranslationState(statesRoot, draft.articleId);
         const audio = await queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
         await createNotification(notificationsRoot, {
           level: "info", event: `audio-${locale}-regeneration`, articleId: draft.articleId,
