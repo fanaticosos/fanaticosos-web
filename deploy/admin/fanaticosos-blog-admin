@@ -1184,7 +1184,7 @@ command_install_publisher() {
     "$publisher_data" "$publisher_data/drafts" "$publisher_data/uploads" \
     "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
     "$publisher_data/releases" "$publisher_database_root" \
-    "$publisher_database_backup_root" "$jobs_root"
+    "$publisher_database_backup_root" "$publisher_data/artifacts/translations" "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   install -o root -g root -m 0644 "$audiogram_source_unit" "$audiogram_installed_unit"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"

@@ -9,7 +9,7 @@ import { closeDatabase, openDatabase } from "./lib/database.mjs";
 import { databaseDraftStore, filesystemDraftStore } from "./lib/draft-store.mjs";
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 import { acknowledgeAllNotifications, acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
-import { queueTranslation, readTranslationState, reconcileTranslations, updateTranslationResult } from "./lib/translation-jobs.mjs";
+import { databaseTranslationStore, filesystemTranslationStore } from "./lib/translation-store.mjs";
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
@@ -169,6 +169,7 @@ export function createPublisherServer({
   queueRoot = join(dirname(draftsRoot), "queue"),
   statesRoot = join(dirname(draftsRoot), "states"),
   jobsRoot = join(dirname(dirname(draftsRoot)), "jobs"),
+  translationStore = filesystemTranslationStore({ queueRoot, statesRoot, jobsRoot }),
   releasesRoot = join(dirname(draftsRoot), "releases"),
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
@@ -281,7 +282,7 @@ export function createPublisherServer({
   }
   async function reconcilePublisherJobs() {
     const operations = [
-      ["translations", () => reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed })],
+      ["translations", () => translationStore.reconcile({ onComplete: translationCompleted, onFailure: translationFailed })],
       ["audio", () => reconcileTts({ statesRoot, jobsRoot, onComplete: audioCompleted, onFailure: audioFailed })],
       ["audiograms", () => reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed })],
       ["releases", () => reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed })],
@@ -360,7 +361,7 @@ export function createPublisherServer({
           const draft = await draftStore.read(previewMatch[1]);
           await rebaseReusableArtifacts({ draft, statesRoot });
           const [translation, audio, settings] = await Promise.all([
-            readTranslationState(statesRoot, previewMatch[1]),
+            translationStore.read(previewMatch[1]),
             readTtsState(statesRoot, previewMatch[1]),
             readFile(settingsPath, "utf8").then(JSON.parse),
           ]);
@@ -402,7 +403,7 @@ export function createPublisherServer({
           const expectedRevision = Number(url.searchParams.get("revision") ?? request.headers["x-draft-revision"]);
           if (expectedRevision !== draft.revision) throw new Error("Guarda el borrador actual antes de subir el MP3 en español.");
           let translation;
-          try { translation = await readTranslationState(statesRoot, draft.articleId); } catch (error) { throw new Error(`No se encontró la traducción actual (${error.code || "error"}).`); }
+          try { translation = await translationStore.read(draft.articleId); } catch (error) { throw new Error(`No se encontró la traducción actual (${error.code || "error"}).`); }
           const buffer = await requestBuffer(request, MAX_SPANISH_AUDIO_BYTES + 1);
           let audio;
           try { audio = await saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() }); } catch (error) { throw new Error(`No se pudo guardar el MP3: ${error.message}`); }
@@ -426,7 +427,7 @@ export function createPublisherServer({
         if (value.expectedRevision !== draft.revision) {
           throw new Error("save the current draft revision before translation");
         }
-        const translation = await queueTranslation({ draft, queueRoot, statesRoot, workflow: value.workflow ?? "manual" });
+        const translation = await translationStore.queue({ draft, workflow: value.workflow ?? "manual" });
         await createNotification(notificationsRoot, {
           level: "info", event: "translation-started", articleId: draft.articleId,
           message: `Traducción iniciada: ${draft.title}`,
@@ -434,17 +435,17 @@ export function createPublisherServer({
         return json(response, 202, { translation });
       }
       if (translationMatch && request.method === "GET") {
-        await reconcileTranslations({ statesRoot, jobsRoot, onComplete: translationCompleted, onFailure: translationFailed });
+        await translationStore.reconcile({ onComplete: translationCompleted, onFailure: translationFailed });
         const draft = await draftStore.read(translationMatch[1]);
         await rebaseReusableArtifacts({ draft, statesRoot });
-        const translation = await readOptionalState(() => readTranslationState(statesRoot, translationMatch[1]));
+        const translation = await readOptionalState(() => translationStore.read(translationMatch[1]));
         return json(response, 200, { translation: translationWithFreshness(translation, draft) });
       }
       if (translationMatch && request.method === "PUT") {
         const value = await requestJson(request);
         const draft = await draftStore.read(translationMatch[1]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current Spanish draft before correcting English");
-        const translation = await updateTranslationResult(statesRoot, draft.articleId, draft.revision, value.result);
+        const translation = await translationStore.update(draft.articleId, draft.revision, value.result, draft);
         await createNotification(notificationsRoot, {
           level: "success", event: "translation-corrected", articleId: draft.articleId,
           message: "La corrección en inglés fue guardada; el audio en inglés debe regenerarse.",
@@ -463,7 +464,7 @@ export function createPublisherServer({
         const locale = audioMatch[2];
         const language = locale === "es" ? "español" : "inglés";
         if (value.expectedRevision !== draft.revision) throw new Error(`save the current draft revision before regenerating ${language} audio`);
-        const translation = await readTranslationState(statesRoot, draft.articleId);
+        const translation = await translationStore.read(draft.articleId);
         const audio = await queueTtsLocale({ draft, translation, locale, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision() });
         await createNotification(notificationsRoot, {
           level: "info", event: `audio-${locale}-regeneration`, articleId: draft.articleId,
@@ -476,7 +477,7 @@ export function createPublisherServer({
         const value = await requestJson(request);
         const draft = await draftStore.read(audioMatch[1]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
-        const translation = await readTranslationState(statesRoot, draft.articleId);
+        const translation = await translationStore.read(draft.articleId);
         const audio = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: await currentTtsPolicyRevision(), workflow: value.workflow ?? "manual" });
         await createNotification(notificationsRoot, {
           level: "info", event: "audio-started", articleId: draft.articleId,
@@ -536,7 +537,7 @@ export function createPublisherServer({
       if (releaseMatch && request.method === "POST") {
         const value = await requestJson(request);
         const [draft, translation, audio, previousRelease, previousDeployment] = await Promise.all([
-          draftStore.read(releaseMatch[1]), readTranslationState(statesRoot, releaseMatch[1]), readTtsState(statesRoot, releaseMatch[1]),
+          draftStore.read(releaseMatch[1]), translationStore.read(releaseMatch[1]), readTtsState(statesRoot, releaseMatch[1]),
           readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])),
           readOptionalState(() => readDeploymentState(statesRoot, releaseMatch[1])),
         ]);
@@ -626,7 +627,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const databasePath = process.env.PUBLISHER_DATABASE_PATH;
   const database = databasePath ? await openDatabase(databasePath) : null;
   const draftStore = database ? databaseDraftStore(database) : filesystemDraftStore(draftsRoot);
-  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, releasesRoot, siteSettingsPath };
+  const translationArtifactsRoot = process.env.PUBLISHER_TRANSLATION_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "translations");
+  const translationStore = database
+    ? databaseTranslationStore({ database, queueRoot, jobsRoot, artifactsRoot: translationArtifactsRoot })
+    : filesystemTranslationStore({ queueRoot, statesRoot, jobsRoot });
+  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   if (database) server.once("close", () => closeDatabase(database));
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));

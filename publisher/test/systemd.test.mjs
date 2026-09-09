@@ -27,6 +27,7 @@ test("publisher has a single private write boundary", () => {
 test("publisher database and backups stay inside the private data boundary", () => {
   assert.match(unit, /Environment=PUBLISHER_DATABASE_PATH=\/opt\/fanaticosos-blog\/publisher\/database\/publisher\.sqlite/);
   assert.match(unit, /Environment=PUBLISHER_DATABASE_BACKUP_ROOT=\/opt\/fanaticosos-blog\/publisher\/backups\/database/);
+  assert.match(unit, /Environment=PUBLISHER_TRANSLATION_ARTIFACTS_ROOT=\/opt\/fanaticosos-blog\/publisher\/artifacts\/translations/);
   assert.match(unit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
 });
 

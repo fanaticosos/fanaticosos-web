@@ -75,6 +75,17 @@ export function translationSourceRevision(draft) {
   return createHash("sha256").update(canonicalJson(normalized)).digest("hex");
 }
 
+export async function writeTranslationRequest({ request, jobId, queueRoot }) {
+  if (!JOB_ID.test(jobId)) throw new Error("translation job identity is invalid");
+  await mkdir(queueRoot, { recursive: true, mode: 0o700 });
+  const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
+  const target = join(queueRoot, jobId);
+  await mkdir(temporary, { mode: 0o700 });
+  await atomicJson(join(temporary, "request.json"), request);
+  await rename(temporary, target);
+  await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
+}
+
 export async function queueTranslation({ draft, queueRoot, statesRoot, workflow = "manual", now = new Date() }) {
   if (translationQueueBusy) throw new Error("translation is already running");
   translationQueueBusy = true;
@@ -93,18 +104,13 @@ export async function queueTranslation({ draft, queueRoot, statesRoot, workflow 
     if (/already/.test(error.message)) throw error;
   }
   const { request, bodyLayout } = translationRequestForDraft(draft);
-  const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
-  const target = join(queueRoot, jobId);
-  await mkdir(temporary, { mode: 0o700 });
-  await atomicJson(join(temporary, "request.json"), request);
-  await rename(temporary, target);
+  await writeTranslationRequest({ request, jobId, queueRoot });
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
     jobId, status: "queued", workflow, createdAt: now.toISOString(), updatedAt: now.toISOString(),
     bodyLayout,
   };
   await atomicJson(statePath, state);
-  await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
   return state;
   } finally {
     translationQueueBusy = false;
