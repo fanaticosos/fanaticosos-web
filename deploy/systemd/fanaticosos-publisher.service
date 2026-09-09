@@ -24,6 +24,7 @@ Environment=PUBLISHER_SITE_SETTINGS_PATH=/opt/fanaticosos-blog/publisher/site-se
 Environment=PUBLISHER_DATABASE_PATH=/opt/fanaticosos-blog/publisher/database/publisher.sqlite
 Environment=PUBLISHER_DATABASE_BACKUP_ROOT=/opt/fanaticosos-blog/publisher/backups/database
 Environment=PUBLISHER_TRANSLATION_ARTIFACTS_ROOT=/opt/fanaticosos-blog/publisher/artifacts/translations
+Environment=PUBLISHER_AUDIO_ARTIFACTS_ROOT=/opt/fanaticosos-blog/publisher/artifacts/audio
 ExecStart=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/publisher/server.mjs
 Restart=on-failure
 RestartSec=3s

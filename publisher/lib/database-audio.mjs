@@ -10,6 +10,8 @@ function localeState(row) {
     completed: "completed", failed: "failed", cancelled: "failed",
   };
   return {
+    articleId: row.article_id,
+    draftRevision: row.revision_number,
     locale: row.locale,
     jobId: row.job_id,
     status: statuses[row.job_status],
@@ -56,12 +58,16 @@ export function readDatabaseAudioState(database, articleId) {
   const failed = locales.find(({ status }) => status === "failed");
   const running = locales.some(({ status }) => status === "running");
   const first = locales[0];
+  const newestCheckpoint = checkpoint(rows[0].checkpoint_json);
+  const workflow = latest.es?.uploaded && latest.es.status === "completed"
+    ? "spanish-upload" : newestCheckpoint.workflow ?? "legacy-import";
   return {
     schemaVersion: 1,
     articleId,
     draftRevision: Math.max(...rows.map(({ revision_number }) => revision_number)),
     status: failed ? "failed" : completed === 2 ? "completed" : running ? "running" : "queued",
-    workflow: checkpoint(rows[0].checkpoint_json).workflow ?? "legacy-import",
+    workflow,
+    ...(newestCheckpoint.regeneratedLocale ? { regeneratedLocale: newestCheckpoint.regeneratedLocale } : {}),
     createdAt: locales.map(({ createdAt }) => createdAt).sort()[0],
     updatedAt: locales.map(({ updatedAt }) => updatedAt).sort().at(-1),
     policyRevision: first.policyRevision,
@@ -85,11 +91,12 @@ export function databaseAudioFile(state, locale) {
   return path;
 }
 
-function insertPending(connection, { draft, revisionId, locale, jobId, sourceRevision, policyRevision, workflow, now }) {
+function insertPending(connection, { draft, revisionId, locale, jobId, sourceRevision, policyRevision, workflow, uploaded = false, regeneratedLocale, now }) {
   if (!["es", "en"].includes(locale) || !JOB_ID.test(jobId ?? "")) throw new Error("audio job identity is invalid");
-  if (!['manual', 'preview', 'audio-regeneration'].includes(workflow)) throw new Error("audio workflow is invalid");
-  const dependencyHash = audioDependencyHash(sourceRevision, policyRevision);
-  const idempotencyKey = `audio:${locale}:${draft.articleId}:${sourceRevision}:${policyRevision}`;
+  if (!["manual", "preview", "audio-regeneration", "spanish-upload"].includes(workflow)) throw new Error("audio workflow is invalid");
+  const dependencyHash = audioDependencyHash(sourceRevision, policyRevision, uploaded);
+  const policyKey = uploaded ? "owner-upload" : policyRevision;
+  const idempotencyKey = `audio:${locale}:${draft.articleId}:${sourceRevision}:${policyKey}`;
   const existing = connection.prepare(`${SELECT_LOCALE} WHERE j.idempotency_key = ?`).get(idempotencyKey);
   if (existing) return localeState(existing);
   const artifactId = randomUUID(); const timestamp = now.toISOString();
@@ -104,7 +111,7 @@ function insertPending(connection, { draft, revisionId, locale, jobId, sourceRev
     .run(jobId, locale === "es" ? "tts_es" : "tts_en", revisionId, artifactId,
       idempotencyKey, dependencyHash, JSON.stringify({ schemaVersion: 1, workflow,
         sourceRevision, currentSourceRevision: sourceRevision, sourceCurrent: true,
-        policyRevision, uploaded: false }), timestamp, timestamp);
+        policyRevision, uploaded, ...(regeneratedLocale ? { regeneratedLocale } : {}) }), timestamp, timestamp);
   return localeState(connection.prepare(`${SELECT_LOCALE} WHERE j.id = ?`).get(jobId));
 }
 
@@ -117,11 +124,11 @@ export function queueDatabaseAudio(database, { draft, requests, policyRevision, 
   });
 }
 
-export function queueDatabaseAudioLocale(database, { draft, request, locale, policyRevision, jobId, workflow = "audio-regeneration", now = new Date() }) {
+export function queueDatabaseAudioLocale(database, { draft, request, locale, policyRevision, jobId, workflow = "audio-regeneration", uploaded = false, now = new Date() }) {
   return withTransaction(database, (connection) => {
     const revisionId = currentRevision(connection, draft);
     insertPending(connection, { draft, revisionId, locale, jobId,
-      sourceRevision: request.sourceRevision, policyRevision, workflow, now });
+      sourceRevision: request.sourceRevision, policyRevision, workflow, uploaded, regeneratedLocale: locale, now });
     return readDatabaseAudioState(connection, draft.articleId);
   });
 }
