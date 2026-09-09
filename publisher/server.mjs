@@ -647,7 +647,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ? databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoot: audioArtifactsRoot })
     : filesystemAudioStore({ queueRoot, statesRoot, jobsRoot });
   const releaseStore = database
-    ? databaseReleaseStore({ database, queueRoot, releasesRoot })
+    ? databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot,
+      imagesRoot: process.env.PUBLISHER_IMAGE_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "images") })
     : filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot });
   const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);

@@ -11,6 +11,7 @@ import { closeDatabase, openDatabase } from "../../publisher/lib/database.mjs";
 import { readDatabaseDraft } from "../../publisher/lib/database-drafts.mjs";
 import { readDatabaseTranslationState } from "../../publisher/lib/database-translations.mjs";
 import { readDatabaseAudioState } from "../../publisher/lib/database-audio.mjs";
+import { readDatabaseReleaseImageArtifact } from "../../publisher/lib/database-releases.mjs";
 
 const execute = promisify(execFile);
 
@@ -52,13 +53,14 @@ async function main() {
   const databasePath = optionalArgument("--database");
   const request = validateRequest(await json(requestPath));
   if (process.argv.includes("--validate-only")) return;
-  let draft; let translation; let audio;
+  let draft; let translation; let audio; let imageArtifact;
   if (databasePath) {
     const database = await openDatabase(databasePath);
     try {
       draft = readDatabaseDraft(database, request.articleId);
       translation = readDatabaseTranslationState(database, request.articleId);
       audio = readDatabaseAudioState(database, request.articleId);
+      imageArtifact = readDatabaseReleaseImageArtifact(database, basename(dirname(requestPath)));
     } finally { closeDatabase(database); }
   } else {
     draft = await json(join(publisherRoot, "drafts", `${request.articleId}.json`));
@@ -110,9 +112,15 @@ async function main() {
   for (const [key, asset] of Object.entries(release.assets)) {
     let source;
     if (key === "image") {
-      const uploadName = basename(asset.sourcePath);
-      if (asset.sourcePath !== `/uploads/${uploadName}`) throw new Error("featured image is outside the private upload store");
-      source = join(publisherRoot, "uploads", uploadName);
+      if (databasePath) {
+        const allowed = join(publisherRoot, "artifacts", "images") + "/";
+        source = resolve(imageArtifact?.path ?? "");
+        if (!imageArtifact || !source.startsWith(allowed)) throw new Error("accepted image is outside the private artifact store");
+      } else {
+        const uploadName = basename(asset.sourcePath);
+        if (asset.sourcePath !== `/uploads/${uploadName}`) throw new Error("featured image is outside the private upload store");
+        source = join(publisherRoot, "uploads", uploadName);
+      }
     } else if (asset.sourcePath) {
       const allowed = join(publisherRoot, "artifacts", "audio") + "/";
       source = resolve(asset.sourcePath);

@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
 
 import { completeDatabaseRelease, failDatabaseRelease, listActiveDatabaseReleases, queueDatabaseRelease, readDatabaseReleaseState, startDatabaseRelease } from "./database-releases.mjs";
 import { queueRelease, readReleaseState, reconcileReleases, zonedIso } from "./release-jobs.mjs";
+import { contentTypeForName, validateImage } from "./uploads.mjs";
 
 const TIMEOUT_MS = 12 * 60 * 1000;
 
@@ -18,7 +19,26 @@ async function writeRequest(queueRoot, jobId, request) {
   await rename(temporary, join(queueRoot, jobId)); await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
 }
 
-export function databaseReleaseStore({ database, queueRoot, releasesRoot }) {
+async function preserveImageArtifact({ draft, uploadsRoot, imagesRoot }) {
+  if (!draft.featuredImage?.path) return null;
+  const name = basename(draft.featuredImage.path);
+  if (draft.featuredImage.path !== `/uploads/${name}` || !contentTypeForName(name)) throw new Error("featured image is outside the private upload store");
+  const source = join(uploadsRoot, name); const bytes = await readFile(source);
+  validateImage(bytes, contentTypeForName(name));
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const directory = join(imagesRoot, draft.articleId); const path = join(directory, `${sha256}${extname(name)}`);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  try {
+    const metadata = await stat(path);
+    if (!metadata.isFile() || createHash("sha256").update(await readFile(path)).digest("hex") !== sha256) throw new Error("stored image artifact differs");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await writeFile(path, bytes, { mode: 0o600, flag: "wx" }); await chmod(path, 0o600);
+  }
+  return { id: `image:${draft.articleId}:r${draft.revision}:${sha256}`, path, sha256 };
+}
+
+export function databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot, imagesRoot }) {
   return {
     async queue({ draft, translation, audio, settings, publishedAt, now = new Date() }) {
       const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
@@ -33,7 +53,8 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot }) {
         : Number.isFinite(Date.parse(publishedAt ?? ""))
           ? zonedIso(new Date(publishedAt), "America/Chicago")
           : zonedIso(now, "America/Chicago");
-      const state = queueDatabaseRelease(database, { draft, translation, audio, jobId,
+      const imageArtifact = await preserveImageArtifact({ draft, uploadsRoot, imagesRoot });
+      const state = queueDatabaseRelease(database, { draft, translation, audio, imageArtifact, jobId,
         path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, now });
       if (state.jobId !== jobId) return state;
       try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt }); }

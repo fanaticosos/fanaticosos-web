@@ -42,7 +42,7 @@ export function releaseDependency({ draft, translation, audio }) {
     enAudio: audio.jobs?.en?.result?.sha256, featuredImage: draft.featuredImage });
 }
 
-export function queueDatabaseRelease(database, { draft, translation, audio, jobId, path, settings, publishedAt, now = new Date() }) {
+export function queueDatabaseRelease(database, { draft, translation, audio, imageArtifact = null, jobId, path, settings, publishedAt, now = new Date() }) {
   if (!RELEASE_JOB.test(jobId ?? "") || typeof path !== "string" || !path) throw new Error("release job identity is invalid");
   if (!Number.isFinite(Date.parse(publishedAt ?? ""))) throw new Error("release publication date is invalid");
   const dependencyHash = releaseDependency({ draft, translation, audio }); const key = `release:${dependencyHash}`;
@@ -66,7 +66,16 @@ export function queueDatabaseRelease(database, { draft, translation, audio, jobI
     connection.prepare("INSERT OR IGNORE INTO site_settings_revisions (id, settings_json, created_at) VALUES (?, ?, ?)").run(settingsId, settingsJson, timestamp);
     connection.prepare(`INSERT INTO releases (id, catalog_id, site_settings_revision_id, status, path, created_at)
       VALUES (?, ?, ?, 'building', ?, ?)`).run(jobId, catalogId, settingsId, path, timestamp);
-    const boundArtifacts = [translation.artifact, audio.jobs?.es?.artifact, audio.jobs?.en?.artifact];
+    if (draft.featuredImage?.path) {
+      if (!imageArtifact?.id || !imageArtifact.path || !SHA256.test(imageArtifact.sha256 ?? "")) throw new Error("release image artifact is invalid");
+      connection.prepare(`INSERT OR IGNORE INTO artifacts (id, revision_id, type, locale, dependency_hash, status, path,
+        checksum_sha256, created_at, updated_at, accepted_at) VALUES (?, ?, 'image', NULL, ?, 'accepted', ?, ?, ?, ?, ?)`)
+        .run(imageArtifact.id, revisionId, imageArtifact.sha256, imageArtifact.path, imageArtifact.sha256, timestamp, timestamp, timestamp);
+      const stored = connection.prepare("SELECT revision_id, type, status, path, checksum_sha256 FROM artifacts WHERE id = ?").get(imageArtifact.id);
+      if (stored?.revision_id !== revisionId || stored.type !== "image" || stored.status !== "accepted"
+        || stored.path !== imageArtifact.path || stored.checksum_sha256 !== imageArtifact.sha256) throw new Error("release image artifact conflicts with SQLite");
+    }
+    const boundArtifacts = [translation.artifact, audio.jobs?.es?.artifact, audio.jobs?.en?.artifact, imageArtifact].filter(Boolean);
     const insertArtifact = connection.prepare(`INSERT INTO release_artifacts (release_id, artifact_id, checksum_sha256)
       SELECT ?, id, checksum_sha256 FROM artifacts
       WHERE id = ? AND status = 'accepted' AND checksum_sha256 = ?`);
@@ -80,6 +89,14 @@ export function queueDatabaseRelease(database, { draft, translation, audio, jobI
       .run(jobId, revisionId, key, dependencyHash, JSON.stringify({ schemaVersion: 1, publishedAt }), timestamp, timestamp);
     return state(connection.prepare(`${SELECT_RELEASE} WHERE j.id = ?`).get(jobId));
   });
+}
+
+export function readDatabaseReleaseImageArtifact(database, releaseId) {
+  const rows = database.prepare(`SELECT a.id, a.path, a.checksum_sha256 AS sha256
+    FROM release_artifacts ra JOIN artifacts a ON a.id = ra.artifact_id
+    WHERE ra.release_id = ? AND a.type = 'image' AND a.status = 'accepted'`).all(releaseId);
+  if (rows.length > 1) throw new Error("release has multiple image artifacts");
+  return rows[0] ?? null;
 }
 
 export function readDatabaseReleaseState(database, articleId) {
