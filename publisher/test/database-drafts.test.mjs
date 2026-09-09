@@ -51,7 +51,9 @@ test("database draft update preserves no-ops and records revision history", asyn
     assert.equal(updated.revision, 2);
     assert.equal(database.prepare("SELECT slug FROM articles").get().slug, "bears-2026-actualizado");
     assert.deepEqual(
-      database.prepare("SELECT revision_number, status FROM revisions ORDER BY revision_number").all(),
+      database.prepare("SELECT revision_number, status FROM revisions ORDER BY revision_number")
+        .all()
+        .map((row) => ({ ...row })),
       [{ revision_number: 1, status: "superseded" }, { revision_number: 2, status: "draft" }],
     );
     assert.throws(
