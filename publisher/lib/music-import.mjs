@@ -3,6 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { siteSettingsSchema } from "../../src/lib/siteSettingsSchema.mjs";
+import { closeDatabase, openDatabase, withTransaction } from "./database.mjs";
 
 const JOB = /^release-[0-9a-f]{32}-r1-[0-9a-f]{8}$/;
 const hash = (value) => createHash("sha256").update(value).digest("hex");
@@ -28,4 +29,39 @@ export async function previewMusicImport({ databasePath, settingsPath, statesRoo
       publicationJobId: publication.jobId, manifestSha256: hash(manifestBytes), deploymentUrl: receipt.url,
       alreadyImported: Boolean(existing), catalogId: latest.catalog_id };
   } finally { database.close(); }
+}
+
+export async function applyMusicImport({ databasePath, settingsPath, statesRoot, releasesRoot }) {
+  const preview = await previewMusicImport({ databasePath, settingsPath, statesRoot, releasesRoot });
+  const settingsBytes = await readFile(settingsPath); const settings = JSON.parse(settingsBytes);
+  const publication = JSON.parse(await readFile(join(statesRoot, "music-publication.json"), "utf8"));
+  const releaseRoot = join(releasesRoot, publication.jobId, "release");
+  const manifestBytes = await readFile(join(releaseRoot, "release-manifest.json")); const manifest = JSON.parse(manifestBytes);
+  const receipt = JSON.parse(await readFile(join(releasesRoot, publication.jobId, "cloudflare-production.json"), "utf8"));
+  const database = await openDatabase(databasePath);
+  try {
+    return withTransaction(database, (connection) => {
+      const existing = connection.prepare("SELECT manifest_checksum_sha256 FROM releases WHERE id=?").get(publication.jobId);
+      if (existing) {
+        if (existing.manifest_checksum_sha256 !== preview.manifestSha256) throw new Error("music import conflicts with SQLite");
+        return { inserted: 0, unchanged: 1 };
+      }
+      const settingsId = `music:settings:${preview.settingsSha256}`; const validatedAt = manifest.buildCompletedAt ?? publication.updatedAt;
+      connection.prepare("INSERT OR IGNORE INTO site_settings_revisions(id,settings_json,created_at) VALUES(?,?,?)")
+        .run(settingsId, JSON.stringify(settings), publication.createdAt);
+      connection.prepare(`INSERT INTO releases(id,catalog_id,site_settings_revision_id,status,path,manifest_json,manifest_checksum_sha256,created_at,validated_at)
+        VALUES(?,?,?,'validated',?,?,?,?,?)`).run(publication.jobId, preview.catalogId, settingsId, releaseRoot,
+          manifestBytes.toString("utf8"), preview.manifestSha256, publication.createdAt, validatedAt);
+      connection.prepare(`INSERT INTO jobs(id,type,revision_id,artifact_id,idempotency_key,dependency_hash,status,checkpoint_json,available_at,created_at,started_at,finished_at)
+        VALUES(?,'music_release',NULL,NULL,?,?,'completed',?,?,?,?,?)`).run(publication.jobId, `music:${preview.settingsSha256}`,
+          preview.settingsSha256, JSON.stringify({ schemaVersion: 1, settings, manifest, receipt }), publication.createdAt,
+          publication.createdAt, publication.createdAt, publication.updatedAt);
+      const previous = connection.prepare("SELECT id FROM deployments WHERE status='published' ORDER BY published_at DESC,id DESC LIMIT 1").get();
+      const deploymentId = `legacy:music-deploy:${publication.jobId}`; const cloudflareId = new URL(receipt.url).hostname.split(".")[0];
+      connection.prepare(`INSERT INTO deployments(id,release_id,status,cloudflare_deployment_id,immutable_url,verification_json,previous_deployment_id,created_at,published_at,finished_at)
+        VALUES(?,?,'published',?,?,?,?,?,?,?)`).run(deploymentId, publication.jobId, cloudflareId, receipt.url,
+          JSON.stringify(receipt), previous?.id ?? null, publication.createdAt, receipt.validatedAt, publication.updatedAt);
+      return { inserted: 1, unchanged: 0 };
+    });
+  } finally { closeDatabase(database); }
 }

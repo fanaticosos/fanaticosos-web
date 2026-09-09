@@ -6,7 +6,7 @@ import { applyTranslationImport, previewTranslationImport } from "../../publishe
 import { applyAudioImport, previewAudioImport } from "../../publisher/lib/audio-import.mjs";
 import { applyReleaseImport, previewReleaseImport } from "../../publisher/lib/release-import.mjs";
 import { applyAudiogramImport, previewAudiogramImport } from "../../publisher/lib/audiogram-import.mjs";
-import { previewMusicImport } from "../../publisher/lib/music-import.mjs";
+import { applyMusicImport, previewMusicImport } from "../../publisher/lib/music-import.mjs";
 
 function options(values) {
   const parsed = new Map();
@@ -104,6 +104,9 @@ async function main(argv) {
       artifactsRoot: required(parsed, "--artifacts-root") });
   } else if (command === "music-import-preview") {
     result = await previewMusicImport({ databasePath: required(parsed, "--database"), settingsPath: required(parsed, "--settings"),
+      statesRoot: required(parsed, "--states-root"), releasesRoot: required(parsed, "--releases-root") });
+  } else if (command === "music-import-apply") {
+    result = await applyMusicImport({ databasePath: required(parsed, "--database"), settingsPath: required(parsed, "--settings"),
       statesRoot: required(parsed, "--states-root"), releasesRoot: required(parsed, "--releases-root") });
   } else {
     throw new Error("unknown database command");

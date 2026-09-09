@@ -159,6 +159,7 @@ Commands:
   database-audiogram-import-preview EXPECTED_COMMIT
   import-audiograms EXPECTED_COMMIT
   database-music-import-preview EXPECTED_COMMIT
+  import-music EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1370,6 +1371,14 @@ command_database_music_import_preview() {
     --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
 }
 
+command_import_music() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" music-import-apply \
+    --database "$publisher_database" --settings "$publisher_data/site-settings.json" \
+    --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2294,6 +2303,10 @@ case "$command" in
   database-music-import-preview)
     [[ $# == 1 ]] || stop "database-music-import-preview requires EXPECTED_COMMIT."
     command_database_music_import_preview "$1"
+    ;;
+  import-music)
+    [[ $# == 1 ]] || stop "import-music requires EXPECTED_COMMIT."
+    command_import_music "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."

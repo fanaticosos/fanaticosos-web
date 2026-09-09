@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { previewMusicImport } from "../lib/music-import.mjs";
+import { applyMusicImport, previewMusicImport } from "../lib/music-import.mjs";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 
 test("music import preview verifies settings, release, and deployment without writes", async () => {
@@ -17,9 +17,11 @@ test("music import preview verifies settings, release, and deployment without wr
   await mkdir(statesRoot); await mkdir(join(releaseRoot, "release", "dist"), { recursive: true });
   await writeFile(join(root, "settings.json"), JSON.stringify(settings));
   await writeFile(join(statesRoot, "music-publication.json"), JSON.stringify({ schemaVersion: 1, jobId, status: "completed", createdAt: "2026-09-09T01:00:00Z", updatedAt: "2026-09-09T01:01:00Z", deploymentUrl: "https://x.pages.dev" }));
-  await writeFile(join(releaseRoot, "release", "release-manifest.json"), JSON.stringify({ schemaVersion: 1, releaseKind: "music" }));
+  await writeFile(join(releaseRoot, "release", "release-manifest.json"), JSON.stringify({ schemaVersion: 1, releaseKind: "music", buildCompletedAt: "2026-09-09T01:00:30Z" }));
   await writeFile(join(releaseRoot, "cloudflare-production.json"), JSON.stringify({ schemaVersion: 1, environment: "production", jobId, url: "https://x.pages.dev", validatedAt: "2026-09-09T01:01:00Z" }));
   await writeFile(join(releaseRoot, "release", "dist", "index.html"), "ok");
   const result = await previewMusicImport({ databasePath, settingsPath: join(root, "settings.json"), statesRoot, releasesRoot });
   assert.equal(result.weeklySongTitle, "Song"); assert.equal(result.alreadyImported, false);
+  assert.deepEqual(await applyMusicImport({ databasePath, settingsPath: join(root, "settings.json"), statesRoot, releasesRoot }), { inserted: 1, unchanged: 0 });
+  assert.deepEqual(await applyMusicImport({ databasePath, settingsPath: join(root, "settings.json"), statesRoot, releasesRoot }), { inserted: 0, unchanged: 1 });
 });
