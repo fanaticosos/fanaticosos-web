@@ -14,6 +14,11 @@ async function fileSha256(path) {
   return hash.digest("hex");
 }
 
+async function optionalJson(path) {
+  try { return JSON.parse(await readFile(path, "utf8")); }
+  catch (error) { if (error.code === "ENOENT") return null; throw error; }
+}
+
 function frontmatter(text) {
   const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
   if (!match) throw new Error("released article frontmatter is invalid");
@@ -48,7 +53,18 @@ export async function previewReleaseImport({ statesRoot, releasesRoot, databaseP
       }
       const releaseRoot = join(releasesRoot, state.jobId, "release");
       const manifestPath = join(releaseRoot, "release-manifest.json");
-      const manifestBytes = await readFile(manifestPath);
+      let manifestBytes;
+      try { manifestBytes = await readFile(manifestPath); }
+      catch (error) {
+        if (error.code !== "ENOENT") throw error;
+        const deployment = await optionalJson(join(statesRoot, `deployment-${articleId}.json`));
+        if (deployment?.status === "completed" && deployment.releaseJobId === state.jobId) {
+          throw new Error(`deployed release directory is missing: ${articleId}`);
+        }
+        releases.push({ articleId, draftRevision: state.draftRevision, jobId: state.jobId,
+          action: "skip-unretained", reason: "release was never successfully deployed and its retained directory is gone" });
+        continue;
+      }
       const manifest = JSON.parse(manifestBytes);
       if (JSON.stringify(manifest) !== JSON.stringify(state.manifest) || manifest.articleId !== articleId || manifest.draftRevision !== state.draftRevision) {
         throw new Error(`legacy release manifest differs: ${articleId}`);
@@ -83,9 +99,11 @@ export async function previewReleaseImport({ statesRoot, releasesRoot, databaseP
     return { schemaVersion: 1, source: "legacy-json-releases", total: releases.length,
       insert: releases.filter(({ action }) => action === "insert").length,
       unchanged: releases.filter(({ action }) => action === "unchanged").length,
-      missingCatalog: releases.reduce((count, value) => count + value.missingCatalog.length, 0),
-      missingAudio: releases.reduce((count, value) => count + [value.assets.esAudio, value.assets.enAudio].filter(({ inDatabase }) => !inDatabase).length, 0),
-      invalidImages: releases.filter(({ assets }) => assets.image && !assets.image.verified).length,
+      skipped: releases.filter(({ action }) => action === "skip-unretained").length,
+      missingCatalog: releases.reduce((count, value) => count + (value.missingCatalog?.length ?? 0), 0),
+      missingAudio: releases.reduce((count, value) => count + (value.assets
+        ? [value.assets.esAudio, value.assets.enAudio].filter(({ inDatabase }) => !inDatabase).length : 0), 0),
+      invalidImages: releases.filter(({ assets }) => assets?.image && !assets.image.verified).length,
       releases };
   } finally { database.close(); }
 }

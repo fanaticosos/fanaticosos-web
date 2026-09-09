@@ -28,3 +28,15 @@ test("release import preview excludes fixtures and verifies the published catalo
   const preview = await previewReleaseImport({ statesRoot, releasesRoot, databasePath });
   assert.equal(preview.total, 1); assert.equal(preview.missingCatalog, 0); assert.equal(preview.missingAudio, 0); assert.equal(preview.invalidImages, 0); assert.equal(preview.releases[0].catalogCount, 1);
 });
+
+test("release import preview skips only undeployed state whose retained directory is gone", async () => {
+  const root = await mkdtemp(join(tmpdir(), "release-import-unretained-test-")); const statesRoot = join(root, "states"); const releasesRoot = join(root, "releases");
+  await mkdir(statesRoot); await mkdir(releasesRoot); const databasePath = join(root, "publisher.sqlite"); const database = await openDatabase(databasePath);
+  const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} }); closeDatabase(database);
+  const jobId = `release-${draft.articleId.replaceAll("-", "")}-r1-1234abcd`;
+  await writeFile(join(statesRoot, `release-${draft.articleId}.json`), JSON.stringify({ schemaVersion: 1, articleId: draft.articleId, draftRevision: 1, jobId, status: "completed", manifest: {} }));
+  const preview = await previewReleaseImport({ statesRoot, releasesRoot, databasePath });
+  assert.equal(preview.skipped, 1); assert.equal(preview.insert, 0); assert.equal(preview.releases[0].action, "skip-unretained");
+  await writeFile(join(statesRoot, `deployment-${draft.articleId}.json`), JSON.stringify({ schemaVersion: 1, articleId: draft.articleId, releaseJobId: jobId, status: "completed" }));
+  await assert.rejects(previewReleaseImport({ statesRoot, releasesRoot, databasePath }), /deployed release directory is missing/);
+});
