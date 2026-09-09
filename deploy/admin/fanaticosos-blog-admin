@@ -153,6 +153,7 @@ Commands:
   database-translation-import-preview EXPECTED_COMMIT
   import-translations EXPECTED_COMMIT
   database-audio-import-preview EXPECTED_COMMIT
+  import-audio EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1310,6 +1311,16 @@ command_database_audio_import_preview() {
     --states-root "$publisher_data/states" --jobs-root "$jobs_root"
 }
 
+command_import_audio() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  install -d -o fanaticosos-blog -g fanaticosos-blog -m 0700 "$publisher_data/artifacts/audio"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audio-import-apply --database "$publisher_database" \
+    --states-root "$publisher_data/states" --jobs-root "$jobs_root" \
+    --artifacts-root "$publisher_data/artifacts/audio"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2210,6 +2221,10 @@ case "$command" in
   database-audio-import-preview)
     [[ $# == 1 ]] || stop "database-audio-import-preview requires EXPECTED_COMMIT."
     command_database_audio_import_preview "$1"
+    ;;
+  import-audio)
+    [[ $# == 1 ]] || stop "import-audio requires EXPECTED_COMMIT."
+    command_import_audio "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
