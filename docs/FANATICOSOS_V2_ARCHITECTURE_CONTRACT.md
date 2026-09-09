@@ -89,17 +89,18 @@ does not modify or delete the artifact.
 
 | Owner change | Translation | Spanish audio | English audio | Featured image |
 |---|---|---|---|---|
-| Spanish title or body | supersede | supersede | supersede | preserve |
+| Spanish title or body | supersede | supersede affected locale | supersede affected locale | preserve |
 | English correction | preserve corrected English artifact | preserve | supersede | preserve |
-| Description/SEO summary | preserve | preserve | preserve | preserve |
+| Spanish description/SEO summary | supersede | preserve | preserve | preserve |
 | Category, season, or tags | preserve | preserve | preserve | preserve |
 | Featured image or image metadata | preserve | preserve | preserve | replace image artifact |
 | Weekly song | preserve | preserve | preserve | preserve |
 | TTS pronunciation/provider policy | preserve | supersede affected locale only | supersede affected locale only | preserve |
 
 Dependency hashes, not generic draft revision numbers, determine freshness.
-Translation depends on Spanish title/body. Each narration depends on its spoken
-text and locale-specific TTS policy. An image depends only on its bytes and image
+Translation depends on the Spanish title, description, and body. Each narration
+depends only on its localized title and body plus the locale-specific TTS policy;
+descriptions are never narrated. An image depends only on its bytes and image
 metadata.
 
 ## 6. Job contract
