@@ -3,6 +3,7 @@
 import { backupDatabase, databaseStatus, initializeDatabase, restoreDatabaseDrill } from "../../publisher/lib/database-admin.mjs";
 import { applyDraftImport, previewDraftImport } from "../../publisher/lib/draft-import.mjs";
 import { applyTranslationImport, previewTranslationImport } from "../../publisher/lib/translation-import.mjs";
+import { previewAudioImport } from "../../publisher/lib/audio-import.mjs";
 
 function options(values) {
   const parsed = new Map();
@@ -61,6 +62,12 @@ async function main(argv) {
       databasePath: required(parsed, "--database"),
       statesRoot: required(parsed, "--states-root"),
       artifactsRoot: required(parsed, "--artifacts-root"),
+    });
+  } else if (command === "audio-import-preview") {
+    result = await previewAudioImport({
+      databasePath: required(parsed, "--database"),
+      statesRoot: required(parsed, "--states-root"),
+      jobsRoot: required(parsed, "--jobs-root"),
     });
   } else {
     throw new Error("unknown database command");

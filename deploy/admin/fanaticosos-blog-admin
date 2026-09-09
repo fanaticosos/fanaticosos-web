@@ -152,6 +152,7 @@ Commands:
   import-drafts EXPECTED_COMMIT
   database-translation-import-preview EXPECTED_COMMIT
   import-translations EXPECTED_COMMIT
+  database-audio-import-preview EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1301,6 +1302,14 @@ command_import_translations() {
     --artifacts-root "$publisher_data/artifacts/translations"
 }
 
+command_database_audio_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audio-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states" --jobs-root "$jobs_root"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2197,6 +2206,10 @@ case "$command" in
   import-translations)
     [[ $# == 1 ]] || stop "import-translations requires EXPECTED_COMMIT."
     command_import_translations "$1"
+    ;;
+  database-audio-import-preview)
+    [[ $# == 1 ]] || stop "database-audio-import-preview requires EXPECTED_COMMIT."
+    command_database_audio_import_preview "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
