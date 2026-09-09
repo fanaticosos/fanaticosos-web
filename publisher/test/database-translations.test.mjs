@@ -10,6 +10,7 @@ import {
   readDatabaseTranslationState, startDatabaseTranslation,
 } from "../lib/database-translations.mjs";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
+import { claimDatabaseJob } from "../lib/database-dispatch.mjs";
 
 const owner = {
   title: "Los Bears ganan", description: "Resumen del partido",
@@ -44,6 +45,19 @@ test("translation admission is transactional and idempotent by source dependency
   } finally {
     closeDatabase(database);
   }
+});
+
+test("dispatcher atomically leases an admitted SQLite job before process launch", async () => {
+  const { database, draft } = await fixture();
+  try {
+    const jobId = `translation-${draft.articleId.replaceAll("-", "")}-r1-1234abcd`;
+    queueDatabaseTranslation(database, { draft, jobId, bodyLayout: [] });
+    assert.deepEqual(claimDatabaseJob(database, jobId, new Date("2026-09-09T01:00:00Z")), { jobId, type: "translation", status: "leased" });
+    const row = database.prepare("SELECT status, attempt, lease_owner, lease_expires_at FROM jobs WHERE id = ?").get(jobId);
+    assert.equal(row.status, "leased"); assert.equal(row.attempt, 1); assert.equal(row.lease_owner, "systemd");
+    assert.equal(row.lease_expires_at, "2026-09-09T01:35:00.000Z");
+    assert.throws(() => claimDatabaseJob(database, jobId), /not available/);
+  } finally { closeDatabase(database); }
 });
 
 test("owner correction creates a new accepted artifact and supersedes the old one", async () => {
