@@ -15,6 +15,7 @@
     "validate:settings": "node scripts/validate-site-settings.mjs",
     "test:site-settings": "node scripts/test-site-settings.mjs",
     "test:build-media-policy": "node scripts/test-build-media-policy.mjs",
+    "test:database": "node --test publisher/test/database.test.mjs",
     "test:publisher": "node --test publisher/test/*.test.mjs",
     "validate:build": "node scripts/validate-build.mjs",
     "preview": "astro preview"
