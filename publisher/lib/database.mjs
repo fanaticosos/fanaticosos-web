@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { chmod, lstat, readFile, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
@@ -73,8 +73,18 @@ export async function openDatabase(path, options = {}) {
   if (typeof path !== "string" || !path || path === ":memory:") {
     throw new Error("database path must be a persistent filesystem path");
   }
+  try {
+    const existing = await lstat(path);
+    if (!existing.isFile() || existing.isSymbolicLink()) {
+      throw new Error("database path must be a regular file");
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+
   const database = new DatabaseSync(path, { timeout: 5000 });
   try {
+    await chmod(path, 0o600);
     configure(database);
     if (options.migrate !== false) await migrateDatabase(database, options);
     return database;

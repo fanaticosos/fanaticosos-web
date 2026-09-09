@@ -204,6 +204,14 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("systemctl enable fanaticosos-release-retention.timer", installer)
         self.assertNotIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
 
+    def test_database_operations_are_fixed_bounded_and_service_owned(self):
+        self.assertIn('readonly publisher_database="$publisher_database_root/publisher.sqlite"', self.helper)
+        self.assertIn('validate_database_backup_id "$backup_id"', self.helper)
+        self.assertIn('run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli"', self.helper)
+        self.assertIn('initialize --database "$publisher_database"', self.helper)
+        self.assertIn('backup --database "$publisher_database"', self.helper)
+        self.assertIn('restore-drill --backup-root "$publisher_database_backup_root"', self.helper)
+
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(
             "command_install_cloudflare_pages_credential()", 1
