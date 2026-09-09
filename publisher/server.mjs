@@ -17,7 +17,7 @@ import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { rebaseReusableArtifacts } from "./lib/artifact-revisions.mjs";
 import { databaseReleaseStore, filesystemReleaseStore } from "./lib/release-store.mjs";
-import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
+import { databaseDeploymentStore, filesystemDeploymentStore } from "./lib/deployment-store.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
 import { audiogramFileForState, queueAudiogram, readAudiogramState, reconcileAudiograms } from "./lib/audiogram-jobs.mjs";
@@ -178,6 +178,7 @@ export function createPublisherServer({
   audioStore = filesystemAudioStore({ queueRoot, statesRoot, jobsRoot }),
   releasesRoot = join(dirname(draftsRoot), "releases"),
   releaseStore = filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot }),
+  deploymentStore = filesystemDeploymentStore({ queueRoot, statesRoot, releasesRoot }),
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
   ttsAzureEntitiesPath = DEFAULT_TTS_AZURE_ENTITIES,
@@ -549,7 +550,7 @@ export function createPublisherServer({
         const [draft, translation, audio, previousRelease, previousDeployment] = await Promise.all([
           draftStore.read(releaseMatch[1]), translationStore.read(releaseMatch[1]), audioStore.read(releaseMatch[1]),
           readOptionalState(() => releaseStore.read(releaseMatch[1])),
-          readOptionalState(() => readDeploymentState(statesRoot, releaseMatch[1])),
+          readOptionalState(() => deploymentStore.read(releaseMatch[1])),
         ]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before preparing publication");
         const requests = ttsRequestsForDraft(draft, translation);
@@ -575,14 +576,12 @@ export function createPublisherServer({
         const value = await requestJson(request); const [draft, release, audio] = await Promise.all([draftStore.read(publishMatch[1]), releaseStore.read(publishMatch[1]), audioStore.read(publishMatch[1])]);
         if (value.expectedRevision !== draft.revision || release.status !== "completed" || release.draftRevision !== draft.revision) throw new Error("La vista previa actual debe validarse antes de publicar.");
         if (release.manifest?.assets?.esAudio?.sha256 !== audio.jobs?.es?.result?.sha256 || release.manifest?.assets?.enAudio?.sha256 !== audio.jobs?.en?.result?.sha256) throw new Error("Uno de los audios cambió; vuelve a crear la vista previa antes de publicar.");
-        const deployment = await queueDeployment({ articleId: draft.articleId, draftRevision: draft.revision, releaseJobId: release.jobId, queueRoot, statesRoot });
+        const deployment = await deploymentStore.queue({ articleId: draft.articleId, draftRevision: draft.revision, releaseJobId: release.jobId });
         await createNotification(notificationsRoot, { level: "info", event: "deployment-started", articleId: draft.articleId, message: `Publicación iniciada: ${draft.title}` }); return json(response, 202, { deployment });
       }
       if (publishMatch && request.method === "GET") {
-        const state = await readOptionalState(() => readDeploymentState(statesRoot, publishMatch[1]));
-        return json(response, 200, {
-          deployment: state ? await reconcileDeployment({ state, statesRoot, releasesRoot }) : null,
-        });
+        const state = await readOptionalState(() => deploymentStore.read(publishMatch[1]));
+        return json(response, 200, { deployment: state ? await deploymentStore.reconcile(publishMatch[1]) : null });
       }
       const uploadMatch = /^\/uploads\/([^/]+)$/.exec(url.pathname);
       if (uploadMatch && request.method === "GET") {
@@ -650,7 +649,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ? databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot,
       imagesRoot: process.env.PUBLISHER_IMAGE_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "images") })
     : filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot });
-  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, releasesRoot, siteSettingsPath };
+  const deploymentStore = database
+    ? databaseDeploymentStore({ database, queueRoot, releasesRoot })
+    : filesystemDeploymentStore({ queueRoot, statesRoot, releasesRoot });
+  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   if (database) server.once("close", () => closeDatabase(database));
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));
