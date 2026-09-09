@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { backupDatabase, databaseStatus, initializeDatabase, restoreDatabaseDrill } from "../../publisher/lib/database-admin.mjs";
-import { previewDraftImport } from "../../publisher/lib/draft-import.mjs";
+import { applyDraftImport, previewDraftImport } from "../../publisher/lib/draft-import.mjs";
 
 function options(values) {
   const parsed = new Map();
@@ -42,6 +42,11 @@ async function main(argv) {
     );
   } else if (command === "draft-import-preview") {
     result = await previewDraftImport({
+      databasePath: required(parsed, "--database"),
+      draftsRoot: required(parsed, "--drafts-root"),
+    });
+  } else if (command === "draft-import-apply") {
+    result = await applyDraftImport({
       databasePath: required(parsed, "--database"),
       draftsRoot: required(parsed, "--drafts-root"),
     });

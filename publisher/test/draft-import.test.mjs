@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
-import { legacyRevisionId, previewDraftImport } from "../lib/draft-import.mjs";
+import { applyDraftImport, legacyRevisionId, previewDraftImport } from "../lib/draft-import.mjs";
 import { newDraft, writeDraft } from "../lib/drafts.mjs";
 
 const ownerFields = {
@@ -62,4 +62,29 @@ test("draft import preview rejects canonical slug collisions", async () => {
     previewDraftImport({ draftsRoot, databasePath }),
     /draft slug collision/,
   );
+});
+
+test("draft import applies complete snapshots atomically and is idempotent", async () => {
+  const { draftsRoot, databasePath } = await fixture();
+  const draft = newDraft(ownerFields, new Date("2026-09-09T00:00:00.000Z"));
+  await writeDraft(draftsRoot, draft);
+
+  const applied = await applyDraftImport({ draftsRoot, databasePath });
+  assert.equal(applied.applied, true);
+  assert.equal(applied.insert, 1);
+  assert.equal((await applyDraftImport({ draftsRoot, databasePath })).unchanged, 1);
+  assert.equal((await previewDraftImport({ draftsRoot, databasePath })).unchanged, 1);
+
+  const database = await openDatabase(databasePath);
+  const stored = database.prepare(`
+    SELECT articles.slug, articles.current_revision_id, revisions.*
+    FROM articles JOIN revisions ON revisions.id = articles.current_revision_id
+    WHERE articles.id = ?
+  `).get(draft.articleId);
+  assert.equal(stored.slug, "temporada-numero-3");
+  assert.equal(stored.current_revision_id, legacyRevisionId(draft.articleId, 1));
+  assert.equal(stored.title, ownerFields.title);
+  assert.equal(stored.body, ownerFields.body);
+  assert.deepEqual(JSON.parse(stored.tags_json), ownerFields.tags);
+  closeDatabase(database);
 });
