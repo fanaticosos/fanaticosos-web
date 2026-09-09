@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { closeDatabase, openDatabase } from "../lib/database.mjs";
+import { databaseDraftStore } from "../lib/draft-store.mjs";
 import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
@@ -99,7 +101,7 @@ test("audiogram freshness follows the draft image and Spanish audio", () => {
   assert.equal(audiogramWithFreshness({ ...audiogram, audioSha256: "old" }, draft, audio).status, "stale");
 });
 
-async function fixture() {
+async function fixture({ draftStore } = {}) {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
   const uploadsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-uploads-"));
   const notificationsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-notifications-"));
@@ -115,10 +117,10 @@ async function fixture() {
     coverUrl: "https://music.fanaticosos.com/share/img/cover-token",
     streamUrl: "https://music.fanaticosos.com/share/s/stream-token",
   });
-  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver });
+  const server = createPublisherServer({ draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
-  return { server, base: `http://127.0.0.1:${port}`, queueRoot, statesRoot, siteSettingsPath };
+  return { server, base: `http://127.0.0.1:${port}`, draftsRoot, queueRoot, statesRoot, siteSettingsPath };
 }
 
 test("health endpoint is available without touching drafts", async (context) => {
@@ -273,6 +275,38 @@ test("draft can be created, listed, reopened, and updated", async (context) => {
   });
   assert.equal(updatedResponse.status, 200);
   assert.equal((await updatedResponse.json()).draft.revision, 2);
+});
+
+test("publisher can use SQLite as the sole draft authority without writing legacy JSON", async (context) => {
+  const databaseRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-database-"));
+  const database = await openDatabase(join(databaseRoot, "publisher.sqlite"));
+  const { server, base, draftsRoot } = await fixture({ draftStore: databaseDraftStore(database) });
+  context.after(async () => {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    closeDatabase(database);
+  });
+
+  const createdResponse = await fetch(`${base}/api/drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  assert.equal(createdResponse.status, 201);
+  const created = (await createdResponse.json()).draft;
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM articles").get().count, 1);
+  assert.deepEqual(await readdir(draftsRoot), []);
+
+  const listed = (await (await fetch(`${base}/api/drafts`)).json()).drafts;
+  assert.equal(listed[0].articleId, created.articleId);
+  const updatedResponse = await fetch(`${base}/api/drafts/${created.articleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: 1, draft: { ...fields, title: "Autoridad SQLite" } }),
+  });
+  assert.equal(updatedResponse.status, 200);
+  assert.equal((await updatedResponse.json()).draft.revision, 2);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM revisions").get().count, 2);
+  assert.deepEqual(await readdir(draftsRoot), []);
 });
 
 test("saved draft workflow endpoints are idle before processing starts", async (context) => {
