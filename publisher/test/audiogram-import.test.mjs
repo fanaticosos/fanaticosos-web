@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { previewAudiogramImport } from "../lib/audiogram-import.mjs";
+import { applyAudiogramImport, previewAudiogramImport } from "../lib/audiogram-import.mjs";
 import { createDatabaseDraft } from "../lib/database-drafts.mjs";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 
@@ -16,8 +16,11 @@ test("audiogram import preview verifies completed video artifacts and writes not
   const jobId = `audiogram-es-${draft.articleId.replaceAll("-", "")}-r1-abcdef12`; const video = Buffer.from("video"); const sha256 = createHash("sha256").update(video).digest("hex");
   await mkdir(statesRoot); await mkdir(join(jobsRoot, jobId, "video"), { recursive: true });
   await writeFile(join(jobsRoot, jobId, "video", "audiogram.mp4"), video);
-  await writeFile(join(statesRoot, `audiogram-${draft.articleId}.json`), JSON.stringify({ schemaVersion: 1, articleId: draft.articleId, draftRevision: 1, jobId, status: "completed", result: { file: "audiogram.mp4", sizeBytes: video.length, sha256 } }));
+  await writeFile(join(statesRoot, `audiogram-${draft.articleId}.json`), JSON.stringify({ schemaVersion: 1, articleId: draft.articleId, draftRevision: 1, jobId, status: "completed", audioSha256: "a".repeat(64), result: { file: "audiogram.mp4", sizeBytes: video.length, sha256 } }));
   assert.deepEqual(await previewAudiogramImport({ databasePath, statesRoot, jobsRoot }), { count: 1, completed: 1, failed: 0, active: 0, verifiedArtifacts: 1 });
   const inspected = new (await import("node:sqlite")).DatabaseSync(databasePath, { readOnly: true });
   assert.equal(inspected.prepare("SELECT COUNT(*) AS count FROM artifacts WHERE type = 'audiogram'").get().count, 0); inspected.close();
+  const applied = await applyAudiogramImport({ databasePath, statesRoot, jobsRoot, artifactsRoot: join(root, "artifacts") });
+  assert.deepEqual(applied, { inserted: 1, unchanged: 0 });
+  assert.deepEqual(await applyAudiogramImport({ databasePath, statesRoot, jobsRoot, artifactsRoot: join(root, "artifacts") }), { inserted: 0, unchanged: 1 });
 });

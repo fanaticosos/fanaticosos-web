@@ -5,7 +5,7 @@ import { applyDraftImport, previewDraftImport } from "../../publisher/lib/draft-
 import { applyTranslationImport, previewTranslationImport } from "../../publisher/lib/translation-import.mjs";
 import { applyAudioImport, previewAudioImport } from "../../publisher/lib/audio-import.mjs";
 import { applyReleaseImport, previewReleaseImport } from "../../publisher/lib/release-import.mjs";
-import { previewAudiogramImport } from "../../publisher/lib/audiogram-import.mjs";
+import { applyAudiogramImport, previewAudiogramImport } from "../../publisher/lib/audiogram-import.mjs";
 
 function options(values) {
   const parsed = new Map();
@@ -97,6 +97,10 @@ async function main(argv) {
       statesRoot: required(parsed, "--states-root"),
       jobsRoot: required(parsed, "--jobs-root"),
     });
+  } else if (command === "audiogram-import-apply") {
+    result = await applyAudiogramImport({ databasePath: required(parsed, "--database"),
+      statesRoot: required(parsed, "--states-root"), jobsRoot: required(parsed, "--jobs-root"),
+      artifactsRoot: required(parsed, "--artifacts-root") });
   } else {
     throw new Error("unknown database command");
   }
