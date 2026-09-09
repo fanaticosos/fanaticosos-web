@@ -13,6 +13,26 @@ async function mustNotExist(path) {
   throw new Error(`refusing to overwrite existing file: ${path}`);
 }
 
+async function removeSidecars(path) {
+  await Promise.all([`${path}-wal`, `${path}-shm`].map(async (sidecar) => {
+    try {
+      await unlink(sidecar);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }));
+}
+
+function makeStandalone(path) {
+  const database = new DatabaseSync(path);
+  try {
+    const mode = database.prepare("PRAGMA journal_mode = DELETE").get().journal_mode;
+    if (mode !== "delete") throw new Error("backup could not be converted to a standalone database");
+  } finally {
+    database.close();
+  }
+}
+
 export function verifyDatabaseFile(path) {
   const database = new DatabaseSync(path, { readOnly: true });
   try {
@@ -40,11 +60,14 @@ export async function createVerifiedBackup(database, destinationPath) {
   const temporaryPath = `${destinationPath}.${randomUUID()}.saving`;
   try {
     await backup(database, temporaryPath);
+    makeStandalone(temporaryPath);
+    await removeSidecars(temporaryPath);
     await chmod(temporaryPath, 0o600);
     const verification = verifyDatabaseFile(temporaryPath);
     await rename(temporaryPath, destinationPath);
     return { path: destinationPath, ...verification };
   } catch (error) {
+    await removeSidecars(temporaryPath);
     await unlink(temporaryPath).catch((unlinkError) => {
       if (unlinkError.code !== "ENOENT") throw unlinkError;
     });
