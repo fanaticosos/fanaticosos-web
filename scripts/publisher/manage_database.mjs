@@ -2,6 +2,7 @@
 
 import { backupDatabase, databaseStatus, initializeDatabase, restoreDatabaseDrill } from "../../publisher/lib/database-admin.mjs";
 import { applyDraftImport, previewDraftImport } from "../../publisher/lib/draft-import.mjs";
+import { previewTranslationImport } from "../../publisher/lib/translation-import.mjs";
 
 function options(values) {
   const parsed = new Map();
@@ -49,6 +50,11 @@ async function main(argv) {
     result = await applyDraftImport({
       databasePath: required(parsed, "--database"),
       draftsRoot: required(parsed, "--drafts-root"),
+    });
+  } else if (command === "translation-import-preview") {
+    result = await previewTranslationImport({
+      databasePath: required(parsed, "--database"),
+      statesRoot: required(parsed, "--states-root"),
     });
   } else {
     throw new Error("unknown database command");

@@ -150,6 +150,7 @@ Commands:
   restore-database-drill EXPECTED_COMMIT BACKUP_ID
   database-draft-import-preview EXPECTED_COMMIT
   import-drafts EXPECTED_COMMIT
+  database-translation-import-preview EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1281,6 +1282,14 @@ command_import_drafts() {
     --drafts-root "$publisher_data/drafts"
 }
 
+command_database_translation_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    translation-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2169,6 +2178,10 @@ case "$command" in
   import-drafts)
     [[ $# == 1 ]] || stop "import-drafts requires EXPECTED_COMMIT."
     command_import_drafts "$1"
+    ;;
+  database-translation-import-preview)
+    [[ $# == 1 ]] || stop "database-translation-import-preview requires EXPECTED_COMMIT."
+    command_database_translation_import_preview "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."

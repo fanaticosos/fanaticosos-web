@@ -116,6 +116,7 @@ class AdminHelperTests(unittest.TestCase):
                 "restore-database-drill",
                 "database-draft-import-preview",
                 "import-drafts",
+                "database-translation-import-preview",
                 "latest-private-release",
                 "select-private-release",
                 "release-retention-preview",
