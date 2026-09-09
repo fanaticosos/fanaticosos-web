@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { databaseAudioFile, readDatabaseAudioState } from "../lib/database-audio.mjs";
+import {
+  completeDatabaseAudio, databaseAudioFile, failDatabaseAudio, listActiveDatabaseAudio,
+  queueDatabaseAudio, queueDatabaseAudioLocale, readDatabaseAudioState, startDatabaseAudio,
+} from "../lib/database-audio.mjs";
 import { createDatabaseDraft } from "../lib/database-drafts.mjs";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 
@@ -37,4 +40,54 @@ test("missing SQLite audio state has filesystem-compatible ENOENT semantics", as
   const database = await openDatabase(join(root, "publisher.sqlite"));
   try { assert.throws(() => readDatabaseAudioState(database, "00000000-0000-4000-8000-000000000000"), { code: "ENOENT" }); }
   finally { closeDatabase(database); }
+});
+
+test("bilingual audio admission is atomic and idempotent by source and policy", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-audio-admission-test-"));
+  const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const article = draft.articleId.replaceAll("-", "");
+    const input = { draft, requests: { es: { sourceRevision: "a".repeat(64) }, en: { sourceRevision: "b".repeat(64) } }, policyRevision: "c".repeat(64), jobIds: { es: `tts-es-${article}-r1-1234abcd`, en: `tts-en-${article}-r1-87654321` }, workflow: "preview", now: new Date("2026-09-09T01:00:00.000Z") };
+    const queued = queueDatabaseAudio(database, input);
+    assert.equal(queued.status, "queued"); assert.equal(queued.jobs.es.status, "queued"); assert.equal(queued.jobs.en.status, "queued");
+    assert.equal(listActiveDatabaseAudio(database).length, 2);
+    const repeated = queueDatabaseAudio(database, { ...input, jobIds: { es: `tts-es-${article}-r1-aaaaaaaa`, en: `tts-en-${article}-r1-bbbbbbbb` } });
+    assert.equal(repeated.jobs.es.jobId, input.jobIds.es); assert.equal(database.prepare("SELECT COUNT(*) AS count FROM jobs").get().count, 2);
+  } finally { closeDatabase(database); }
+});
+
+test("audio lifecycle accepts verified artifacts and fails pending artifacts atomically", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-audio-lifecycle-test-"));
+  const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const article = draft.articleId.replaceAll("-", ""); const policyRevision = "c".repeat(64);
+    const esJob = `tts-es-${article}-r1-1234abcd`; const enJob = `tts-en-${article}-r1-87654321`;
+    queueDatabaseAudio(database, { draft, requests: { es: { sourceRevision: "a".repeat(64) }, en: { sourceRevision: "b".repeat(64) } }, policyRevision, jobIds: { es: esJob, en: enJob } });
+    startDatabaseAudio(database, esJob, "worker", new Date("2026-09-09T03:00:00.000Z"), new Date("2026-09-09T02:00:00.000Z"));
+    const completed = completeDatabaseAudio(database, { jobId: esJob, result: { locale: "es", sha256: "d".repeat(64) }, artifactPath: "/private/es.mp3", checksumSha256: "d".repeat(64), now: new Date("2026-09-09T02:30:00.000Z") });
+    assert.equal(completed.status, "completed"); assert.equal(completed.artifact.status, "accepted");
+    const failed = failDatabaseAudio(database, enJob, "worker failed", new Date("2026-09-09T02:30:00.000Z"));
+    assert.equal(failed.status, "failed"); assert.equal(failed.artifact.status, "failed");
+  } finally { closeDatabase(database); }
+});
+
+test("single-locale regeneration preserves the accepted opposite locale", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-audio-regeneration-test-"));
+  const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const article = draft.articleId.replaceAll("-", ""); const policyRevision = "c".repeat(64);
+    const initial = { es: `tts-es-${article}-r1-1234abcd`, en: `tts-en-${article}-r1-87654321` };
+    queueDatabaseAudio(database, { draft, requests: { es: { sourceRevision: "a".repeat(64) }, en: { sourceRevision: "b".repeat(64) } }, policyRevision, jobIds: initial });
+    for (const [locale, jobId, hash] of [["es", initial.es, "d"], ["en", initial.en, "e"]]) {
+      startDatabaseAudio(database, jobId, "worker", new Date(Date.now() + 60_000));
+      completeDatabaseAudio(database, { jobId, result: { locale, sha256: hash.repeat(64) }, artifactPath: `/private/${locale}.mp3`, checksumSha256: hash.repeat(64) });
+    }
+    const replacement = `tts-en-${article}-r1-aaaaaaaa`;
+    const queued = queueDatabaseAudioLocale(database, { draft, request: { sourceRevision: "f".repeat(64) }, locale: "en", policyRevision, jobId: replacement });
+    assert.equal(queued.jobs.es.status, "completed"); assert.equal(queued.jobs.es.jobId, initial.es);
+    assert.equal(queued.jobs.en.status, "queued"); assert.equal(queued.jobs.en.jobId, replacement);
+  } finally { closeDatabase(database); }
 });

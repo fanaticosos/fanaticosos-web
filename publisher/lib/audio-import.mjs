@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readDatabaseDraft } from "./database-drafts.mjs";
 import { readDatabaseTranslationState } from "./database-translations.mjs";
 import { closeDatabase, openDatabase, withTransaction } from "./database.mjs";
+import { audioDependencyHash } from "./database-audio.mjs";
 import { ttsRequestsForDraft } from "./tts-jobs.mjs";
 
 const STATE_FILE = /^audio-([0-9a-f-]{36})\.json$/;
@@ -25,14 +26,6 @@ function dependencyKey(state, locale, job) {
   return uploaded
     ? `audio:${locale}:${state.articleId}:${state.sourceRevisions[locale]}:owner-upload`
     : `audio:${locale}:${state.articleId}:${state.sourceRevisions[locale]}:${state.policyRevision}`;
-}
-
-function artifactDependencyHash(state, locale, job) {
-  const uploaded = locale === "es" && job.jobId.startsWith("upload-es-");
-  return createHash("sha256").update(JSON.stringify({
-    sourceRevision: state.sourceRevisions[locale],
-    policyRevision: uploaded ? "owner-upload" : state.policyRevision,
-  })).digest("hex");
 }
 
 async function candidates(statesRoot, jobsRoot, database) {
@@ -72,7 +65,8 @@ async function candidates(statesRoot, jobsRoot, database) {
         policyRevision: state.policyRevision,
         uploaded: job.jobId.startsWith("upload-es-"), sizeBytes: result.sizeBytes,
         sha256: result.sha256, path, key: dependencyKey(state, locale, job),
-        dependencyHash: artifactDependencyHash(state, locale, job), result,
+        dependencyHash: audioDependencyHash(state.sourceRevisions[locale], state.policyRevision,
+          locale === "es" && job.jobId.startsWith("upload-es-")), result,
         createdAt: state.createdAt ?? result.generatedAt,
         updatedAt: state.updatedAt ?? result.generatedAt });
     }
