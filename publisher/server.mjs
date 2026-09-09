@@ -16,7 +16,7 @@ import { ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { rebaseReusableArtifacts } from "./lib/artifact-revisions.mjs";
-import { queueRelease, readReleaseState, reconcileReleases } from "./lib/release-jobs.mjs";
+import { databaseReleaseStore, filesystemReleaseStore } from "./lib/release-store.mjs";
 import { queueDeployment, readDeploymentState, reconcileDeployment } from "./lib/deployment-jobs.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
@@ -177,6 +177,7 @@ export function createPublisherServer({
   translationStore = filesystemTranslationStore({ queueRoot, statesRoot, jobsRoot }),
   audioStore = filesystemAudioStore({ queueRoot, statesRoot, jobsRoot }),
   releasesRoot = join(dirname(draftsRoot), "releases"),
+  releaseStore = filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot }),
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
   ttsAzureEntitiesPath = DEFAULT_TTS_AZURE_ENTITIES,
@@ -252,8 +253,11 @@ export function createPublisherServer({
       await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: state.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
     }
     if (!["preview", "spanish-upload"].includes(state.workflow)) return;
-    const draft = await draftStore.read(state.articleId);
-    const release = await queueRelease({ draft, queueRoot, statesRoot });
+    const [draft, translation, settings] = await Promise.all([
+      draftStore.read(state.articleId), translationStore.read(state.articleId),
+      readMusicSettings(siteSettingsPath, siteSettingsFallbackPath),
+    ]);
+    const release = await releaseStore.queue({ draft, translation, audio: state, settings });
     await createNotification(notificationsRoot, {
       level: "info", event: "release-started", articleId: state.articleId,
       message: `Validación privada iniciada automáticamente: ${draft.title}`,
@@ -291,7 +295,7 @@ export function createPublisherServer({
       ["translations", () => translationStore.reconcile({ onComplete: translationCompleted, onFailure: translationFailed })],
       ["audio", () => audioStore.reconcile({ onComplete: audioCompleted, onFailure: audioFailed })],
       ["audiograms", () => reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed })],
-      ["releases", () => reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed })],
+      ["releases", () => releaseStore.reconcile({ onComplete: releaseCompleted, onFailure: releaseFailed })],
     ];
     const failures = [];
     for (const [name, operation] of operations) {
@@ -544,7 +548,7 @@ export function createPublisherServer({
         const value = await requestJson(request);
         const [draft, translation, audio, previousRelease, previousDeployment] = await Promise.all([
           draftStore.read(releaseMatch[1]), translationStore.read(releaseMatch[1]), audioStore.read(releaseMatch[1]),
-          readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])),
+          readOptionalState(() => releaseStore.read(releaseMatch[1])),
           readOptionalState(() => readDeploymentState(statesRoot, releaseMatch[1])),
         ]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before preparing publication");
@@ -553,21 +557,22 @@ export function createPublisherServer({
           draft, audio, requests, release: previousRelease, deployment: previousDeployment,
           currentPolicyRevision: await currentTtsPolicyRevision(),
         })) throw new Error("current bilingual audio is required before preparing publication");
-        const release = await queueRelease({ draft, queueRoot, statesRoot, publishedAt: previousDeployment?.receipt?.validatedAt });
+        const settings = await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath);
+        const release = await releaseStore.queue({ draft, translation, audio, settings, publishedAt: previousDeployment?.receipt?.validatedAt });
         await createNotification(notificationsRoot, { level: "info", event: "release-started", articleId: draft.articleId, message: `Preparación privada iniciada: ${draft.title}` });
         return json(response, 202, { release });
       }
       if (releaseMatch && request.method === "GET") {
-        await reconcileReleases({ statesRoot, releasesRoot, onComplete: releaseCompleted, onFailure: releaseFailed });
+        await releaseStore.reconcile({ onComplete: releaseCompleted, onFailure: releaseFailed });
         const [release, audio] = await Promise.all([
-          readOptionalState(() => readReleaseState(statesRoot, releaseMatch[1])),
+          readOptionalState(() => releaseStore.read(releaseMatch[1])),
           readOptionalState(() => audioStore.read(releaseMatch[1])),
         ]);
         return json(response, 200, { release: releaseWithFreshness(release, audio) });
       }
       const publishMatch = PUBLISH_PATH.exec(url.pathname);
       if (publishMatch && request.method === "POST") {
-        const value = await requestJson(request); const [draft, release, audio] = await Promise.all([draftStore.read(publishMatch[1]), readReleaseState(statesRoot, publishMatch[1]), audioStore.read(publishMatch[1])]);
+        const value = await requestJson(request); const [draft, release, audio] = await Promise.all([draftStore.read(publishMatch[1]), releaseStore.read(publishMatch[1]), audioStore.read(publishMatch[1])]);
         if (value.expectedRevision !== draft.revision || release.status !== "completed" || release.draftRevision !== draft.revision) throw new Error("La vista previa actual debe validarse antes de publicar.");
         if (release.manifest?.assets?.esAudio?.sha256 !== audio.jobs?.es?.result?.sha256 || release.manifest?.assets?.enAudio?.sha256 !== audio.jobs?.en?.result?.sha256) throw new Error("Uno de los audios cambió; vuelve a crear la vista previa antes de publicar.");
         const deployment = await queueDeployment({ articleId: draft.articleId, draftRevision: draft.revision, releaseJobId: release.jobId, queueRoot, statesRoot });
@@ -641,7 +646,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const audioStore = database
     ? databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoot: audioArtifactsRoot })
     : filesystemAudioStore({ queueRoot, statesRoot, jobsRoot });
-  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releasesRoot, siteSettingsPath };
+  const releaseStore = database
+    ? databaseReleaseStore({ database, queueRoot, releasesRoot })
+    : filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot });
+  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   if (database) server.once("close", () => closeDatabase(database));
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));

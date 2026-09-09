@@ -44,6 +44,7 @@ export function releaseDependency({ draft, translation, audio }) {
 
 export function queueDatabaseRelease(database, { draft, translation, audio, jobId, path, settings, publishedAt, now = new Date() }) {
   if (!RELEASE_JOB.test(jobId ?? "") || typeof path !== "string" || !path) throw new Error("release job identity is invalid");
+  if (!Number.isFinite(Date.parse(publishedAt ?? ""))) throw new Error("release publication date is invalid");
   const dependencyHash = releaseDependency({ draft, translation, audio }); const key = `release:${dependencyHash}`;
   return withTransaction(database, (connection) => {
     const existing = connection.prepare(`${SELECT_RELEASE} WHERE j.idempotency_key = ?`).get(key);
@@ -51,9 +52,10 @@ export function queueDatabaseRelease(database, { draft, translation, audio, jobI
     if (connection.prepare("SELECT 1 FROM jobs WHERE type = 'release' AND status IN ('queued', 'leased', 'retry_wait')").get()) throw new Error("Ya hay una preparación de publicación en curso.");
     const revisionId = currentRevision(connection, draft); const timestamp = now.toISOString();
     const previousEntries = connection.prepare(`SELECT e.article_id, e.revision_id, e.position
-      FROM deployments d JOIN releases rel ON rel.id = d.release_id
-      JOIN article_catalog_entries e ON e.catalog_id = rel.catalog_id
-      WHERE d.status = 'published' ORDER BY d.published_at DESC, e.position LIMIT 1000`).all();
+      FROM article_catalog_entries e WHERE e.catalog_id = (
+        SELECT rel.catalog_id FROM deployments d JOIN releases rel ON rel.id = d.release_id
+        WHERE d.status = 'published' ORDER BY d.published_at DESC, d.id DESC LIMIT 1
+      ) ORDER BY e.position`).all();
     const seen = new Set(); const entries = [{ article_id: draft.articleId, revision_id: revisionId }]; seen.add(draft.articleId);
     for (const entry of previousEntries) if (!seen.has(entry.article_id)) { entries.push(entry); seen.add(entry.article_id); }
     const catalogId = `catalog:${digest(entries.map(({ article_id, revision_id }) => [article_id, revision_id]))}`;
@@ -64,6 +66,15 @@ export function queueDatabaseRelease(database, { draft, translation, audio, jobI
     connection.prepare("INSERT OR IGNORE INTO site_settings_revisions (id, settings_json, created_at) VALUES (?, ?, ?)").run(settingsId, settingsJson, timestamp);
     connection.prepare(`INSERT INTO releases (id, catalog_id, site_settings_revision_id, status, path, created_at)
       VALUES (?, ?, ?, 'building', ?, ?)`).run(jobId, catalogId, settingsId, path, timestamp);
+    const boundArtifacts = [translation.artifact, audio.jobs?.es?.artifact, audio.jobs?.en?.artifact];
+    const insertArtifact = connection.prepare(`INSERT INTO release_artifacts (release_id, artifact_id, checksum_sha256)
+      SELECT ?, id, checksum_sha256 FROM artifacts
+      WHERE id = ? AND status = 'accepted' AND checksum_sha256 = ?`);
+    for (const artifact of boundArtifacts) {
+      if (!artifact?.id || !SHA256.test(artifact.sha256 ?? "") || insertArtifact.run(jobId, artifact.id, artifact.sha256).changes !== 1) {
+        throw new Error("release requires accepted immutable translation and audio artifacts");
+      }
+    }
     connection.prepare(`INSERT INTO jobs (id, type, revision_id, artifact_id, idempotency_key, dependency_hash,
       status, checkpoint_json, available_at, created_at) VALUES (?, 'release', ?, NULL, ?, ?, 'queued', ?, ?, ?)`)
       .run(jobId, revisionId, key, dependencyHash, JSON.stringify({ schemaVersion: 1, publishedAt }), timestamp, timestamp);

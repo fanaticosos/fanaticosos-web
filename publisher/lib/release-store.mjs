@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { completeDatabaseRelease, failDatabaseRelease, listActiveDatabaseReleases, queueDatabaseRelease, readDatabaseReleaseState, startDatabaseRelease } from "./database-releases.mjs";
-import { queueRelease, readReleaseState, reconcileReleases } from "./release-jobs.mjs";
+import { queueRelease, readReleaseState, reconcileReleases, zonedIso } from "./release-jobs.mjs";
 
 const TIMEOUT_MS = 12 * 60 * 1000;
 
@@ -22,10 +22,21 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot }) {
   return {
     async queue({ draft, translation, audio, settings, publishedAt, now = new Date() }) {
       const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
+      const previous = database.prepare(`SELECT rel.manifest_json
+        FROM deployments d JOIN releases rel ON rel.id = d.release_id
+        JOIN article_catalog_entries e ON e.catalog_id = rel.catalog_id
+        WHERE d.status = 'published' AND e.article_id = ?
+        ORDER BY d.published_at DESC, d.id DESC LIMIT 1`).get(draft.articleId);
+      const previousPublishedAt = previous?.manifest_json ? JSON.parse(previous.manifest_json).publishedAt : null;
+      const effectivePublishedAt = Number.isFinite(Date.parse(previousPublishedAt ?? ""))
+        ? previousPublishedAt
+        : Number.isFinite(Date.parse(publishedAt ?? ""))
+          ? zonedIso(new Date(publishedAt), "America/Chicago")
+          : zonedIso(now, "America/Chicago");
       const state = queueDatabaseRelease(database, { draft, translation, audio, jobId,
-        path: join(releasesRoot, jobId, "release"), settings, publishedAt, now });
+        path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, now });
       if (state.jobId !== jobId) return state;
-      try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt }); }
+      try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt }); }
       catch (error) { failDatabaseRelease(database, jobId, "release request could not be queued", now); throw error; }
       return state;
     },
