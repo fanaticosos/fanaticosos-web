@@ -50,7 +50,8 @@ export function queueDatabaseDeployment(database, { articleId, draftRevision, re
     const id = `deploy-${releaseJobId}`;
     const existing = connection.prepare(`${SELECT_DEPLOYMENT} WHERE d.id = ?`).get(id);
     if (existing) return state(existing);
-    const active = connection.prepare("SELECT 1 FROM deployments WHERE status IN ('queued','uploading','verifying')").get();
+    const active = connection.prepare(`SELECT 1 FROM deployments WHERE status IN ('queued','uploading','verifying')
+      UNION ALL SELECT 1 FROM jobs WHERE type = 'music_release' AND status IN ('queued','leased','retry_wait') LIMIT 1`).get();
     if (active) throw new Error("Ya hay una publicación en curso.");
     const release = connection.prepare(`SELECT rel.manifest_checksum_sha256, release_job.revision_id
       FROM releases rel JOIN jobs release_job ON release_job.id = rel.id

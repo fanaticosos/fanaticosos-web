@@ -18,8 +18,8 @@ import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs
 import { rebaseReusableArtifacts } from "./lib/artifact-revisions.mjs";
 import { databaseReleaseStore, filesystemReleaseStore } from "./lib/release-store.mjs";
 import { databaseDeploymentStore, filesystemDeploymentStore } from "./lib/deployment-store.mjs";
-import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
-import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
+import { resolveWeeklySong } from "./lib/music-settings.mjs";
+import { databaseMusicStore, filesystemMusicStore } from "./lib/music-store.mjs";
 import { databaseAudiogramStore, filesystemAudiogramStore } from "./lib/audiogram-store.mjs";
 import { MAX_SPANISH_AUDIO_BYTES } from "./lib/spanish-audio-upload.mjs";
 
@@ -189,6 +189,8 @@ export function createPublisherServer({
   siteSettingsPath = join(draftsRoot, "site-settings.json"),
   siteSettingsFallbackPath = DEFAULT_SITE_SETTINGS,
   musicResolver = resolveWeeklySong,
+  musicStore = filesystemMusicStore({ settingsPath: siteSettingsPath, fallbackPath: siteSettingsFallbackPath,
+    queueRoot, statesRoot, releasesRoot, resolver: musicResolver }),
 }) {
   async function currentTtsReferences() {
     const [azureEntities, entityDatabase] = await Promise.all([
@@ -257,7 +259,7 @@ export function createPublisherServer({
     if (!["preview", "spanish-upload"].includes(state.workflow)) return;
     const [draft, translation, settings] = await Promise.all([
       draftStore.read(state.articleId), translationStore.read(state.articleId),
-      readMusicSettings(siteSettingsPath, siteSettingsFallbackPath),
+      musicStore.settings(),
     ]);
     const release = await releaseStore.queue({ draft, translation, audio: state, settings });
     await createNotification(notificationsRoot, {
@@ -322,7 +324,7 @@ export function createPublisherServer({
         return json(response, 200, { settings });
       }
       if (request.method === "GET" && url.pathname === "/api/music") {
-        return json(response, 200, { settings: await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath), publication: await readMusicPublication(statesRoot, releasesRoot) });
+        return json(response, 200, { settings: await musicStore.settings(), publication: await musicStore.publication() });
       }
       if (request.method === "POST" && url.pathname === "/api/markdown-preview") {
         const value = await requestJson(request);
@@ -332,14 +334,9 @@ export function createPublisherServer({
       if (request.method === "PUT" && url.pathname === "/api/music") {
         const value = await requestJson(request);
         if (typeof value.weeklySongUrl !== "string") throw new Error("El enlace de la canción es obligatorio.");
-        const settings = await saveWeeklySong({
-          path: siteSettingsPath,
-          fallbackPath: siteSettingsFallbackPath,
-          weeklySongUrl: value.weeklySongUrl,
-          resolver: musicResolver,
-        });
-        await readMusicPublication(statesRoot, releasesRoot);
-        const publication = await queueMusicPublication({ settings, queueRoot, statesRoot });
+        const settings = await musicStore.save(value.weeklySongUrl);
+        await musicStore.publication();
+        const publication = await musicStore.queue(settings);
         await createNotification(notificationsRoot, { level: "info", event: "music-publication-started", message: `Publicación de la canción iniciada: ${settings.music.weeklySong.title}` });
         return json(response, 202, { settings, publication });
       }
@@ -559,7 +556,7 @@ export function createPublisherServer({
           draft, audio, requests, release: previousRelease, deployment: previousDeployment,
           currentPolicyRevision: await currentTtsPolicyRevision(),
         })) throw new Error("current bilingual audio is required before preparing publication");
-        const settings = await readMusicSettings(siteSettingsPath, siteSettingsFallbackPath);
+        const settings = await musicStore.settings();
         const release = await releaseStore.queue({ draft, translation, audio, settings, publishedAt: previousDeployment?.receipt?.validatedAt });
         await createNotification(notificationsRoot, { level: "info", event: "release-started", articleId: draft.articleId, message: `Preparación privada iniciada: ${draft.title}` });
         return json(response, 202, { release });
@@ -656,7 +653,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const audiogramStore = database ? databaseAudiogramStore({ database, queueRoot, jobsRoot,
     artifactsRoot: process.env.PUBLISHER_AUDIOGRAM_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "audiograms") })
     : filesystemAudiogramStore({ queueRoot, statesRoot, jobsRoot });
-  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, audiogramStore, releasesRoot, siteSettingsPath };
+  const musicStore = database ? databaseMusicStore({ database, queueRoot, releasesRoot, resolver: resolveWeeklySong })
+    : filesystemMusicStore({ settingsPath: siteSettingsPath, fallbackPath: DEFAULT_SITE_SETTINGS, queueRoot, statesRoot, releasesRoot, resolver: resolveWeeklySong });
+  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, audiogramStore, musicStore, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   if (database) server.once("close", () => closeDatabase(database));
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));
