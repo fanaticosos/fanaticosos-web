@@ -121,7 +121,9 @@ async function main() {
     schemaVersion: 1, articleId: request.articleId, draftRevision: request.draftRevision,
     publishedAt: request.publishedAt, timezone: settings.timezone, commit: commit.trim(),
     routes: { es: `/blog/${slugs.es}/`, en: `/en/blog/${slugs.en}/` },
-    assets: copiedAssets, buildCompletedAt: new Date().toISOString(),
+    assets: copiedAssets,
+    homepageSha256: await sha256(join(temporary, "dist", "index.html")),
+    buildCompletedAt: new Date().toISOString(),
     buildLog: `${stdout}${stderr}`.slice(-20_000), deployment: "disabled",
   };
   await writeFile(join(temporary, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });

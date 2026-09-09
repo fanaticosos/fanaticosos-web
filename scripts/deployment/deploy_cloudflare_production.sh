@@ -41,12 +41,10 @@ if len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
     raise SystemExit("release manifest commit is invalid")
 routes = manifest.get("routes", {})
 assets = manifest.get("assets", {})
-items = [(routes.get("es"), ""), (routes.get("en"), "")]
-if manifest.get("releaseKind") == "music":
-    checksum = manifest.get("homepageSha256", "")
-    if len(checksum) != 64:
-        raise SystemExit("music release homepage checksum is invalid")
-    items.append(("/", checksum))
+homepage_checksum = manifest.get("homepageSha256", "")
+if len(homepage_checksum) != 64:
+    raise SystemExit("release homepage checksum is invalid")
+items = [("/", homepage_checksum), (routes.get("es"), ""), (routes.get("en"), "")]
 for key in ("esAudio", "enAudio"):
     asset = assets.get(key, {})
     path = asset.get("path", "")
@@ -74,7 +72,7 @@ for path, checksum in items:
     print(f"{path}\t{checksum}")
 PY
 )
-[[ ${#manifest_values[@]} -ge 5 ]] || stop "Release manifest validation returned too few values."
+[[ ${#manifest_values[@]} -ge 6 ]] || stop "Release manifest validation returned too few values."
 readonly commit="${manifest_values[0]}"
 
 set -a
@@ -138,12 +136,15 @@ fi
 unset CLOUDFLARE_API_TOKEN
 
 [[ "$deployment_url" =~ ^https://[a-zA-Z0-9.-]+\.pages\.dev$ ]] || stop "Wrangler did not return a valid deployment URL."
-readonly domains=("https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
+readonly domains=("$deployment_url" "https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
 for domain in "${domains[@]}"; do
   for item in "${manifest_values[@]:1}"; do
     IFS=$'\t' read -r path checksum <<<"$item"
     passed=false
-    for attempt in 1 2 3 4 5 6; do
+    # Cloudflare Pages aliases can lag behind the immutable deployment URL.
+    # Wait up to two minutes per required artifact instead of accepting a
+    # partially propagated production deployment.
+    for attempt in $(seq 1 40); do
       temporary_body="$job_root/.cloudflare-body.$$"
       if curl --fail --silent --show-error --max-time 30 --output "$temporary_body" "$domain$path"; then
         if [[ -z "$checksum" || "$(sha256sum "$temporary_body" | cut -d' ' -f1)" == "$checksum" ]]; then passed=true; fi
