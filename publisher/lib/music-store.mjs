@@ -15,7 +15,11 @@ export function filesystemMusicStore({ settingsPath, fallbackPath, queueRoot, st
 export function databaseMusicStore({ database, queueRoot, releasesRoot, resolver }) {
   return {
     settings: async () => readDatabaseMusicSettings(database),
-    async save(url) { const current = readDatabaseMusicSettings(database); const weeklySong = await resolver(url); return saveDatabaseMusicSettings(database, { ...current, music: { ...current.music, weeklySongUrl: url, weeklySong } }); },
+    async save(url) {
+      const current = readDatabaseMusicSettings(database); const weeklySong = await resolver(url);
+      const next = { ...current, music: { ...current.music, weeklySongUrl: url, weeklySong } };
+      return JSON.stringify(next) === JSON.stringify(current) ? current : saveDatabaseMusicSettings(database, next);
+    },
     async queue(settings) {
       const jobId = musicJobId(); const now = new Date(); const state = queueDatabaseMusicPublication(database, { settings, jobId, path: join(releasesRoot, jobId, "release"), now });
       if (state.jobId !== jobId) return state;

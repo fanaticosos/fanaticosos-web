@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 import { completeDatabaseMusicPublication, queueDatabaseMusicPublication, readDatabaseMusicPublication, readDatabaseMusicSettings, saveDatabaseMusicSettings, startDatabaseMusicPublication } from "../lib/database-music.mjs";
+import { databaseMusicStore } from "../lib/music-store.mjs";
 
 test("SQLite music settings and publication lifecycle are transactional and idempotent", async () => {
   const root = await mkdtemp(join(tmpdir(), "database-music-")); const database = await openDatabase(join(root, "publisher.sqlite"));
@@ -23,5 +24,17 @@ test("SQLite music settings and publication lifecycle are transactional and idem
     const receipt = { schemaVersion: 1, environment: "production", jobId, url: "https://new.pages.dev", validatedAt: "2026-09-09T01:04:00Z" };
     assert.equal(completeDatabaseMusicPublication(database, { jobId, manifest, manifestChecksum: "b".repeat(64), receipt, now: new Date("2026-09-09T01:05:00Z") }).status, "completed");
     assert.equal(readDatabaseMusicPublication(database).deploymentUrl, receipt.url);
+  } finally { closeDatabase(database); }
+});
+
+test("saving the current resolved weekly song creates no redundant settings revision", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-music-save-")); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const weeklySong = { title: "Song", artist: "Artist", album: "Album", duration: 10, coverUrl: "https://music.example/cover", streamUrl: "https://music.example/stream" };
+    const settings = { version: 1, music: { playlistUrl: "https://music.example/list", weeklySongUrl: "https://music.example/song", weeklySong } };
+    saveDatabaseMusicSettings(database, settings, new Date("2026-09-09T01:00:00Z"));
+    const store = databaseMusicStore({ database, queueRoot: join(root, "queue"), releasesRoot: join(root, "releases"), resolver: async () => weeklySong });
+    assert.deepEqual(await store.save(settings.music.weeklySongUrl), settings);
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM site_settings_revisions").get().count, 1);
   } finally { closeDatabase(database); }
 });
