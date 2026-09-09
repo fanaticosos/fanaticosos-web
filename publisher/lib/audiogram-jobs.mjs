@@ -30,14 +30,7 @@ export async function queueAudiogram({ draft, audio, queueRoot, statesRoot, now 
   }
   const jobId = `audiogram-es-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
   if (!JOB_ID.test(jobId)) throw new Error("audiogram job identity is invalid");
-  const canonicalUrl = `https://fanaticosos.com/blog/${slugify(draft.title)}/`;
-  const request = {
-    schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
-    title: draft.title, description: draft.description, author: "Antonio Contreras",
-    canonicalUrl, tags: draft.tags, featuredImage: draft.featuredImage?.path || null,
-    audioJobId: audio.jobs.es.jobId, audioFile: basename(audio.jobs.es.result.file),
-    audioSha256: audio.jobs.es.result.sha256,
-  };
+  const request = audiogramRequestForDraft(draft, audio);
   const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
   await mkdir(temporary, { mode: 0o700 });
   await atomicJson(join(temporary, "request.json"), request);
@@ -49,6 +42,20 @@ export async function queueAudiogram({ draft, audio, queueRoot, statesRoot, now 
   } finally {
     audiogramQueueBusy = false;
   }
+}
+
+export function audiogramRequestForDraft(draft, audio) {
+  if (audio.status !== "completed" || audio.draftRevision !== draft.revision || audio.jobs?.es?.status !== "completed") {
+    throw new Error("completed current Spanish audio is required for the audiogram");
+  }
+  const canonicalUrl = `https://fanaticosos.com/blog/${slugify(draft.title)}/`;
+  return {
+    schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
+    title: draft.title, description: draft.description, author: "Antonio Contreras",
+    canonicalUrl, tags: draft.tags, featuredImage: draft.featuredImage?.path || null,
+    audioJobId: audio.jobs.es.jobId, audioFile: basename(audio.jobs.es.result.file),
+    audioSha256: audio.jobs.es.result.sha256,
+  };
 }
 
 export async function readAudiogramState(statesRoot, articleId) {

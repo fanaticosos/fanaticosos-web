@@ -20,7 +20,7 @@ import { databaseReleaseStore, filesystemReleaseStore } from "./lib/release-stor
 import { databaseDeploymentStore, filesystemDeploymentStore } from "./lib/deployment-store.mjs";
 import { readMusicSettings, resolveWeeklySong, saveWeeklySong } from "./lib/music-settings.mjs";
 import { queueMusicPublication, readMusicPublication } from "./lib/music-jobs.mjs";
-import { audiogramFileForState, queueAudiogram, readAudiogramState, reconcileAudiograms } from "./lib/audiogram-jobs.mjs";
+import { databaseAudiogramStore, filesystemAudiogramStore } from "./lib/audiogram-store.mjs";
 import { MAX_SPANISH_AUDIO_BYTES } from "./lib/spanish-audio-upload.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -179,6 +179,7 @@ export function createPublisherServer({
   releasesRoot = join(dirname(draftsRoot), "releases"),
   releaseStore = filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot }),
   deploymentStore = filesystemDeploymentStore({ queueRoot, statesRoot, releasesRoot }),
+  audiogramStore = filesystemAudiogramStore({ queueRoot, statesRoot, jobsRoot }),
   ttsProductionPath = DEFAULT_TTS_PRODUCTION,
   ttsPronunciationsPath = DEFAULT_TTS_PRONUNCIATIONS,
   ttsAzureEntitiesPath = DEFAULT_TTS_AZURE_ENTITIES,
@@ -250,7 +251,7 @@ export function createPublisherServer({
     });
     if (state.workflow !== "audio-regeneration" || state.regeneratedLocale === "es") {
       const draft = await draftStore.read(state.articleId);
-      await queueAudiogram({ draft, audio: state, queueRoot, statesRoot });
+      await audiogramStore.queue({ draft, audio: state });
       await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: state.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
     }
     if (!["preview", "spanish-upload"].includes(state.workflow)) return;
@@ -295,7 +296,7 @@ export function createPublisherServer({
     const operations = [
       ["translations", () => translationStore.reconcile({ onComplete: translationCompleted, onFailure: translationFailed })],
       ["audio", () => audioStore.reconcile({ onComplete: audioCompleted, onFailure: audioFailed })],
-      ["audiograms", () => reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed })],
+      ["audiograms", () => audiogramStore.reconcile({ onComplete: audiogramCompleted, onFailure: audiogramFailed })],
       ["releases", () => releaseStore.reconcile({ onComplete: releaseCompleted, onFailure: releaseFailed })],
     ];
     const failures = [];
@@ -518,22 +519,22 @@ export function createPublisherServer({
         const value = await requestJson(request);
         const [draft, audio] = await Promise.all([draftStore.read(audiogramMatch[1]), audioStore.read(audiogramMatch[1])]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft before creating the audiogram");
-        const audiogram = await queueAudiogram({ draft, audio, queueRoot, statesRoot });
+        const audiogram = await audiogramStore.queue({ draft, audio });
         await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: draft.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
         return json(response, 202, { audiogram });
       }
       if (audiogramMatch && request.method === "GET" && !audiogramMatch[2]) {
-        await reconcileAudiograms({ statesRoot, jobsRoot, onComplete: audiogramCompleted, onFailure: audiogramFailed });
+        await audiogramStore.reconcile({ onComplete: audiogramCompleted, onFailure: audiogramFailed });
         const [audiogram, draft, audio] = await Promise.all([
-          readOptionalState(() => readAudiogramState(statesRoot, audiogramMatch[1])),
+          readOptionalState(() => audiogramStore.read(audiogramMatch[1])),
           draftStore.read(audiogramMatch[1]),
           readOptionalState(() => audioStore.read(audiogramMatch[1])),
         ]);
         return json(response, 200, { audiogram: audiogramWithFreshness(audiogram, draft, audio) });
       }
       if (audiogramMatch && request.method === "GET" && audiogramMatch[2] === "video") {
-        const state = await readAudiogramState(statesRoot, audiogramMatch[1]);
-        const body = await readFile(audiogramFileForState(state, jobsRoot));
+        const state = await audiogramStore.read(audiogramMatch[1]);
+        const body = await readFile(audiogramStore.file(state));
         const range = audioByteRange(request.headers.range, body.length);
         const payload = range ? body.subarray(range.start, range.end + 1) : body;
         response.writeHead(range ? 206 : 200, {
@@ -652,7 +653,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const deploymentStore = database
     ? databaseDeploymentStore({ database, queueRoot, releasesRoot })
     : filesystemDeploymentStore({ queueRoot, statesRoot, releasesRoot });
-  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, releasesRoot, siteSettingsPath };
+  const audiogramStore = database ? databaseAudiogramStore({ database, queueRoot, jobsRoot,
+    artifactsRoot: process.env.PUBLISHER_AUDIOGRAM_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "audiograms") })
+    : filesystemAudiogramStore({ queueRoot, statesRoot, jobsRoot });
+  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, audiogramStore, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   if (database) server.once("close", () => closeDatabase(database));
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));
