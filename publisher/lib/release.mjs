@@ -63,8 +63,8 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
       [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${translation.result.body.trim()}\n`,
     },
     assets: {
-      esAudio: { sourceJobId: audio.jobs.es.jobId, file: esAudio.file, publicPath: `public/audio/${esAudio.file}` },
-      enAudio: { sourceJobId: audio.jobs.en.jobId, file: enAudio.file, publicPath: `public/audio/${enAudio.file}` },
+      esAudio: { sourceJobId: audio.jobs.es.jobId, ...(audio.jobs.es.artifact?.path ? { sourcePath: audio.jobs.es.artifact.path } : {}), file: esAudio.file, publicPath: `public/audio/${esAudio.file}` },
+      enAudio: { sourceJobId: audio.jobs.en.jobId, ...(audio.jobs.en.artifact?.path ? { sourcePath: audio.jobs.en.artifact.path } : {}), file: enAudio.file, publicPath: `public/audio/${enAudio.file}` },
       ...(imagePath ? { image: { sourcePath: draft.featuredImage.path, publicPath: `public${imagePath}` } } : {}),
     },
   };

@@ -90,6 +90,16 @@ test("article releases preserve the selected production content set", async () =
   assert.match(releaseUnit, /--releases-root \/opt\/fanaticosos-blog\/publisher\/releases/);
 });
 
+test("article release workers read authoritative SQLite state and immutable audio", async () => {
+  const releaseUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-release@.service", import.meta.url), "utf8");
+  const builder = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");
+  assert.match(releaseUnit, /--database \/opt\/fanaticosos-blog\/publisher\/database\/publisher\.sqlite/);
+  assert.match(builder, /readDatabaseDraft/);
+  assert.match(builder, /readDatabaseTranslationState/);
+  assert.match(builder, /readDatabaseAudioState/);
+  assert.match(builder, /accepted audio is outside the private artifact store/);
+});
+
 test("release retention is fixed, private, and bounded by the approved policy", async () => {
   const service = await readFile(new URL("../../deploy/systemd/fanaticosos-release-retention.service", import.meta.url), "utf8");
   const timer = await readFile(new URL("../../deploy/systemd/fanaticosos-release-retention.timer", import.meta.url), "utf8");

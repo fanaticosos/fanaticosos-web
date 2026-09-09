@@ -7,6 +7,10 @@ import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { serializeArticlePair } from "../../publisher/lib/release.mjs";
+import { closeDatabase, openDatabase } from "../../publisher/lib/database.mjs";
+import { readDatabaseDraft } from "../../publisher/lib/database-drafts.mjs";
+import { readDatabaseTranslationState } from "../../publisher/lib/database-translations.mjs";
+import { readDatabaseAudioState } from "../../publisher/lib/database-audio.mjs";
 
 const execute = promisify(execFile);
 
@@ -14,6 +18,11 @@ function argument(name) {
   const index = process.argv.indexOf(name);
   if (index < 0 || !process.argv[index + 1]) throw new Error(`${name} is required`);
   return resolve(process.argv[index + 1]);
+}
+
+function optionalArgument(name) {
+  const index = process.argv.indexOf(name);
+  return index < 0 ? null : resolve(process.argv[index + 1]);
 }
 
 function validateRequest(value) {
@@ -40,11 +49,22 @@ async function main() {
   const jobsRoot = argument("--jobs-root");
   const releasesRoot = argument("--releases-root");
   const output = argument("--output");
+  const databasePath = optionalArgument("--database");
   const request = validateRequest(await json(requestPath));
   if (process.argv.includes("--validate-only")) return;
-  const draft = await json(join(publisherRoot, "drafts", `${request.articleId}.json`));
-  const translation = await json(join(publisherRoot, "states", `${request.articleId}.json`));
-  const audio = await json(join(publisherRoot, "states", `audio-${request.articleId}.json`));
+  let draft; let translation; let audio;
+  if (databasePath) {
+    const database = await openDatabase(databasePath);
+    try {
+      draft = readDatabaseDraft(database, request.articleId);
+      translation = readDatabaseTranslationState(database, request.articleId);
+      audio = readDatabaseAudioState(database, request.articleId);
+    } finally { closeDatabase(database); }
+  } else {
+    draft = await json(join(publisherRoot, "drafts", `${request.articleId}.json`));
+    translation = await json(join(publisherRoot, "states", `${request.articleId}.json`));
+    audio = await json(join(publisherRoot, "states", `audio-${request.articleId}.json`));
+  }
   const settings = await json(join(repository, "config", "publisher", "defaults.json"));
   if (draft.revision !== request.draftRevision) throw new Error("release request is stale");
   const release = serializeArticlePair({ draft, translation, audio, settings, publishedAt: request.publishedAt });
@@ -93,6 +113,10 @@ async function main() {
       const uploadName = basename(asset.sourcePath);
       if (asset.sourcePath !== `/uploads/${uploadName}`) throw new Error("featured image is outside the private upload store");
       source = join(publisherRoot, "uploads", uploadName);
+    } else if (asset.sourcePath) {
+      const allowed = join(publisherRoot, "artifacts", "audio") + "/";
+      source = resolve(asset.sourcePath);
+      if (!source.startsWith(allowed)) throw new Error("accepted audio is outside the private artifact store");
     } else {
       source = join(jobsRoot, asset.sourceJobId, "audio", asset.file);
     }
