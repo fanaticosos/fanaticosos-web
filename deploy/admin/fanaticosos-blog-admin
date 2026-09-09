@@ -148,6 +148,7 @@ Commands:
   database-status EXPECTED_COMMIT
   backup-database EXPECTED_COMMIT BACKUP_ID
   restore-database-drill EXPECTED_COMMIT BACKUP_ID
+  database-draft-import-preview EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1263,6 +1264,14 @@ command_restore_database_drill() {
     restore-drill --backup-root "$publisher_database_backup_root" --backup-id "$backup_id"
 }
 
+command_database_draft_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    draft-import-preview --database "$publisher_database" \
+    --drafts-root "$publisher_data/drafts"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2143,6 +2152,10 @@ case "$command" in
   restore-database-drill)
     [[ $# == 2 ]] || stop "restore-database-drill requires EXPECTED_COMMIT BACKUP_ID."
     command_restore_database_drill "$1" "$2"
+    ;;
+  database-draft-import-preview)
+    [[ $# == 1 ]] || stop "database-draft-import-preview requires EXPECTED_COMMIT."
+    command_database_draft_import_preview "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."

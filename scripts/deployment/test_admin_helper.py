@@ -114,6 +114,7 @@ class AdminHelperTests(unittest.TestCase):
                 "database-status",
                 "backup-database",
                 "restore-database-drill",
+                "database-draft-import-preview",
                 "latest-private-release",
                 "select-private-release",
                 "release-retention-preview",
@@ -215,6 +216,7 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('initialize --database "$publisher_database"', self.helper)
         self.assertIn('backup --database "$publisher_database"', self.helper)
         self.assertIn('restore-drill --backup-root "$publisher_database_backup_root"', self.helper)
+        self.assertIn('draft-import-preview --database "$publisher_database"', self.helper)
 
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(

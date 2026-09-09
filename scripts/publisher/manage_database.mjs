@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { backupDatabase, databaseStatus, initializeDatabase, restoreDatabaseDrill } from "../../publisher/lib/database-admin.mjs";
+import { previewDraftImport } from "../../publisher/lib/draft-import.mjs";
 
 function options(values) {
   const parsed = new Map();
@@ -39,6 +40,11 @@ async function main(argv) {
       required(parsed, "--backup-root"),
       required(parsed, "--backup-id"),
     );
+  } else if (command === "draft-import-preview") {
+    result = await previewDraftImport({
+      databasePath: required(parsed, "--database"),
+      draftsRoot: required(parsed, "--drafts-root"),
+    });
   } else {
     throw new Error("unknown database command");
   }
