@@ -155,6 +155,7 @@ Commands:
   database-audio-import-preview EXPECTED_COMMIT
   import-audio EXPECTED_COMMIT
   database-release-import-preview EXPECTED_COMMIT
+  import-releases EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1188,7 +1189,7 @@ command_install_publisher() {
     "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
     "$publisher_data/releases" "$publisher_database_root" \
     "$publisher_database_backup_root" "$publisher_data/artifacts/translations" \
-    "$publisher_data/artifacts/audio" "$jobs_root"
+    "$publisher_data/artifacts/audio" "$publisher_data/artifacts/images" "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   install -o root -g root -m 0644 "$audiogram_source_unit" "$audiogram_installed_unit"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"
@@ -1329,6 +1330,16 @@ command_database_release_import_preview() {
   run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
     release-import-preview --database "$publisher_database" \
     --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
+}
+
+command_import_releases() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  install -d -o fanaticosos-blog -g fanaticosos-blog -m 0700 "$publisher_data/artifacts/images"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    release-import-apply --database "$publisher_database" \
+    --states-root "$publisher_data/states" --releases-root "$publisher_data/releases" \
+    --images-root "$publisher_data/artifacts/images"
 }
 
 command_latest_private_release() {
@@ -2239,6 +2250,10 @@ case "$command" in
   database-release-import-preview)
     [[ $# == 1 ]] || stop "database-release-import-preview requires EXPECTED_COMMIT."
     command_database_release_import_preview "$1"
+    ;;
+  import-releases)
+    [[ $# == 1 ]] || stop "import-releases requires EXPECTED_COMMIT."
+    command_import_releases "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
