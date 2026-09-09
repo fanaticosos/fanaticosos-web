@@ -191,6 +191,7 @@ export function createPublisherServer({
   musicResolver = resolveWeeklySong,
   musicStore = filesystemMusicStore({ settingsPath: siteSettingsPath, fallbackPath: siteSettingsFallbackPath,
     queueRoot, statesRoot, releasesRoot, resolver: musicResolver }),
+  artifactRebaser = (draft) => rebaseReusableArtifacts({ draft, statesRoot }),
 }) {
   async function currentTtsReferences() {
     const [azureEntities, entityDatabase] = await Promise.all([
@@ -368,11 +369,11 @@ export function createPublisherServer({
       if (previewMatch && request.method === "GET") {
         try {
           const draft = await draftStore.read(previewMatch[1]);
-          await rebaseReusableArtifacts({ draft, statesRoot });
+          await artifactRebaser(draft);
           const [translation, audio, settings] = await Promise.all([
             translationStore.read(previewMatch[1]),
             audioStore.read(previewMatch[1]),
-            readFile(settingsPath, "utf8").then(JSON.parse),
+            musicStore.settings(),
           ]);
           const requests = ttsRequestsForDraft(draft, translation);
           if (audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
@@ -446,7 +447,7 @@ export function createPublisherServer({
       if (translationMatch && request.method === "GET") {
         await translationStore.reconcile({ onComplete: translationCompleted, onFailure: translationFailed });
         const draft = await draftStore.read(translationMatch[1]);
-        await rebaseReusableArtifacts({ draft, statesRoot });
+        await artifactRebaser(draft);
         const translation = await readOptionalState(() => translationStore.read(translationMatch[1]));
         return json(response, 200, { translation: translationWithFreshness(translation, draft) });
       }
@@ -606,7 +607,7 @@ export function createPublisherServer({
           value.expectedRevision,
           value.draft,
         );
-        await rebaseReusableArtifacts({ draft, statesRoot });
+        await artifactRebaser(draft);
         return json(response, 200, { draft });
       }
       return json(response, 404, { error: "not found" });
@@ -655,7 +656,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     : filesystemAudiogramStore({ queueRoot, statesRoot, jobsRoot });
   const musicStore = database ? databaseMusicStore({ database, queueRoot, releasesRoot, resolver: resolveWeeklySong })
     : filesystemMusicStore({ settingsPath: siteSettingsPath, fallbackPath: DEFAULT_SITE_SETTINGS, queueRoot, statesRoot, releasesRoot, resolver: resolveWeeklySong });
-  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, audiogramStore, musicStore, releasesRoot, siteSettingsPath };
+  const artifactRebaser = database ? async () => ({ translation: false, audio: false }) : undefined;
+  const options = { draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, translationStore, audioStore, releaseStore, deploymentStore, audiogramStore, musicStore, artifactRebaser, releasesRoot, siteSettingsPath };
   const server = createPublisherServer(options);
   if (database) server.once("close", () => closeDatabase(database));
   const reconcile = () => server.reconcilePublisherJobs().catch((error) => console.error("publisher reconciliation failed", error));
