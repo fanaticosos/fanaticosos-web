@@ -43,6 +43,8 @@ function storedState(row) {
     sourceRevision: row.dependency_hash,
     ...(checkpoint.result ? { result: checkpoint.result } : {}),
     ...(checkpoint.provenance ? { provenance: checkpoint.provenance } : {}),
+    ...(Number.isInteger(checkpoint.ownerRevision) ? { ownerRevision: checkpoint.ownerRevision } : {}),
+    ...(checkpoint.ownerReviewedAt ? { ownerReviewedAt: checkpoint.ownerReviewedAt } : {}),
     ...(row.error_message ? { error: row.error_message } : {}),
     artifact: {
       id: row.artifact_id,
@@ -110,6 +112,13 @@ export function readDatabaseTranslationState(database, articleId) {
   return storedState(row);
 }
 
+export function listActiveDatabaseTranslations(database) {
+  return database.prepare(`${SELECT_STATE}
+    WHERE j.type = 'translation' AND j.status IN ('queued', 'leased', 'retry_wait')
+    ORDER BY j.created_at, j.id
+  `).all().map(storedState);
+}
+
 export function startDatabaseTranslation(database, jobId, leaseOwner, leaseExpiresAt, now = new Date()) {
   if (!leaseOwner || !(leaseExpiresAt instanceof Date) || leaseExpiresAt <= now) {
     throw new Error("a valid translation lease is required");
@@ -164,6 +173,48 @@ export function failDatabaseTranslation(database, jobId, errorMessage, now = new
       UPDATE artifacts SET status = 'failed', updated_at = ?
       WHERE id = (SELECT artifact_id FROM jobs WHERE id = ?) AND status = 'pending'
     `).run(timestamp, jobId);
+    return storedState(connection.prepare(`${SELECT_STATE} WHERE j.id = ?`).get(jobId));
+  });
+}
+
+export function correctDatabaseTranslation(database, {
+  draft, result, artifactPath, checksumSha256, now = new Date(),
+}) {
+  if (typeof artifactPath !== "string" || !artifactPath || !SHA256.test(checksumSha256 ?? "")) {
+    throw new Error("verified translation artifact identity is required");
+  }
+  for (const [field, maximum] of [["title", 300], ["description", 500], ["body", 100_000]]) {
+    if (typeof result?.[field] !== "string" || !result[field].trim() || result[field].trim().length > maximum) {
+      throw new Error(`English ${field} is invalid`);
+    }
+  }
+  const timestamp = now.toISOString();
+  return withTransaction(database, (connection) => {
+    const previous = readDatabaseTranslationState(connection, draft.articleId);
+    const dependencyHash = translationSourceRevision(draft);
+    if (previous.status !== "completed" || previous.sourceRevision !== dependencyHash) {
+      throw new Error("English translation is stale for this draft");
+    }
+    const revisionId = currentRevision(connection, draft);
+    const artifactId = randomUUID();
+    const jobId = `translation-review-${randomUUID()}`;
+    connection.prepare("UPDATE artifacts SET status = 'superseded', updated_at = ? WHERE id = ? AND status = 'accepted'")
+      .run(timestamp, previous.artifact.id);
+    connection.prepare(`INSERT INTO artifacts (
+      id, revision_id, type, locale, dependency_hash, status, path,
+      checksum_sha256, created_at, updated_at, accepted_at
+    ) VALUES (?, ?, 'translation', 'en', ?, 'accepted', ?, ?, ?, ?, ?)`)
+      .run(artifactId, revisionId, dependencyHash, artifactPath, checksumSha256, timestamp, timestamp, timestamp);
+    const ownerRevision = (previous.ownerRevision ?? 0) + 1;
+    connection.prepare(`INSERT INTO jobs (
+      id, type, revision_id, artifact_id, idempotency_key, dependency_hash,
+      status, checkpoint_json, available_at, created_at, started_at, finished_at
+    ) VALUES (?, 'translation', ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?)`)
+      .run(jobId, revisionId, artifactId, `translation-review:${artifactId}`, dependencyHash,
+        JSON.stringify({ schemaVersion: 1, workflow: previous.workflow ?? "manual", bodyLayout: previous.bodyLayout,
+          result: Object.fromEntries(Object.entries(result).map(([key, value]) => [key, value.trim()])),
+          provenance: previous.provenance, ownerRevision, ownerReviewedAt: timestamp }),
+        timestamp, timestamp, timestamp, timestamp);
     return storedState(connection.prepare(`${SELECT_STATE} WHERE j.id = ?`).get(jobId));
   });
 }

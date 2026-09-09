@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { createDatabaseDraft } from "../lib/database-drafts.mjs";
 import {
-  completeDatabaseTranslation, failDatabaseTranslation, queueDatabaseTranslation,
+  completeDatabaseTranslation, correctDatabaseTranslation, failDatabaseTranslation, listActiveDatabaseTranslations, queueDatabaseTranslation,
   readDatabaseTranslationState, startDatabaseTranslation,
 } from "../lib/database-translations.mjs";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
@@ -40,6 +40,32 @@ test("translation admission is transactional and idempotent by source dependency
     assert.equal(repeated.jobId, queued.jobId);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM jobs").get().count, 1);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM artifacts").get().count, 1);
+    assert.equal(listActiveDatabaseTranslations(database).length, 1);
+  } finally {
+    closeDatabase(database);
+  }
+});
+
+test("owner correction creates a new accepted artifact and supersedes the old one", async () => {
+  const { database, draft } = await fixture();
+  try {
+    const jobId = `translation-${draft.articleId.replaceAll("-", "")}-r1-1234abcd`;
+    queueDatabaseTranslation(database, { draft, jobId, bodyLayout: [] });
+    startDatabaseTranslation(database, jobId, "worker-1", new Date("2026-09-09T02:00:00.000Z"), new Date("2026-09-09T01:00:00.000Z"));
+    const original = completeDatabaseTranslation(database, {
+      jobId, result: { title: "Title", description: "Description", body: "Body" },
+      provenance: { engine: "qwen" }, artifactPath: "/private/original.json",
+      checksumSha256: "a".repeat(64), now: new Date("2026-09-09T01:30:00.000Z"),
+    });
+    const corrected = correctDatabaseTranslation(database, {
+      draft, result: { title: "Owner title", description: "Owner description", body: "Owner body" },
+      artifactPath: "/private/corrected.json", checksumSha256: "b".repeat(64),
+      now: new Date("2026-09-09T01:45:00.000Z"),
+    });
+    assert.equal(corrected.result.title, "Owner title");
+    assert.equal(corrected.ownerRevision, 1);
+    assert.equal(database.prepare("SELECT status FROM artifacts WHERE id = ?").get(original.artifact.id).status, "superseded");
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM artifacts WHERE status = 'accepted'").get().count, 1);
   } finally {
     closeDatabase(database);
   }
