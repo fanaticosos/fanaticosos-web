@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 import { databaseDraftStore } from "../lib/draft-store.mjs";
+import { translationSourceRevision } from "../lib/translation-jobs.mjs";
 import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
@@ -90,6 +91,14 @@ test("translation freshness follows article text revisions", () => {
   const translation = { status: "completed", draftRevision: 2 };
   assert.equal(translationWithFreshness(translation, { revision: 2 }).status, "completed");
   assert.equal(translationWithFreshness(translation, { revision: 3 }).status, "stale");
+});
+
+test("translation freshness follows its dependency across metadata-only revisions", () => {
+  const draft = { ...fields, articleId: "00000000-0000-4000-8000-000000000001", revision: 3 };
+  const sourceRevision = translationSourceRevision(draft);
+  const translation = { status: "completed", draftRevision: 2, sourceRevision };
+  assert.equal(translationWithFreshness(translation, draft).status, "completed");
+  assert.equal(translationWithFreshness(translation, { ...draft, description: "Changed" }).status, "stale");
 });
 
 test("audiogram freshness follows the draft image and Spanish audio", () => {

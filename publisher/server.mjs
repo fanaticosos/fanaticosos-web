@@ -10,6 +10,7 @@ import { databaseDraftStore, filesystemDraftStore } from "./lib/draft-store.mjs"
 import { contentTypeForName, MAX_IMAGE_BYTES, saveImage } from "./lib/uploads.mjs";
 import { acknowledgeAllNotifications, acknowledgeNotification, createNotification, listNotifications } from "./lib/notifications.mjs";
 import { databaseTranslationStore, filesystemTranslationStore } from "./lib/translation-store.mjs";
+import { translationSourceRevision } from "./lib/translation-jobs.mjs";
 import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
@@ -111,6 +112,7 @@ export function releaseArtifactsEligible({ draft, audio, requests, release, depl
 export function translationWithFreshness(translation, draft) {
   if (!translation || translation.status !== "completed") return translation;
   return translation.draftRevision === draft.revision
+    || translation.sourceRevision === translationSourceRevision(draft)
     ? translation
     : { ...translation, status: "stale" };
 }
