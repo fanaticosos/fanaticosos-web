@@ -47,9 +47,7 @@ async function candidates(statesRoot, jobsRoot, database) {
       if (job?.status !== "completed" || !JOB_ID.test(job.jobId ?? "") || !result || result.locale !== locale) {
         throw new Error(`legacy ${locale} audio is incomplete: ${articleId}`);
       }
-      if (state.sourceRevisions[locale] !== requests[locale].sourceRevision) {
-        throw new Error(`legacy ${locale} audio source differs from current content: ${articleId}`);
-      }
+      const currentSourceRevision = requests[locale].sourceRevision;
       if (basename(result.file ?? "") !== result.file || !SHA256.test(result.sha256 ?? "")) {
         throw new Error(`legacy ${locale} audio identity is invalid: ${articleId}`);
       }
@@ -59,7 +57,9 @@ async function candidates(statesRoot, jobsRoot, database) {
         throw new Error(`legacy ${locale} audio checksum differs: ${articleId}`);
       }
       values.push({ articleId, draftRevision: draft.revision, locale, jobId: job.jobId,
-        sourceRevision: state.sourceRevisions[locale], policyRevision: state.policyRevision,
+        sourceRevision: state.sourceRevisions[locale], currentSourceRevision,
+        sourceCurrent: state.sourceRevisions[locale] === currentSourceRevision,
+        policyRevision: state.policyRevision,
         uploaded: job.jobId.startsWith("upload-es-"), sizeBytes: result.sizeBytes,
         sha256: result.sha256, path, key: dependencyKey(state, locale, job) });
     }
@@ -83,6 +83,8 @@ export async function previewAudioImport({ statesRoot, jobsRoot, databasePath })
     return { schemaVersion: 1, source: "legacy-json-audio", total: audio.length,
       insert: audio.filter(({ action }) => action === "insert").length,
       unchanged: audio.filter(({ action }) => action === "unchanged").length,
-      conflicts: audio.filter(({ action }) => action === "conflict").length, audio };
+      conflicts: audio.filter(({ action }) => action === "conflict").length,
+      current: audio.filter(({ sourceCurrent }) => sourceCurrent).length,
+      historic: audio.filter(({ sourceCurrent }) => !sourceCurrent).length, audio };
   } finally { database.close(); }
 }
