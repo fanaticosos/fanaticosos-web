@@ -24,6 +24,12 @@ test("publisher has a single private write boundary", () => {
   assert.match(unit, /UMask=0077/);
 });
 
+test("publisher database and backups stay inside the private data boundary", () => {
+  assert.match(unit, /Environment=PUBLISHER_DATABASE_PATH=\/opt\/fanaticosos-blog\/publisher\/database\/publisher\.sqlite/);
+  assert.match(unit, /Environment=PUBLISHER_DATABASE_BACKUP_ROOT=\/opt\/fanaticosos-blog\/publisher\/backups\/database/);
+  assert.match(unit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
+});
+
 test("publisher dispatches jobs through a separate fixed systemd path", async () => {
   const pathUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-publisher-dispatcher.path", import.meta.url), "utf8");
   const serviceUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-publisher-dispatcher.service", import.meta.url), "utf8");

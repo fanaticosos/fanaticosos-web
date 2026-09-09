@@ -46,6 +46,8 @@ readonly publisher_retention_timer_installed="/etc/systemd/system/fanaticosos-re
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
 readonly publisher_data="$data_root/publisher"
+readonly publisher_database_root="$publisher_data/database"
+readonly publisher_database_backup_root="$publisher_data/backups/database"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="$data_root/jobs"
@@ -1167,7 +1169,8 @@ command_install_publisher() {
   install -d -o "$service_account" -g "$service_account" -m 0700 \
     "$publisher_data" "$publisher_data/drafts" "$publisher_data/uploads" \
     "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
-    "$publisher_data/releases" "$jobs_root"
+    "$publisher_data/releases" "$publisher_database_root" \
+    "$publisher_database_backup_root" "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   install -o root -g root -m 0644 "$audiogram_source_unit" "$audiogram_installed_unit"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"

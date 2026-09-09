@@ -188,6 +188,8 @@ class AdminHelperTests(unittest.TestCase):
         )[0]
         self.assertIn('systemd-analyze verify "$publisher_source_unit"', installer)
         self.assertIn('install -d -o "$service_account"', installer)
+        self.assertIn('"$publisher_database_root"', installer)
+        self.assertIn('"$publisher_database_backup_root"', installer)
         self.assertIn("systemctl enable fanaticosos-publisher.service", installer)
         self.assertIn("systemctl restart fanaticosos-publisher.service", installer)
         self.assertIn('cmp -s "$publisher_source_unit"', installer)
