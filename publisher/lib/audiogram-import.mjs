@@ -20,6 +20,7 @@ export async function previewAudiogramImport({ databasePath, statesRoot, jobsRoo
       const articleId = name.match(STATE)[1]; const state = JSON.parse(await readFile(join(statesRoot, name), "utf8"));
       if (state.schemaVersion !== 1 || state.articleId !== articleId || !Number.isInteger(state.draftRevision)
         || !JOB.test(state.jobId ?? "") || !SHA256.test(state.audioSha256 ?? "")
+        || !Number.isFinite(Date.parse(state.createdAt ?? "")) || !Number.isFinite(Date.parse(state.updatedAt ?? ""))
         || !["queued", "running", "completed", "failed"].includes(state.status)) throw new Error(`legacy audiogram state is invalid: ${articleId}`);
       const revision = database.prepare("SELECT id FROM revisions WHERE article_id = ? AND revision_number = ?").get(articleId, state.draftRevision);
       if (!revision) throw new Error(`audiogram revision is missing from SQLite: ${articleId}`);

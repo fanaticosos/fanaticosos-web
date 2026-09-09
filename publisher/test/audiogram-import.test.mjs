@@ -16,7 +16,7 @@ test("audiogram import preview verifies completed video artifacts and writes not
   const jobId = `audiogram-es-${draft.articleId.replaceAll("-", "")}-r1-abcdef12`; const video = Buffer.from("video"); const sha256 = createHash("sha256").update(video).digest("hex");
   await mkdir(statesRoot); await mkdir(join(jobsRoot, jobId, "video"), { recursive: true });
   await writeFile(join(jobsRoot, jobId, "video", "audiogram.mp4"), video);
-  await writeFile(join(statesRoot, `audiogram-${draft.articleId}.json`), JSON.stringify({ schemaVersion: 1, articleId: draft.articleId, draftRevision: 1, jobId, status: "completed", audioSha256: "a".repeat(64), result: { file: "audiogram.mp4", sizeBytes: video.length, sha256 } }));
+  await writeFile(join(statesRoot, `audiogram-${draft.articleId}.json`), JSON.stringify({ schemaVersion: 1, articleId: draft.articleId, draftRevision: 1, jobId, status: "completed", audioSha256: "a".repeat(64), createdAt: "2026-09-09T01:00:00Z", updatedAt: "2026-09-09T01:01:00Z", result: { file: "audiogram.mp4", sizeBytes: video.length, sha256, generatedAt: "2026-09-09T01:01:00Z" } }));
   assert.deepEqual(await previewAudiogramImport({ databasePath, statesRoot, jobsRoot }), { count: 1, completed: 1, failed: 0, active: 0, verifiedArtifacts: 1 });
   const inspected = new (await import("node:sqlite")).DatabaseSync(databasePath, { readOnly: true });
   assert.equal(inspected.prepare("SELECT COUNT(*) AS count FROM artifacts WHERE type = 'audiogram'").get().count, 0); inspected.close();
