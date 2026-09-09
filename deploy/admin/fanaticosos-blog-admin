@@ -156,6 +156,7 @@ Commands:
   import-audio EXPECTED_COMMIT
   database-release-import-preview EXPECTED_COMMIT
   import-releases EXPECTED_COMMIT
+  database-audiogram-import-preview EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1342,6 +1343,14 @@ command_import_releases() {
     --images-root "$publisher_data/artifacts/images"
 }
 
+command_database_audiogram_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audiogram-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states" --jobs-root "$jobs_root"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2254,6 +2263,10 @@ case "$command" in
   import-releases)
     [[ $# == 1 ]] || stop "import-releases requires EXPECTED_COMMIT."
     command_import_releases "$1"
+    ;;
+  database-audiogram-import-preview)
+    [[ $# == 1 ]] || stop "database-audiogram-import-preview requires EXPECTED_COMMIT."
+    command_database_audiogram_import_preview "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."

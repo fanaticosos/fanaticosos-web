@@ -122,6 +122,7 @@ class AdminHelperTests(unittest.TestCase):
                 "import-audio",
                 "database-release-import-preview",
                 "import-releases",
+                "database-audiogram-import-preview",
                 "latest-private-release",
                 "select-private-release",
                 "release-retention-preview",
