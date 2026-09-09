@@ -23,7 +23,12 @@ async function optionalJson(path) {
 function frontmatter(text) {
   const match = /^---\n([\s\S]*?)\n---\n/.exec(text);
   if (!match) throw new Error("released article frontmatter is invalid");
-  const field = (name) => match[1].match(new RegExp(`^${name}:\\s*(.+)$`, "m"))?.[1]?.trim();
+  const field = (name) => {
+    const raw = match[1].match(new RegExp(`^${name}:\\s*(.+)$`, "m"))?.[1]?.trim();
+    if (!raw) return raw;
+    return ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")))
+      ? raw.slice(1, -1) : raw;
+  };
   return { articleId: field("articleId"), status: field("status"), fixture: field("fixture") === "true", publishedAt: field("publishedAt") };
 }
 

@@ -21,7 +21,7 @@ test("release import preview excludes fixtures and verifies the published catalo
   await mkdir(join(releaseRoot, "src/content/articles/es"), { recursive: true }); await mkdir(join(releaseRoot, "public/images"), { recursive: true });
   await mkdir(join(releaseRoot, "src/data"), { recursive: true });
   await writeFile(join(releaseRoot, "src/data/site-settings.json"), JSON.stringify({ schemaVersion: 1, music: {} }));
-  await writeFile(join(releaseRoot, "src/content/articles/es", `${draft.articleId}.md`), `---\narticleId: ${draft.articleId}\nstatus: published\npublishedAt: 2026-09-09T01:00:00Z\n---\n\nArticle\n`);
+  await writeFile(join(releaseRoot, "src/content/articles/es", `${draft.articleId}.md`), `---\narticleId: ${draft.articleId}\nstatus: published\npublishedAt: "2026-09-09T01:00:00Z"\n---\n\nArticle\n`);
   await writeFile(join(releaseRoot, "src/content/articles/es/00000000-0000-4000-8000-000000000001.md"), "---\narticleId: 00000000-0000-4000-8000-000000000001\nstatus: draft\npublishedAt: 2026-09-09T00:00:00Z\nfixture: true\n---\n\nFixture\n");
   const image = Buffer.from("image"); await writeFile(join(releaseRoot, "public/images/image.webp"), image); const imageHash = createHash("sha256").update(image).digest("hex");
   const manifest = { schemaVersion: 1, articleId: draft.articleId, draftRevision: 1, publishedAt: "2026-09-09T01:00:00Z", buildCompletedAt: "2026-09-09T01:01:00Z", assets: { esAudio: { sha256: "a".repeat(64) }, enAudio: { sha256: "b".repeat(64) }, image: { path: "public/images/image.webp", sha256: imageHash } } };
