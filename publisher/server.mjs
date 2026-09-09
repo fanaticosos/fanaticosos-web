@@ -111,8 +111,10 @@ export function releaseArtifactsEligible({ draft, audio, requests, release, depl
 
 export function translationWithFreshness(translation, draft) {
   if (!translation || translation.status !== "completed") return translation;
+  const dependencyIsCurrent = /^[0-9a-f]{64}$/.test(translation.sourceRevision ?? "")
+    && translation.sourceRevision === translationSourceRevision(draft);
   return translation.draftRevision === draft.revision
-    || translation.sourceRevision === translationSourceRevision(draft)
+    || dependencyIsCurrent
     ? translation
     : { ...translation, status: "stale" };
 }
