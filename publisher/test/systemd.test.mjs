@@ -65,6 +65,8 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /--releases-root "\$data_root\/publisher\/releases" --job-id "\$job_id"/);
   assert.match(production, /readonly domains=\("\$deployment_url" "https:\/\/fanaticosos\.com"/);
   assert.match(production, /release homepage checksum is invalid/);
+  assert.match(production, /deployments\/\$rollback_id\/rollback/);
+  assert.match(production, /The previous validated deployment was restored/);
   assert.match(articleBuild, /homepageSha256: await sha256\(join\(temporary, "dist", "index\.html"\)\)/);
   assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases(?:\n|$)/);
   assert.match(failureRecorder, /await chown\(temporary, owner\.uid, owner\.gid\)/);

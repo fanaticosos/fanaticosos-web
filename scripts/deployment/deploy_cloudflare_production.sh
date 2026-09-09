@@ -133,9 +133,17 @@ if [[ -z "$deployment_url" ]]; then
   fi
   deployment_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"
 fi
-unset CLOUDFLARE_API_TOKEN
 
 [[ "$deployment_url" =~ ^https://[a-zA-Z0-9.-]+\.pages\.dev$ ]] || stop "Wrangler did not return a valid deployment URL."
+rollback_production() {
+  local rollback_response
+  rollback_response="$(curl --fail --silent --show-error --max-time 30 \
+    --request POST --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    --header "Content-Type: application/json" --data '{}' \
+    "$api/deployments/$rollback_id/rollback")" || return 1
+  python3 -c 'import json,sys; value=json.load(sys.stdin); assert value.get("success") is True; assert (value.get("result") or {}).get("id")' \
+    <<<"$rollback_response"
+}
 readonly domains=("$deployment_url" "https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
 for domain in "${domains[@]}"; do
   for item in "${manifest_values[@]:1}"; do
@@ -153,9 +161,14 @@ for domain in "${domains[@]}"; do
       [[ "$passed" == true ]] && break
       sleep 3
     done
-    [[ "$passed" == true ]] || stop "Production validation failed for $domain$path."
+    if [[ "$passed" != true ]]; then
+      rollback_production || stop "Production validation failed for $domain$path, and rollback also failed."
+      unset CLOUDFLARE_API_TOKEN
+      stop "Production validation failed for $domain$path. The previous validated deployment was restored."
+    fi
   done
 done
+unset CLOUDFLARE_API_TOKEN
 
 # The locally selected release is the source for later music-only builds. Keep it
 # aligned with the production bundle that just passed validation, regardless of
