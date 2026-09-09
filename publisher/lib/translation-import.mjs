@@ -1,8 +1,10 @@
-import { readFile, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { chmod, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { readDatabaseDraft } from "./database-drafts.mjs";
+import { closeDatabase, openDatabase, withTransaction } from "./database.mjs";
 import { translationSourceRevision } from "./translation-jobs.mjs";
 
 const STATE_FILE = /^([0-9a-f-]{36})\.json$/;
@@ -38,6 +40,7 @@ async function candidates(statesRoot, database) {
       articleId, draftRevision: draft.revision, jobId: state.jobId,
       sourceRevision: state.sourceRevision, workflow: state.workflow ?? "manual",
       ownerRevision: state.ownerRevision ?? 0, bodyLayoutCount: state.bodyLayout.length,
+      state,
     });
   }
   return rows;
@@ -55,7 +58,8 @@ export async function previewTranslationImport({ statesRoot, databasePath }) {
       const job = byJob.get(candidate.jobId) ?? byKey.get(key);
       const action = !job ? "insert"
         : job.id === candidate.jobId && job.dependency_hash === candidate.sourceRevision ? "unchanged" : "conflict";
-      return { ...candidate, action };
+      const { state, ...safe } = candidate;
+      return { ...safe, action };
     });
     return {
       schemaVersion: 1, source: "legacy-json-translations", total: translations.length,
@@ -66,5 +70,92 @@ export async function previewTranslationImport({ statesRoot, databasePath }) {
     };
   } finally {
     database.close();
+  }
+}
+
+function artifactBytes(candidate) {
+  return Buffer.from(`${JSON.stringify({
+    schemaVersion: 1,
+    articleId: candidate.articleId,
+    sourceRevision: candidate.sourceRevision,
+    result: candidate.state.result,
+    provenance: candidate.state.provenance,
+    ownerRevision: candidate.state.ownerRevision ?? 0,
+    ownerReviewedAt: candidate.state.ownerReviewedAt ?? null,
+  }, null, 2)}\n`);
+}
+
+async function writeImmutableArtifact(root, candidate) {
+  const directory = join(root, candidate.articleId);
+  const path = join(directory, `${candidate.sourceRevision}.json`);
+  const bytes = artifactBytes(candidate);
+  const checksumSha256 = createHash("sha256").update(bytes).digest("hex");
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  try {
+    const existing = await readFile(path);
+    if (!existing.equals(bytes)) throw new Error(`translation artifact differs: ${candidate.articleId}`);
+    return { path, checksumSha256, created: false };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  const temporary = `${path}.${candidate.jobId}.saving`;
+  await writeFile(temporary, bytes, { mode: 0o600, flag: "wx" });
+  await rename(temporary, path);
+  await chmod(path, 0o600);
+  return { path, checksumSha256, created: true };
+}
+
+export async function applyTranslationImport({ statesRoot, artifactsRoot, databasePath }) {
+  const database = await openDatabase(databasePath);
+  const createdPaths = [];
+  try {
+    const values = await candidates(statesRoot, database);
+    const existingJob = database.prepare("SELECT id FROM jobs WHERE id = ? OR idempotency_key = ?");
+    const pending = values.filter((candidate) => !existingJob.get(
+      candidate.jobId, `translation:${candidate.articleId}:${candidate.sourceRevision}`,
+    ));
+    if (pending.length !== values.length) {
+      const preview = await previewTranslationImport({ statesRoot, databasePath });
+      if (preview.conflicts) throw new Error("translation import conflicts with existing database state");
+      if (preview.insert === 0) return { ...preview, applied: true };
+      throw new Error("translation import is partially applied");
+    }
+    const artifacts = new Map();
+    for (const candidate of pending) {
+      const artifact = await writeImmutableArtifact(artifactsRoot, candidate);
+      artifacts.set(candidate.jobId, artifact);
+      if (artifact.created) createdPaths.push(artifact.path);
+    }
+    const report = withTransaction(database, (connection) => {
+      for (const candidate of pending) {
+        const artifact = artifacts.get(candidate.jobId);
+        const revision = connection.prepare("SELECT id FROM revisions WHERE article_id = ? AND revision_number = ?").get(candidate.articleId, candidate.draftRevision);
+        if (!revision) throw new Error(`translation revision is missing: ${candidate.articleId}`);
+        const artifactId = `legacy:${candidate.jobId}`;
+        connection.prepare(`INSERT INTO artifacts (
+          id, revision_id, type, locale, dependency_hash, status, path,
+          checksum_sha256, created_at, updated_at, accepted_at
+        ) VALUES (?, ?, 'translation', 'en', ?, 'accepted', ?, ?, ?, ?, ?)`)
+          .run(artifactId, revision.id, candidate.sourceRevision, artifact.path, artifact.checksumSha256,
+            candidate.state.createdAt, candidate.state.updatedAt, candidate.state.updatedAt);
+        connection.prepare(`INSERT INTO jobs (
+          id, type, revision_id, artifact_id, idempotency_key, dependency_hash,
+          status, checkpoint_json, available_at, created_at, started_at, finished_at
+        ) VALUES (?, 'translation', ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?)`)
+          .run(candidate.jobId, revision.id, artifactId,
+            `translation:${candidate.articleId}:${candidate.sourceRevision}`, candidate.sourceRevision,
+            JSON.stringify({ schemaVersion: 1, workflow: candidate.workflow, bodyLayout: candidate.state.bodyLayout,
+              result: candidate.state.result, provenance: candidate.state.provenance,
+              ownerRevision: candidate.state.ownerRevision ?? 0, ownerReviewedAt: candidate.state.ownerReviewedAt ?? null }),
+            candidate.state.createdAt, candidate.state.createdAt, candidate.state.createdAt, candidate.state.updatedAt);
+      }
+      return { total: values.length, inserted: pending.length };
+    });
+    return { schemaVersion: 1, source: "legacy-json-translations", ...report, applied: true };
+  } catch (error) {
+    for (const path of createdPaths.reverse()) await rm(path, { force: false }).catch(() => {});
+    throw error;
+  } finally {
+    closeDatabase(database);
   }
 }
