@@ -39,6 +39,7 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(dispatcher, /claim_database_job\.mjs/);
   assert.match(dispatcher, /claim_job "\$job_id"/);
   assert.match(dispatcher, /claim_job "\$deploy_id"/);
+  assert.match(serviceUnit, /ReadWritePaths=.*\/publisher\/database/);
   assert.match(unit, /NoNewPrivileges=yes/);
   assert.match(pathUnit, /PathExists=\/opt\/fanaticosos-blog\/publisher\/queue\/\.wake/);
   assert.match(serviceUnit, /ExecStart=\/usr\/local\/sbin\/fanaticosos-publisher-dispatcher/);
