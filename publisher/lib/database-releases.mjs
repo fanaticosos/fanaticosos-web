@@ -47,8 +47,10 @@ export function queueDatabaseRelease(database, { draft, translation, audio, imag
   if (!Number.isFinite(Date.parse(publishedAt ?? ""))) throw new Error("release publication date is invalid");
   const dependencyHash = releaseDependency({ draft, translation, audio }); const key = `release:${dependencyHash}`;
   return withTransaction(database, (connection) => {
-    const existing = connection.prepare(`${SELECT_RELEASE} WHERE j.idempotency_key = ?`).get(key);
-    if (existing) return state(existing);
+    const existing = connection.prepare(`${SELECT_RELEASE} WHERE j.type = 'release' AND j.dependency_hash = ?
+      ORDER BY j.created_at DESC, j.id DESC LIMIT 1`).get(dependencyHash);
+    if (existing && !["failed", "cancelled"].includes(existing.job_status)) return state(existing);
+    const effectiveKey = existing ? `${key}:retry:${jobId}` : key;
     if (connection.prepare("SELECT 1 FROM jobs WHERE type = 'release' AND status IN ('queued', 'leased', 'retry_wait')").get()) throw new Error("Ya hay una preparación de publicación en curso.");
     const revisionId = currentRevision(connection, draft); const timestamp = now.toISOString();
     const previousEntries = connection.prepare(`SELECT e.article_id, e.revision_id, e.position
@@ -86,7 +88,7 @@ export function queueDatabaseRelease(database, { draft, translation, audio, imag
     }
     connection.prepare(`INSERT INTO jobs (id, type, revision_id, artifact_id, idempotency_key, dependency_hash,
       status, checkpoint_json, available_at, created_at) VALUES (?, 'release', ?, NULL, ?, ?, 'queued', ?, ?, ?)`)
-      .run(jobId, revisionId, key, dependencyHash, JSON.stringify({ schemaVersion: 1, publishedAt }), timestamp, timestamp);
+      .run(jobId, revisionId, effectiveKey, dependencyHash, JSON.stringify({ schemaVersion: 1, publishedAt }), timestamp, timestamp);
     return state(connection.prepare(`${SELECT_RELEASE} WHERE j.id = ?`).get(jobId));
   });
 }

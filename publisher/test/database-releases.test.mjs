@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { createDatabaseDraft } from "../lib/database-drafts.mjs";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
-import { completeDatabaseRelease, queueDatabaseRelease, readDatabaseReleaseState, startDatabaseRelease } from "../lib/database-releases.mjs";
+import { completeDatabaseRelease, failDatabaseRelease, queueDatabaseRelease, readDatabaseReleaseState, startDatabaseRelease } from "../lib/database-releases.mjs";
 
 function acceptedArtifact(database, revisionId, { id, type, locale, sha256 }) {
   const now = "2026-09-09T00:00:00.000Z";
@@ -33,5 +33,26 @@ test("SQLite release admission captures an ordered catalog and completes one ver
     startDatabaseRelease(database, jobId, new Date("2026-09-09T03:00:00Z"), new Date("2026-09-09T02:00:00Z"));
     const completed = completeDatabaseRelease(database, jobId, { articleId: draft.articleId }, "d".repeat(64), new Date("2026-09-09T02:30:00Z"));
     assert.equal(completed.status, "completed"); assert.equal(readDatabaseReleaseState(database, draft.articleId).manifest.articleId, draft.articleId);
+  } finally { closeDatabase(database); }
+});
+
+test("a failed release admits one new retry while active duplicate requests remain idempotent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-release-retry-test-")); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const revisionId = database.prepare("SELECT current_revision_id FROM articles WHERE id = ?").get(draft.articleId).current_revision_id;
+    const translationArtifact = acceptedArtifact(database, revisionId, { id: "retry-translation", type: "translation", locale: "en", sha256: "a".repeat(64) });
+    const esArtifact = acceptedArtifact(database, revisionId, { id: "retry-es", type: "audio", locale: "es", sha256: "b".repeat(64) });
+    const enArtifact = acceptedArtifact(database, revisionId, { id: "retry-en", type: "audio", locale: "en", sha256: "c".repeat(64) });
+    const base = { draft, translation: { artifact: translationArtifact }, audio: { jobs: { es: { result: { sha256: esArtifact.sha256 }, artifact: esArtifact }, en: { result: { sha256: enArtifact.sha256 }, artifact: enArtifact } } }, settings: { schemaVersion: 1 }, publishedAt: "2026-09-09T01:00:00Z", now: new Date("2026-09-09T01:00:00Z") };
+    const firstId = `release-${draft.articleId.replaceAll("-", "")}-r1-11111111`;
+    queueDatabaseRelease(database, { ...base, jobId: firstId, path: join(root, firstId) });
+    failDatabaseRelease(database, firstId, "forced failure", new Date("2026-09-09T01:01:00Z"));
+    const retryId = firstId.replace("11111111", "22222222");
+    const retry = queueDatabaseRelease(database, { ...base, jobId: retryId, path: join(root, retryId), now: new Date("2026-09-09T01:02:00Z") });
+    assert.equal(retry.jobId, retryId);
+    assert.equal(retry.status, "queued");
+    const duplicateId = firstId.replace("11111111", "33333333");
+    assert.equal(queueDatabaseRelease(database, { ...base, jobId: duplicateId, path: join(root, duplicateId), now: new Date("2026-09-09T01:03:00Z") }).jobId, retryId);
   } finally { closeDatabase(database); }
 });
