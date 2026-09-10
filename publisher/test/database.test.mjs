@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -69,6 +69,23 @@ test("transaction helper commits complete changes and rolls back failures", asyn
   } finally {
     closeDatabase(database);
   }
+});
+
+test("read-only connections never change database permissions or contents", async () => {
+  const root = await fixture();
+  const path = join(root, "publisher.sqlite");
+  const writable = await openDatabase(path);
+  closeDatabase(writable);
+  await chmod(path, 0o640);
+
+  const database = await openDatabase(path, { readOnly: true, migrate: false });
+  try {
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 2);
+    assert.throws(() => database.prepare("DELETE FROM schema_migrations").run(), /read-only|readonly/i);
+  } finally {
+    closeDatabase(database);
+  }
+  assert.equal((await stat(path)).mode & 0o777, 0o640);
 });
 
 test("backup and restore are verified, private, and refuse overwrites", async () => {

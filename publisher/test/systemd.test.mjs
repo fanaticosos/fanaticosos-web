@@ -109,6 +109,7 @@ test("article release workers read authoritative SQLite state and immutable audi
   assert.match(builder, /readDatabaseDraft/);
   assert.match(builder, /readDatabaseTranslationState/);
   assert.match(builder, /readDatabaseAudioState/);
+  assert.match(builder, /openDatabase\(databasePath, \{ readOnly: true, migrate: false \}\)/);
   assert.match(builder, /accepted audio is outside the private artifact store/);
 });
 

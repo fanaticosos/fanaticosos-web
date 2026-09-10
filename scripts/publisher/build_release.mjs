@@ -55,7 +55,7 @@ async function main() {
   if (process.argv.includes("--validate-only")) return;
   let draft; let translation; let audio; let imageArtifact;
   if (databasePath) {
-    const database = await openDatabase(databasePath);
+    const database = await openDatabase(databasePath, { readOnly: true, migrate: false });
     try {
       draft = readDatabaseDraft(database, request.articleId);
       translation = readDatabaseTranslationState(database, request.articleId);

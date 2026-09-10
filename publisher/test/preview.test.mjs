@@ -24,14 +24,17 @@ test("private preview switches the complete article and escapes owner text", () 
   assert.doesNotMatch(spanish, /<script>/);
   assert.match(spanish, /¡Gracias por acompañarnos!/);
   assert.match(spanish, /class="social-bar"/);
-  assert.match(spanish, /English version →/);
+  assert.match(spanish, /ES → EN/);
   assert.match(english, /lang="en"/);
   assert.match(english, /The Bears win/);
   assert.match(english, /alt="The Bears win"/);
   assert.match(english, /Thank you for joining us!/);
-  assert.match(english, /← Versión en español/);
+  assert.match(english, /EN → ES/);
   assert.match(english, /audio\/en/);
   assert.match(spanish, /audio\/es/);
+  assert.match(spanish, /Volver al editor/);
+  assert.match(english, /Back to editor/);
+  assert.match(spanish, /\?draft=00000000-0000-4000-8000-000000000001/);
 });
 
 test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes safely", () => {

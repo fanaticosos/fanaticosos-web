@@ -21,6 +21,18 @@ function configure(database) {
   }
 }
 
+function configureReadOnly(database) {
+  database.exec("PRAGMA foreign_keys = ON");
+  database.exec("PRAGMA busy_timeout = 5000");
+  database.exec("PRAGMA query_only = ON");
+  if (database.prepare("PRAGMA foreign_keys").get().foreign_keys !== 1) {
+    throw new Error("SQLite foreign-key enforcement is unavailable");
+  }
+  if (database.prepare("PRAGMA query_only").get().query_only !== 1) {
+    throw new Error("SQLite read-only enforcement is unavailable");
+  }
+}
+
 function ensureMigrationTable(database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -80,13 +92,21 @@ export async function openDatabase(path, options = {}) {
     }
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
+    if (options.readOnly) throw new Error("read-only database does not exist", { cause: error });
   }
 
-  const database = new DatabaseSync(path, { timeout: 5000 });
+  if (options.readOnly && options.migrate !== false) {
+    throw new Error("read-only databases must disable migrations");
+  }
+  const database = new DatabaseSync(path, { timeout: 5000, readOnly: options.readOnly === true });
   try {
-    await chmod(path, 0o600);
-    configure(database);
-    if (options.migrate !== false) await migrateDatabase(database, options);
+    if (options.readOnly) {
+      configureReadOnly(database);
+    } else {
+      await chmod(path, 0o600);
+      configure(database);
+      if (options.migrate !== false) await migrateDatabase(database, options);
+    }
     return database;
   } catch (error) {
     database.close();

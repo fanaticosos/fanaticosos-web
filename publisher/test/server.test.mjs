@@ -241,9 +241,11 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Copiar título y descripción para YouTube/);
   assert.match(html, /id="prepare-release" disabled hidden/);
   assert.match(html, /id="remove-image"/);
-  assert.match(html, /Revisar vista previa y validar/);
+  assert.match(html, /Preparar y abrir vista previa/);
 
   const app = await (await fetch(`${base}/app.js`)).text();
+  assert.doesNotMatch(app, /window\.open\(`\/preview/);
+  assert.match(app, /window\.location\.assign\(`\/preview/);
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /Esto no bloquea la traducción, el audio ni la publicación/);
