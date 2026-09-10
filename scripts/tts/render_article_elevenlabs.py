@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import json
 import os
@@ -17,6 +18,7 @@ from typing import Callable
 
 from article_contract import canonical_text, text_hash, validate_request, validate_result
 from benchmark_kokoro import probe_audio, sha256_file
+from pronunciations import apply_pronunciations, validate_pronunciations
 
 
 ENGINE = "ElevenLabs"
@@ -91,12 +93,25 @@ def synthesize_chunk(text: str, voice_id: str, key: str, configuration: dict, re
     })
 
 
-def render_production(request: dict, configuration: dict, output: Path, key: str) -> dict:
+def prepare_spoken_request(request: dict, pronunciations: dict) -> dict:
+    validate_request(request)
+    validate_pronunciations(pronunciations)
+    spoken = copy.deepcopy(request)
+    spoken["title"] = apply_pronunciations(request["title"], request["locale"], pronunciations)
+    for source, target in zip(request["segments"], spoken["segments"]):
+        target["text"] = apply_pronunciations(source["text"], request["locale"], pronunciations)
+    return spoken
+
+
+def render_production(request: dict, configuration: dict, pronunciations: dict, output: Path, key: str) -> dict:
     validate_request(request)
     if request["locale"] != "es":
         raise ValueError("ElevenLabs production worker accepts Spanish jobs only")
     if not key:
         raise ValueError("ElevenLabs credential is required")
+    validate_pronunciations(pronunciations)
+    if configuration.get("pronunciationVersion") != pronunciations["version"]:
+        raise ValueError("ElevenLabs pronunciation configuration version is stale")
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
     staging = output.with_name(f"{output.name}.generating")
@@ -106,7 +121,8 @@ def render_production(request: dict, configuration: dict, output: Path, key: str
     file_name = f"es-{request['articleId']}.mp3"
     try:
         voice_id = resolve_voice_id(key, configuration["voiceName"])
-        chunks = split_text(canonical_text(request), configuration["maximumCharactersPerRequest"])
+        spoken_request = prepare_spoken_request(request, pronunciations)
+        chunks = split_text(canonical_text(spoken_request), configuration["maximumCharactersPerRequest"])
         with tempfile.TemporaryDirectory(prefix="elevenlabs-tts-", dir=staging) as temp_name:
             temp = Path(temp_name)
             paths = []
@@ -125,7 +141,7 @@ def render_production(request: dict, configuration: dict, output: Path, key: str
             "schemaVersion": 1, "articleId": request["articleId"], "locale": "es",
             "sourceRevision": request["sourceRevision"], "textHash": text_hash(request),
             "voice": configuration["voiceName"], "configurationVersion": configuration["version"],
-            "deliveryProfile": "broadcast", "pronunciationVersion": configuration["version"],
+            "deliveryProfile": "broadcast", "pronunciationVersion": pronunciations["version"],
             "engine": ENGINE, "modelRevision": configuration["model"], "file": file_name,
             "codec": probe["codec"], "sampleRateHz": probe["sampleRateHz"], "channels": probe["channels"],
             "bitRate": probe["bitRate"], "durationSeconds": probe["durationSeconds"],
@@ -148,11 +164,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--configuration", type=Path, required=True)
+    parser.add_argument("--pronunciations", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     request = json.loads(args.request.read_text(encoding="utf-8"))
     configuration = json.loads(args.configuration.read_text(encoding="utf-8"))
-    result = render_production(request, configuration, args.output, os.environ.get("ELEVENLABS_API_KEY", ""))
+    pronunciations = json.loads(args.pronunciations.read_text(encoding="utf-8"))
+    result = render_production(request, configuration, pronunciations, args.output, os.environ.get("ELEVENLABS_API_KEY", ""))
     print(json.dumps(result, indent=2))
 
 

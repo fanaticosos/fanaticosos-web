@@ -26,6 +26,7 @@ class ProductionRouterTests(unittest.TestCase):
         command = worker_arguments(request("es"), Path("/repo"), Path("/jobs/1/audio"))
         joined = " ".join(command)
         self.assertIn("render_article_elevenlabs.py", joined)
+        self.assertIn("pronunciations.json", joined)
         self.assertNotIn("render_article_kokoro.py", joined)
 
     def test_english_routes_only_to_kokoro(self):

@@ -24,6 +24,7 @@ def worker_arguments(request: dict, repository: Path, output: Path) -> list[str]
             str(repository / "scripts/tts/render_article_elevenlabs.py"),
             "--request", str(request_path),
             "--configuration", str(repository / "config/tts/elevenlabs-production.json"),
+            "--pronunciations", str(repository / "config/tts/pronunciations.json"),
             "--output", str(output),
         ]
     return [
