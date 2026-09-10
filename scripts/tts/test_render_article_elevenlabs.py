@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ElevenLabsProductionTests(unittest.TestCase):
-    def test_spanish_uses_the_approved_shared_pronunciation_knowledge(self):
+    def test_spanish_preserves_bears_for_the_reviewed_elevenlabs_voice(self):
         pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
         request = {
             "schemaVersion": 1,
@@ -25,8 +25,8 @@ class ElevenLabsProductionTests(unittest.TestCase):
             "segments": [{"id": "body-001", "text": "Los Chicago Bears necesitan un touchdown con Caleb Williams."}],
         }
         spoken = prepare_spoken_request(request, pronunciations)
-        self.assertEqual(spoken["title"], "Los Bers reciben a Carolina")
-        self.assertEqual(spoken["segments"][0]["text"], "Los Chicago Bers necesitan un touchdown con Caleb Williams.")
+        self.assertEqual(spoken["title"], "Los Bears reciben a Carolina")
+        self.assertEqual(spoken["segments"][0]["text"], "Los Chicago Bears necesitan un touchdown con Caleb Williams.")
         self.assertEqual(request["title"], "Los Bears reciben a Carolina")
 
     def test_worker_rejects_a_stale_pronunciation_knowledge_version(self):
