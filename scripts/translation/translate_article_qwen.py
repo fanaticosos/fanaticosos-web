@@ -190,6 +190,8 @@ def build_correction_prompt(
         "terminology and return only the requested JSON.\n"
         f"Rejected translation: {json.dumps(rejected_translation, ensure_ascii=False)}\n"
         f"Validation error: {json.dumps(validation_error, ensure_ascii=False)}\n\n"
+        "Any protected value named by the validation error must appear verbatim "
+        "in the corrected translation. Do not replace it with an equivalent phrase.\n\n"
         "Translate these ordered segments:\n",
         1,
     )

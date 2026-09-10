@@ -123,3 +123,16 @@ test("translation failure atomically fails its pending artifact", async () => {
     closeDatabase(database);
   }
 });
+
+test("failed translation admits one new retry while active duplicate clicks remain idempotent", async () => {
+  const { database, draft } = await fixture();
+  try {
+    const firstId = `translation-${draft.articleId.replaceAll("-", "")}-r1-1234abcd`;
+    queueDatabaseTranslation(database, { draft, jobId: firstId, bodyLayout: [] }); failDatabaseTranslation(database, firstId, "protected value missing");
+    const retryId = firstId.replace("1234abcd", "87654321");
+    const retry = queueDatabaseTranslation(database, { draft, jobId: retryId, bodyLayout: [] });
+    assert.equal(retry.jobId, retryId); assert.equal(retry.status, "queued");
+    const duplicate = queueDatabaseTranslation(database, { draft, jobId: firstId.replace("1234abcd", "abcdef12"), bodyLayout: [] });
+    assert.equal(duplicate.jobId, retryId); assert.equal(database.prepare("SELECT COUNT(*) AS count FROM jobs").get().count, 2);
+  } finally { closeDatabase(database); }
+});

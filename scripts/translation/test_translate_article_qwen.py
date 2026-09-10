@@ -110,6 +110,7 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertIn("The previous translation was rejected", prompt)
         self.assertIn("Rejected translation:", prompt)
         self.assertIn("translation appears to remain Spanish", prompt)
+        self.assertIn("must appear verbatim", prompt)
 
     def test_prompt_includes_only_batch_relevant_glossary_terms(self):
         glossary = copy.deepcopy(self.glossary)

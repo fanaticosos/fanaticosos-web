@@ -77,8 +77,10 @@ export function queueDatabaseTranslation(database, {
   const timestamp = now.toISOString();
 
   return withTransaction(database, (connection) => {
-    const existing = connection.prepare(`${SELECT_STATE} WHERE j.idempotency_key = ?`).get(idempotencyKey);
-    if (existing) return storedState(existing);
+    const existing = connection.prepare(`${SELECT_STATE} WHERE j.type = 'translation' AND j.dependency_hash = ?
+      ORDER BY j.created_at DESC, j.id DESC LIMIT 1`).get(dependencyHash);
+    if (existing && !["failed", "cancelled"].includes(existing.job_status)) return storedState(existing);
+    const effectiveIdempotencyKey = existing ? `${idempotencyKey}:retry:${jobId}` : idempotencyKey;
     const revisionId = currentRevision(connection, draft);
     const artifactId = randomUUID();
     connection.prepare(`
@@ -92,7 +94,7 @@ export function queueDatabaseTranslation(database, {
         status, checkpoint_json, available_at, created_at
       ) VALUES (?, 'translation', ?, ?, ?, ?, 'queued', ?, ?, ?)
     `).run(
-      jobId, revisionId, artifactId, idempotencyKey, dependencyHash,
+      jobId, revisionId, artifactId, effectiveIdempotencyKey, dependencyHash,
       JSON.stringify({ schemaVersion: 1, workflow, bodyLayout }), timestamp, timestamp,
     );
     return readDatabaseTranslationState(connection, draft.articleId);
