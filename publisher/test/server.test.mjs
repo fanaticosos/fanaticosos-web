@@ -157,6 +157,9 @@ test("owner defaults are centralized and available to the editor", async (contex
   assert.equal(settings.defaultSeason, 2026);
   assert.equal(settings.defaultTags.length, 10);
   assert.equal(settings.promotion.platforms.length, 3);
+  const serverSource = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+  assert.match(serverSource, /audioStore\.read\(previewMatch\[1\]\),\s*readFile\(settingsPath, "utf8"\)\.then\(JSON\.parse\)/);
+  assert.doesNotMatch(serverSource, /audioStore\.read\(previewMatch\[1\]\),\s*musicStore\.settings\(\)/);
 });
 
 test("weekly song can be resolved, previewed, and persisted", async (context) => {

@@ -373,7 +373,7 @@ export function createPublisherServer({
           const [translation, audio, settings] = await Promise.all([
             translationStore.read(previewMatch[1]),
             audioStore.read(previewMatch[1]),
-            musicStore.settings(),
+            readFile(settingsPath, "utf8").then(JSON.parse),
           ]);
           const requests = ttsRequestsForDraft(draft, translation);
           if (audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
