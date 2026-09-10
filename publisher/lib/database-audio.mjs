@@ -97,8 +97,12 @@ function insertPending(connection, { draft, revisionId, locale, jobId, sourceRev
   const dependencyHash = audioDependencyHash(sourceRevision, policyRevision, uploaded);
   const policyKey = uploaded ? "owner-upload" : policyRevision;
   const idempotencyKey = `audio:${locale}:${draft.articleId}:${sourceRevision}:${policyKey}`;
-  const existing = connection.prepare(`${SELECT_LOCALE} WHERE j.idempotency_key = ?`).get(idempotencyKey);
-  if (existing) return localeState(existing);
+  const jobType = locale === "es" ? "tts_es" : "tts_en";
+  const existing = connection.prepare(`${SELECT_LOCALE}
+    WHERE j.type = ? AND j.dependency_hash = ?
+    ORDER BY j.created_at DESC, j.id DESC LIMIT 1`).get(jobType, dependencyHash);
+  if (existing && !["failed", "cancelled"].includes(existing.job_status)) return localeState(existing);
+  const effectiveIdempotencyKey = existing ? `${idempotencyKey}:retry:${jobId}` : idempotencyKey;
   const artifactId = randomUUID(); const timestamp = now.toISOString();
   connection.prepare(`INSERT INTO artifacts (
     id, revision_id, type, locale, dependency_hash, status, created_at, updated_at
@@ -108,8 +112,8 @@ function insertPending(connection, { draft, revisionId, locale, jobId, sourceRev
     id, type, revision_id, artifact_id, idempotency_key, dependency_hash,
     status, checkpoint_json, available_at, created_at
   ) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?)`)
-    .run(jobId, locale === "es" ? "tts_es" : "tts_en", revisionId, artifactId,
-      idempotencyKey, dependencyHash, JSON.stringify({ schemaVersion: 1, workflow,
+    .run(jobId, jobType, revisionId, artifactId,
+      effectiveIdempotencyKey, dependencyHash, JSON.stringify({ schemaVersion: 1, workflow,
         sourceRevision, currentSourceRevision: sourceRevision, sourceCurrent: true,
         policyRevision, uploaded, ...(regeneratedLocale ? { regeneratedLocale } : {}) }), timestamp, timestamp);
   return localeState(connection.prepare(`${SELECT_LOCALE} WHERE j.id = ?`).get(jobId));

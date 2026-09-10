@@ -73,6 +73,23 @@ test("audio lifecycle accepts verified artifacts and fails pending artifacts ato
   } finally { closeDatabase(database); }
 });
 
+test("failed audio admits one retry while duplicate active requests remain idempotent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-audio-retry-test-"));
+  const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const article = draft.articleId.replaceAll("-", ""); const request = { sourceRevision: "a".repeat(64) }; const policyRevision = "b".repeat(64);
+    const first = `tts-es-${article}-r1-1234abcd`;
+    queueDatabaseAudioLocale(database, { draft, request, locale: "es", policyRevision, jobId: first });
+    failDatabaseAudio(database, first, "provider rejected credential");
+    const retry = `tts-es-${article}-r1-87654321`;
+    let state = queueDatabaseAudioLocale(database, { draft, request, locale: "es", policyRevision, jobId: retry });
+    assert.equal(state.jobs.es.jobId, retry); assert.equal(state.jobs.es.status, "queued");
+    state = queueDatabaseAudioLocale(database, { draft, request, locale: "es", policyRevision, jobId: `tts-es-${article}-r1-aaaaaaaa` });
+    assert.equal(state.jobs.es.jobId, retry);
+  } finally { closeDatabase(database); }
+});
+
 test("single-locale regeneration preserves the accepted opposite locale", async () => {
   const root = await mkdtemp(join(tmpdir(), "database-audio-regeneration-test-"));
   const database = await openDatabase(join(root, "publisher.sqlite"));

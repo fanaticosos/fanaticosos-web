@@ -53,6 +53,14 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.doesNotMatch(dispatcher, /eval /);
 });
 
+test("TTS worker failures become private reconciliation evidence", async () => {
+  const ttsUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-tts@.service", import.meta.url), "utf8");
+  const recorder = await readFile(new URL("../../scripts/publisher/record_tts_exit.mjs", import.meta.url), "utf8");
+  assert.match(ttsUnit, /ExecStopPost=.*record_tts_exit\.mjs/);
+  assert.match(ttsUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/jobs\/%i/);
+  assert.match(recorder, /La generación de audio no pudo completarse/);
+});
+
 test("music publication builds privately then deploys through a root-only unit", async () => {
   const build = await readFile(new URL("../../deploy/systemd/fanaticosos-music-release@.service", import.meta.url), "utf8");
   const deploy = await readFile(new URL("../../deploy/systemd/fanaticosos-music-deploy@.service", import.meta.url), "utf8");

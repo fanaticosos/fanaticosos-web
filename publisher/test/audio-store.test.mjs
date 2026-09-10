@@ -42,3 +42,20 @@ test("SQLite audio store owns state while filesystem carries only worker payload
     await assert.rejects(access(statesRoot), /ENOENT/);
   } finally { closeDatabase(database); }
 });
+
+test("SQLite audio reconciliation consumes bounded worker failure evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "audio-store-failure-test-"));
+  const queueRoot = join(root, "queue"); const jobsRoot = join(root, "jobs"); const artifactsRoot = join(root, "artifacts");
+  await mkdir(jobsRoot); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const translation = { status: "completed", draftRevision: 1, sourceRevision: "a".repeat(64), result: { title: "Title", description: "Summary", body: "Article" } };
+    const store = databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoot });
+    const queued = await store.queue({ draft, translation, policyRevision: "b".repeat(64), workflow: "preview" });
+    for (const locale of ["es", "en"]) await rename(join(queueRoot, queued.jobs[locale].jobId), join(jobsRoot, queued.jobs[locale].jobId));
+    await writeFile(join(jobsRoot, queued.jobs.es.jobId, "failure.json"), JSON.stringify({ schemaVersion: 1, error: "La generación de audio no pudo completarse." }));
+    await store.reconcile({});
+    const state = await store.read(draft.articleId);
+    assert.equal(state.jobs.es.status, "failed"); assert.equal(state.jobs.es.artifact.status, "failed");
+  } finally { closeDatabase(database); }
+});

@@ -116,6 +116,12 @@ export function databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoo
           if (state.status === "completed") await onComplete?.(state);
           continue;
         }
+        const failure = await optionalJson(join(root, "failure.json"));
+        if (failure) {
+          failDatabaseAudio(database, active.jobId, failure.error || "La generación de audio no pudo completarse.", now);
+          await onFailure?.(readDatabaseAudioState(database, active.articleId));
+          continue;
+        }
         if (active.status === "queued" && await optionalJson(join(root, "request.json"))) startDatabaseAudio(database, active.jobId, "systemd", new Date(now.getTime() + TIMEOUT_MS), now);
         if (now.getTime() - new Date(active.createdAt).getTime() > TIMEOUT_MS) {
           failDatabaseAudio(database, active.jobId, "La generación de audio excedió su límite automático y fue detenida.", now);
