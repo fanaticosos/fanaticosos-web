@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "version": 2,
-  "pronunciationVersion": 11,
+  "pronunciationVersion": 12,
   "voiceName": "Will - Relaxed Optimist",
   "model": "eleven_multilingual_v2",
   "outputFormat": "mp3_44100_128",

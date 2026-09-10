@@ -22,11 +22,11 @@ class ElevenLabsProductionTests(unittest.TestCase):
             "locale": "es",
             "sourceRevision": "a" * 64,
             "title": "Los Bears reciben a Carolina",
-            "segments": [{"id": "body-001", "text": "Los Chicago Bears necesitan un touchdown."}],
+            "segments": [{"id": "body-001", "text": "Los Chicago Bears necesitan un touchdown con Caleb Williams."}],
         }
         spoken = prepare_spoken_request(request, pronunciations)
         self.assertEqual(spoken["title"], "Los Bers reciben a Carolina")
-        self.assertEqual(spoken["segments"][0]["text"], "Los Chicágo Bers necesitan un tóchdaun.")
+        self.assertEqual(spoken["segments"][0]["text"], "Los Chicago Bers necesitan un touchdown con Caleb Williams.")
         self.assertEqual(request["title"], "Los Bears reciben a Carolina")
 
     def test_worker_rejects_a_stale_pronunciation_knowledge_version(self):

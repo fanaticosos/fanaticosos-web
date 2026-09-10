@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "version": 11,
+  "schemaVersion": 4,
+  "version": 12,
   "overrides": {
     "es": [
       {
@@ -176,5 +176,20 @@
         "status": "approved"
       }
     ]
+  },
+  "providerOverrides": {
+    "elevenlabs": {
+      "es": [
+        {
+          "written": "Bears",
+          "synthesisText": "Bers",
+          "reason": "Prevent the Spanish ElevenLabs voice from pronouncing Bears like beers",
+          "source": "Fanaticosos owner listening review, 2026-09-10",
+          "sourceType": "owner-review",
+          "status": "approved"
+        }
+      ],
+      "en": []
+    }
   }
 }

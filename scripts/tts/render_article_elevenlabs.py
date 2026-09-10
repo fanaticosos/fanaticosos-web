@@ -97,9 +97,9 @@ def prepare_spoken_request(request: dict, pronunciations: dict) -> dict:
     validate_request(request)
     validate_pronunciations(pronunciations)
     spoken = copy.deepcopy(request)
-    spoken["title"] = apply_pronunciations(request["title"], request["locale"], pronunciations)
+    spoken["title"] = apply_pronunciations(request["title"], request["locale"], pronunciations, provider="elevenlabs")
     for source, target in zip(request["segments"], spoken["segments"]):
-        target["text"] = apply_pronunciations(source["text"], request["locale"], pronunciations)
+        target["text"] = apply_pronunciations(source["text"], request["locale"], pronunciations, provider="elevenlabs")
     return spoken
 
 
