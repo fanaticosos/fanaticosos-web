@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import urllib.parse
 import urllib.request
+import urllib.error
 from pathlib import Path
 from typing import Callable
 
@@ -30,8 +31,22 @@ def api_request(url: str, key: str, payload: dict | None = None) -> bytes:
         data=None if payload is None else json.dumps(payload).encode("utf-8"),
         headers={"xi-api-key": key, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=240) as response:
-        return response.read()
+    try:
+        with urllib.request.urlopen(request, timeout=240) as response:
+            return response.read()
+    except urllib.error.HTTPError as error:
+        raw = error.read()
+        try:
+            body = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            body = {}
+        detail = body.get("detail") if isinstance(body, dict) else None
+        detail = detail if isinstance(detail, dict) else {}
+        status = detail.get("status") or detail.get("code") or "provider_error"
+        message = detail.get("message") or "ElevenLabs rejected the request"
+        raise RuntimeError(
+            f"ElevenLabs HTTP {error.code}: {status}: {message}"
+        ) from None
 
 
 def resolve_voice_id(key: str, voice_name: str, requester: Callable = api_request) -> str:

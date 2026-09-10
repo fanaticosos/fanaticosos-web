@@ -3,11 +3,14 @@ import json
 import sys
 import tempfile
 import unittest
+import urllib.error
+from io import BytesIO
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_article_elevenlabs import prepare_spoken_request, render_production, resolve_voice_id, split_text
+from render_article_elevenlabs import api_request, prepare_spoken_request, render_production, resolve_voice_id, split_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -57,6 +60,26 @@ class ElevenLabsProductionTests(unittest.TestCase):
         self.assertEqual(resolve_voice_id("key", "Will - Relaxed Optimist", requester), "approved")
         with self.assertRaisesRegex(ValueError, "voice was not found"):
             resolve_voice_id("key", "Missing", requester)
+
+    def test_provider_error_preserves_only_actionable_response_detail(self):
+        error = urllib.error.HTTPError(
+            "https://api.elevenlabs.io/v1/text-to-speech/voice",
+            401,
+            "Unauthorized",
+            {},
+            BytesIO(json.dumps({
+                "detail": {
+                    "status": "quota_exceeded",
+                    "message": "Insufficient quota",
+                    "request_id": "private-request-id",
+                }
+            }).encode()),
+        )
+        with patch("urllib.request.urlopen", side_effect=error):
+            with self.assertRaisesRegex(RuntimeError, "401: quota_exceeded: Insufficient quota") as caught:
+                api_request("https://api.elevenlabs.io/v1/text-to-speech/voice", "secret", {"text": "safe"})
+        self.assertNotIn("secret", str(caught.exception))
+        self.assertNotIn("private-request-id", str(caught.exception))
 
 
 if __name__ == "__main__":

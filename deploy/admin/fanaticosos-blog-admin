@@ -127,6 +127,7 @@ Commands:
   openai-credential-status
   install-elevenlabs-credential EXPECTED_COMMIT
   elevenlabs-credential-status
+  elevenlabs-capacity-status EXPECTED_COMMIT
   run-elevenlabs-pronunciation-diagnostic EXPECTED_COMMIT
   run-elevenlabs-tts-sample EXPECTED_COMMIT ARTICLE_ID
   run-elevenlabs-tts-full EXPECTED_COMMIT ARTICLE_ID
@@ -924,6 +925,16 @@ command_elevenlabs_credential_status() {
   [[ "$(stat -c '%U:%G:%a' "$elevenlabs_credential_file")" == "root:root:600" ]] || stop "ElevenLabs credential permissions are incorrect."
   [[ "$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file" | wc -c)" -ge 21 ]] || stop "ElevenLabs API key is missing."
   echo "PASS: ElevenLabs credential exists with root-only permissions."
+}
+
+command_elevenlabs_capacity_status() {
+  local expected="$1" api_key
+  require_repository_commit "$expected"
+  command_elevenlabs_credential_status >/dev/null
+  api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
+  run_as_service env ELEVENLABS_API_KEY="$api_key" python3 \
+    "$repository/scripts/tts/check_elevenlabs_capacity.py"
+  unset api_key
 }
 
 command_run_elevenlabs_tts_sample() {
@@ -2193,6 +2204,10 @@ case "$command" in
   elevenlabs-credential-status)
     [[ $# == 0 ]] || stop "elevenlabs-credential-status takes no arguments."
     command_elevenlabs_credential_status
+    ;;
+  elevenlabs-capacity-status)
+    [[ $# == 1 ]] || stop "elevenlabs-capacity-status requires EXPECTED_COMMIT."
+    command_elevenlabs_capacity_status "$1"
     ;;
   run-elevenlabs-pronunciation-diagnostic)
     [[ $# == 1 ]] || stop "run-elevenlabs-pronunciation-diagnostic requires EXPECTED_COMMIT."
