@@ -127,6 +127,7 @@ Commands:
   openai-credential-status
   install-elevenlabs-credential EXPECTED_COMMIT
   elevenlabs-credential-status
+  run-elevenlabs-pronunciation-diagnostic EXPECTED_COMMIT
   run-elevenlabs-tts-sample EXPECTED_COMMIT ARTICLE_ID
   run-elevenlabs-tts-full EXPECTED_COMMIT ARTICLE_ID
   run-openai-tts-sample EXPECTED_COMMIT ARTICLE_ID LOCALE
@@ -934,6 +935,23 @@ command_run_elevenlabs_tts_sample() {
   run_as_service env ELEVENLABS_API_KEY="$api_key" python3 "$repository/scripts/tts/generate_elevenlabs_sample.py" --draft "$publisher_data/drafts/$article_id.json" --output "$output"
   unset api_key
   install -o sysadmin -g sysadmin -m 0600 "$output/sample-es.mp3" "/home/sysadmin/fanaticosos-elevenlabs-sample-$article_id-es.mp3"
+}
+
+command_run_elevenlabs_pronunciation_diagnostic() {
+  local expected="$1" api_key
+  local output="$data_root/work/elevenlabs-pronunciation-bears-v1"
+  require_repository_commit "$expected"
+  command_elevenlabs_credential_status >/dev/null
+  [[ ! -e "$output" ]] || stop "ElevenLabs Bears pronunciation diagnostic already exists."
+  api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
+  run_as_service env ELEVENLABS_API_KEY="$api_key" python3 \
+    "$repository/scripts/tts/generate_elevenlabs_pronunciation_diagnostic.py" \
+    --output "$output"
+  unset api_key
+  for source in "$output"/bears-*.mp3; do
+    install -o sysadmin -g sysadmin -m 0600 "$source" "/home/sysadmin/fanaticosos-$(basename "$source")"
+  done
+  echo "PASS: private Bears pronunciation samples exported to /home/sysadmin."
 }
 
 command_run_elevenlabs_tts_full() {
@@ -2175,6 +2193,10 @@ case "$command" in
   elevenlabs-credential-status)
     [[ $# == 0 ]] || stop "elevenlabs-credential-status takes no arguments."
     command_elevenlabs_credential_status
+    ;;
+  run-elevenlabs-pronunciation-diagnostic)
+    [[ $# == 1 ]] || stop "run-elevenlabs-pronunciation-diagnostic requires EXPECTED_COMMIT."
+    command_run_elevenlabs_pronunciation_diagnostic "$1"
     ;;
   run-elevenlabs-tts-sample)
     [[ $# == 2 ]] || stop "run-elevenlabs-tts-sample requires EXPECTED_COMMIT ARTICLE_ID."

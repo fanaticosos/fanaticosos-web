@@ -93,6 +93,7 @@ class AdminHelperTests(unittest.TestCase):
                 "openai-credential-status",
                 "install-elevenlabs-credential",
                 "elevenlabs-credential-status",
+                "run-elevenlabs-pronunciation-diagnostic",
                 "run-elevenlabs-tts-sample",
                 "run-elevenlabs-tts-full",
                 "run-openai-tts-sample",
