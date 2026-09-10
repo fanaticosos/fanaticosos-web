@@ -22,6 +22,12 @@ figure { margin: 30px 0; } img { width: 100%; border-radius: 10px; } figcaption 
 audio { width: 100%; margin: 24px 0; }
 .story { font-family: Georgia, serif; font-size: 19px; line-height: 1.75; color: #e4eaf0; }
 .story h2, .story h3, .story h4 { font-family: Inter, ui-sans-serif, system-ui, sans-serif; margin-top: 2em; }
+.table-scroll { margin: 26px 0; overflow-x: auto; }
+table { border-collapse: collapse; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 16px; line-height: 1.5; min-width: 660px; width: 100%; }
+th, td { border: 1px solid #405467; padding: 14px 16px; text-align: left; vertical-align: top; }
+thead th { background: #16283a; color: #fff; }
+tbody th { background: #122233; color: #fff; width: 22%; }
+tbody tr:nth-child(even) td { background: #10202f; }
 blockquote { border-left: 4px solid #ff6a13; margin-left: 0; padding-left: 22px; color: #c7d3dd; }
 .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 36px 0; color: #91abc0; }
 footer { margin-top: 40px; padding-top: 28px; border-top: 1px solid #29445a; }

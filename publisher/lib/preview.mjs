@@ -10,6 +10,25 @@ function renderInline(source) {
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
 }
 
+function tableCells(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+}
+
+function renderTable(lines) {
+  if (lines.length < 3) return null;
+  const headings = tableCells(lines[0]);
+  const separators = tableCells(lines[1]);
+  if (headings.length < 2 || separators.length !== headings.length
+    || !separators.every((cell) => /^:?-{3,}:?$/.test(cell))) return null;
+  const rows = lines.slice(2).map(tableCells);
+  if (rows.some((cells) => cells.length !== headings.length)) return null;
+  const head = headings.map((cell) => `<th scope="col">${renderInline(cell)}</th>`).join("");
+  const body = rows.map((cells) => `<tr>${cells.map((cell, index) => index === 0
+    ? `<th scope="row">${renderInline(cell)}</th>`
+    : `<td>${renderInline(cell)}</td>`).join("")}</tr>`).join("");
+  return `<div class="table-scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
 export function renderMarkdown(source) {
   return source.replaceAll("\r\n", "\n").split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
     const block = part.trim();
@@ -19,6 +38,8 @@ export function renderMarkdown(source) {
       return `<h${level}>${renderInline(block.slice(heading[0].length))}</h${level}>`;
     }
     const lines = block.split("\n").map((line) => line.trim());
+    const table = renderTable(lines);
+    if (table) return table;
     if (lines.every((line) => /^>\s+/.test(line))) {
       return `<blockquote><p>${renderInline(lines.map((line) => line.replace(/^>\s+/, "")).join(" "))}</p></blockquote>`;
     }

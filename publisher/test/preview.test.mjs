@@ -46,3 +46,14 @@ test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes
   assert.match(html, /<blockquote><p>Una cita<\/p><\/blockquote>/);
   assert.doesNotMatch(html, /<script>/);
 });
+
+test("article Markdown renders comparison tables instead of pipe-delimited prose", () => {
+  const html = renderMarkdown(`## El enfrentamiento\n\n| Factor | Bears | Panthers |\n|---|---|---|\n| **Quarterback** | Williams improvisa. | Young protege el balón. |\n| *Defensa* | Presiona. | <script>alert(1)</script> |`);
+  assert.match(html, /<div class="table-scroll"><table>/);
+  assert.match(html, /<th scope="col">Factor<\/th>/);
+  assert.match(html, /<th scope="row"><strong>Quarterback<\/strong><\/th>/);
+  assert.match(html, /<th scope="row"><em>Defensa<\/em><\/th>/);
+  assert.match(html, /<td>Williams improvisa\.<\/td>/);
+  assert.doesNotMatch(html, /\|---\|/);
+  assert.doesNotMatch(html, /<script>/);
+});
