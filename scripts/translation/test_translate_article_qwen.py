@@ -357,6 +357,20 @@ class TranslateArticleQwenTests(unittest.TestCase):
             glossary,
         )
 
+    def test_accepts_central_time_for_clock_de_chicago(self):
+        segment = {
+            "id": "body-001",
+            "kind": "paragraph",
+            "text": "El partido será a las **12:00 p. m. de Chicago**.",
+            "preserve": [],
+        }
+        glossary = {"version": 1, "protectedNames": ["Chicago"], "terms": []}
+        validate_segment_translation(
+            segment,
+            "The game will be at **12:00 p.m. Central Time**.",
+            glossary,
+        )
+
     def test_rejects_wrong_billion_conversion(self):
         segment = {
             "id": "body-005",

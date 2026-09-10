@@ -255,7 +255,14 @@ def preserved_value_occurs(value: str, source: str, translation: str) -> bool:
         return True
     if (
         value == "Chicago"
-        and re.search(r"\bhora de Chicago\b", source, re.IGNORECASE)
+        and (
+            re.search(r"\bhora de Chicago\b", source, re.IGNORECASE)
+            or re.search(
+                r"\b\d{1,2}:\d{2}.{0,20}\bde Chicago\b",
+                source,
+                re.IGNORECASE,
+            )
+        )
         and re.search(r"\bCentral (?:Time|Standard Time|Daylight Time)\b", translation)
     ):
         return True
