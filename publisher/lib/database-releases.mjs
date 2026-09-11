@@ -4,6 +4,7 @@ import { withTransaction } from "./database.mjs";
 
 const RELEASE_JOB = /^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
+const GIT_COMMIT = /^[0-9a-f]{40}$/;
 
 function digest(value) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
 function checkpoint(value) { return value ? JSON.parse(value) : {}; }
@@ -36,16 +37,17 @@ function currentRevision(database, draft) {
   return revision.id;
 }
 
-export function releaseDependency({ draft, translation, audio }) {
+export function releaseDependency({ draft, translation, audio, sourceCommit }) {
+  if (!GIT_COMMIT.test(sourceCommit ?? "")) throw new Error("release source commit is invalid");
   return digest({ articleId: draft.articleId, revision: draft.revision,
     translation: translation.artifact?.sha256, esAudio: audio.jobs?.es?.result?.sha256,
-    enAudio: audio.jobs?.en?.result?.sha256, featuredImage: draft.featuredImage });
+    enAudio: audio.jobs?.en?.result?.sha256, featuredImage: draft.featuredImage, sourceCommit });
 }
 
-export function queueDatabaseRelease(database, { draft, translation, audio, imageArtifact = null, jobId, path, settings, publishedAt, now = new Date() }) {
+export function queueDatabaseRelease(database, { draft, translation, audio, imageArtifact = null, jobId, path, settings, publishedAt, sourceCommit, now = new Date() }) {
   if (!RELEASE_JOB.test(jobId ?? "") || typeof path !== "string" || !path) throw new Error("release job identity is invalid");
   if (!Number.isFinite(Date.parse(publishedAt ?? ""))) throw new Error("release publication date is invalid");
-  const dependencyHash = releaseDependency({ draft, translation, audio }); const key = `release:${dependencyHash}`;
+  const dependencyHash = releaseDependency({ draft, translation, audio, sourceCommit }); const key = `release:${dependencyHash}`;
   return withTransaction(database, (connection) => {
     const existing = connection.prepare(`${SELECT_RELEASE} WHERE j.type = 'release' AND j.dependency_hash = ?
       ORDER BY j.created_at DESC, j.id DESC LIMIT 1`).get(dependencyHash);
@@ -88,7 +90,7 @@ export function queueDatabaseRelease(database, { draft, translation, audio, imag
     }
     connection.prepare(`INSERT INTO jobs (id, type, revision_id, artifact_id, idempotency_key, dependency_hash,
       status, checkpoint_json, available_at, created_at) VALUES (?, 'release', ?, NULL, ?, ?, 'queued', ?, ?, ?)`)
-      .run(jobId, revisionId, effectiveKey, dependencyHash, JSON.stringify({ schemaVersion: 1, publishedAt }), timestamp, timestamp);
+      .run(jobId, revisionId, effectiveKey, dependencyHash, JSON.stringify({ schemaVersion: 1, publishedAt, sourceCommit }), timestamp, timestamp);
     return state(connection.prepare(`${SELECT_RELEASE} WHERE j.id = ?`).get(jobId));
   });
 }

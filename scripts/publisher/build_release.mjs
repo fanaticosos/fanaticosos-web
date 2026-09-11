@@ -2,7 +2,7 @@
 
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, lstat, mkdir, readFile, readdir, rename, symlink, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, rename, stat, symlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -31,6 +31,7 @@ function validateRequest(value) {
   if (!/^[0-9a-f-]{36}$/.test(value.articleId)) throw new Error("release articleId is invalid");
   if (!Number.isInteger(value.draftRevision) || value.draftRevision < 1) throw new Error("release draftRevision is invalid");
   if (typeof value.publishedAt !== "string" || Number.isNaN(Date.parse(value.publishedAt))) throw new Error("release publishedAt is invalid");
+  if (!/^[0-9a-f]{40}$/.test(value.sourceCommit ?? "")) throw new Error("release sourceCommit is invalid");
   return value;
 }
 
@@ -43,6 +44,33 @@ async function optionalFile(path) {
   });
 }
 
+async function repositoryCommit(repository) {
+  const { stdout } = await execute("git", ["-C", repository, "rev-parse", "HEAD"]);
+  return stdout.trim();
+}
+
+async function requireCleanSource(repository, expectedCommit) {
+  if (await repositoryCommit(repository) !== expectedCommit) throw new Error("release source commit changed before assembly");
+  await execute("git", ["-C", repository, "diff", "--quiet"]);
+  await execute("git", ["-C", repository, "diff", "--cached", "--quiet"]);
+}
+
+async function directorySha256(root) {
+  const hash = createHash("sha256");
+  async function visit(directory, prefix = "") {
+    for (const entry of await readdir(directory, { withFileTypes: true }).then((items) => items.sort((a, b) => a.name.localeCompare(b.name)))) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) await visit(path, relative);
+      else if (entry.isFile()) {
+        hash.update(relative); hash.update("\0"); hash.update(await readFile(path)); hash.update("\0");
+      } else throw new Error(`release function source is not a regular file: ${relative}`);
+    }
+  }
+  await visit(root);
+  return hash.digest("hex");
+}
+
 async function main() {
   const requestPath = argument("--request");
   const repository = argument("--repository");
@@ -53,6 +81,7 @@ async function main() {
   const databasePath = optionalArgument("--database");
   const request = validateRequest(await json(requestPath));
   if (process.argv.includes("--validate-only")) return;
+  await requireCleanSource(repository, request.sourceCommit);
   let draft; let translation; let audio; let imageArtifact;
   if (databasePath) {
     const database = await openDatabase(databasePath, { readOnly: true, migrate: false });
@@ -77,6 +106,7 @@ async function main() {
     recursive: true,
     filter: (source) => ![".git", ".astro", "node_modules", "dist"].includes(basename(source)),
   });
+  await requireCleanSource(repository, request.sourceCommit);
   const selected = join(releasesRoot, "current");
   const hasSelectedRelease = await lstat(selected).then((value) => value.isSymbolicLink()).catch((error) => {
     if (error.code === "ENOENT") return false;
@@ -148,12 +178,26 @@ async function main() {
     const metadata = await lstat(route);
     if (!metadata.isFile()) throw new Error(`release route is missing: ${route}`);
   }
-  const { stdout: commit } = await execute("git", ["-C", repository, "rev-parse", "HEAD"]);
+  const requiredStaticFiles = [
+    "dist/index.html", "dist/blog/index.html", "dist/participa/index.html",
+    "dist/admin/invitados/index.html", "dist/assets/nfl-logos/chi.png",
+  ];
+  for (const relative of requiredStaticFiles) {
+    const metadata = await stat(join(temporary, relative));
+    if (!metadata.isFile() || metadata.size === 0) throw new Error(`complete release file is missing: ${relative}`);
+  }
+  const logoFiles = (await readdir(join(temporary, "dist", "assets", "nfl-logos"))).filter((name) => name.endsWith(".png"));
+  if (logoFiles.length !== 32) throw new Error("complete release must contain exactly 32 NFL logos");
+  const functionsSha256 = await directorySha256(join(temporary, "functions"));
   const manifest = {
     schemaVersion: 1, articleId: request.articleId, draftRevision: request.draftRevision,
-    publishedAt: request.publishedAt, timezone: settings.timezone, commit: commit.trim(),
+    publishedAt: request.publishedAt, timezone: settings.timezone, commit: request.sourceCommit,
     routes: { es: `/blog/${slugs.es}/`, en: `/en/blog/${slugs.en}/` },
     assets: copiedAssets,
+    application: {
+      functionsSha256, nflLogoCount: logoFiles.length,
+      requiredPaths: ["/", "/blog/", "/participa/", "/admin/invitados/", "/assets/nfl-logos/chi.png", "/api/participa/config"],
+    },
     homepageSha256: await sha256(join(temporary, "dist", "index.html")),
     buildCompletedAt: new Date().toISOString(),
     buildLog: `${stdout}${stderr}`.slice(-20_000), deployment: "disabled",

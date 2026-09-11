@@ -1,12 +1,23 @@
 import { createHash, randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
 import { chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
+import { promisify } from "node:util";
 
 import { completeDatabaseRelease, failDatabaseRelease, listActiveDatabaseReleases, queueDatabaseRelease, readDatabaseReleaseState, startDatabaseRelease } from "./database-releases.mjs";
 import { queueRelease, readReleaseState, reconcileReleases, zonedIso } from "./release-jobs.mjs";
 import { contentTypeForName, validateImage } from "./uploads.mjs";
 
 const TIMEOUT_MS = 12 * 60 * 1000;
+const GIT_COMMIT = /^[0-9a-f]{40}$/;
+const execute = promisify(execFile);
+
+export async function repositorySourceCommit(repository) {
+  const { stdout } = await execute("git", ["-C", repository, "rev-parse", "HEAD"]);
+  const commit = stdout.trim();
+  if (!GIT_COMMIT.test(commit)) throw new Error("repository source commit is invalid");
+  return commit;
+}
 
 export function filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot }) {
   return { queue: (value) => queueRelease({ ...value, queueRoot, statesRoot }), read: (articleId) => readReleaseState(statesRoot, articleId), reconcile: (callbacks) => reconcileReleases({ statesRoot, releasesRoot, ...callbacks }) };
@@ -38,9 +49,10 @@ async function preserveImageArtifact({ draft, uploadsRoot, imagesRoot }) {
   return { id: `image:${draft.articleId}:r${draft.revision}:${sha256}`, path, sha256 };
 }
 
-export function databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot, imagesRoot }) {
+export function databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot, imagesRoot, repository, resolveSourceCommit = repositorySourceCommit }) {
   return {
     async queue({ draft, translation, audio, settings, publishedAt, now = new Date() }) {
+      const sourceCommit = await resolveSourceCommit(repository);
       const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
       const previous = database.prepare(`SELECT rel.manifest_json
         FROM deployments d JOIN releases rel ON rel.id = d.release_id
@@ -55,9 +67,9 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot, upload
           : zonedIso(now, "America/Chicago");
       const imageArtifact = await preserveImageArtifact({ draft, uploadsRoot, imagesRoot });
       const state = queueDatabaseRelease(database, { draft, translation, audio, imageArtifact, jobId,
-        path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, now });
+        path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, sourceCommit, now });
       if (state.jobId !== jobId) return state;
-      try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt }); }
+      try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt, sourceCommit }); }
       catch (error) { failDatabaseRelease(database, jobId, "release request could not be queued", now); throw error; }
       return state;
     },

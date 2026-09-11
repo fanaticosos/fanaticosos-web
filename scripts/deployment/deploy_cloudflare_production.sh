@@ -32,6 +32,19 @@ readonly wrangler="$repository/node_modules/.bin/wrangler"
 mapfile -t manifest_values < <(python3 - "$manifest" "$dist_root" <<'PY'
 import hashlib, json, os, sys
 manifest_path, dist_root = sys.argv[1:]
+release_root = os.path.dirname(dist_root)
+
+def directory_sha256(root):
+    digest = hashlib.sha256()
+    for directory, subdirectories, files in os.walk(root):
+        subdirectories.sort()
+        for name in sorted(files):
+            path = os.path.join(directory, name)
+            relative = os.path.relpath(path, root).replace(os.sep, "/")
+            digest.update(relative.encode()); digest.update(b"\0")
+            with open(path, "rb") as handle: digest.update(handle.read())
+            digest.update(b"\0")
+    return digest.hexdigest()
 with open(manifest_path, encoding="utf-8") as handle:
     manifest = json.load(handle)
 if manifest.get("schemaVersion") != 1 or manifest.get("deployment") != "disabled":
@@ -41,6 +54,12 @@ if len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
     raise SystemExit("release manifest commit is invalid")
 routes = manifest.get("routes", {})
 assets = manifest.get("assets", {})
+application = manifest.get("application", {})
+functions_root = os.path.join(release_root, "functions")
+if not os.path.isdir(functions_root) or directory_sha256(functions_root) != application.get("functionsSha256"):
+    raise SystemExit("release Functions checksum is invalid")
+if application.get("nflLogoCount") != 32:
+    raise SystemExit("release NFL logo count is invalid")
 homepage_checksum = manifest.get("homepageSha256", "")
 if len(homepage_checksum) != 64:
     raise SystemExit("release homepage checksum is invalid")
@@ -52,9 +71,13 @@ for key in ("esAudio", "enAudio"):
     if not path.startswith("public/audio/") or not path.endswith(".mp3") or len(checksum) != 64:
         raise SystemExit(f"release manifest {key} is invalid")
     items.append(("/" + path.removeprefix("public/"), checksum))
+for path in application.get("requiredPaths", []):
+    if path not in [item[0] for item in items]: items.append((path, ""))
 for path, checksum in items:
     if not isinstance(path, str) or not path.startswith("/"):
         raise SystemExit("release path is invalid")
+    if path.startswith("/api/"):
+        continue
     local = os.path.join(dist_root, path.lstrip("/"))
     if path.endswith("/"):
         local = os.path.join(local, "index.html")

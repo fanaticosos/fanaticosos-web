@@ -102,6 +102,21 @@ test("article releases preserve the selected production content set", async () =
   assert.match(releaseUnit, /--releases-root \/opt\/fanaticosos-blog\/publisher\/releases/);
 });
 
+test("article releases bind immutable application source and Pages Functions", async () => {
+  const build = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");
+  const preview = await readFile(new URL("../../scripts/deployment/deploy_cloudflare_preview.sh", import.meta.url), "utf8");
+  const production = await readFile(new URL("../../scripts/deployment/deploy_cloudflare_production.sh", import.meta.url), "utf8");
+  assert.match(build, /release source commit changed before assembly/);
+  assert.match(build, /functionsSha256/);
+  assert.match(build, /complete release must contain exactly 32 NFL logos/);
+  assert.match(build, /"\/api\/participa\/config"/);
+  for (const deployment of [preview, production]) {
+    assert.match(deployment, /release Functions checksum is invalid/);
+    assert.match(deployment, /cd "\$release_root"/);
+    assert.match(deployment, /\/api\/participa\/config/);
+  }
+});
+
 test("article release workers read authoritative SQLite state and immutable audio", async () => {
   const releaseUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-release@.service", import.meta.url), "utf8");
   const builder = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");

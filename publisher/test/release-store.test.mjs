@@ -34,11 +34,13 @@ test("SQLite release store owns state while the filesystem carries only worker r
       es: { result: { sha256: "b".repeat(64) }, artifact: artifact(database, revisionId, { id: "audio-es", type: "audio", locale: "es", sha256: "b".repeat(64) }) },
       en: { result: { sha256: "c".repeat(64) }, artifact: artifact(database, revisionId, { id: "audio-en", type: "audio", locale: "en", sha256: "c".repeat(64) }) },
     } };
-    const store = databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot, imagesRoot });
+    const sourceCommit = "d".repeat(40);
+    const store = databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot, imagesRoot, repository: root, resolveSourceCommit: async () => sourceCommit });
     const now = new Date("2026-09-09T18:00:00Z");
     const queued = await store.queue({ draft, translation, audio, settings: { schemaVersion: 1 }, now });
     const request = JSON.parse(await readFile(join(queueRoot, queued.jobId, "request.json"), "utf8"));
     assert.equal(request.publishedAt, "2026-09-09T13:00:00-05:00");
+    assert.equal(request.sourceCommit, sourceCommit);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM release_artifacts WHERE release_id = ?").get(queued.jobId).count, 4);
     const storedImage = database.prepare("SELECT path, checksum_sha256 FROM artifacts WHERE type = 'image'").get();
     assert.equal(storedImage.checksum_sha256, createHash("sha256").update(imageBytes).digest("hex"));

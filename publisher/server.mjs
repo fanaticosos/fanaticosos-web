@@ -646,7 +646,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     : filesystemAudioStore({ queueRoot, statesRoot, jobsRoot });
   const releaseStore = database
     ? databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot,
-      imagesRoot: process.env.PUBLISHER_IMAGE_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "images") })
+      imagesRoot: process.env.PUBLISHER_IMAGE_ARTIFACTS_ROOT ?? join(dirname(draftsRoot), "artifacts", "images"),
+      repository: join(HERE, "..") })
     : filesystemReleaseStore({ queueRoot, statesRoot, releasesRoot });
   const deploymentStore = database
     ? databaseDeploymentStore({ database, queueRoot, releasesRoot })

@@ -29,7 +29,7 @@ test("SQLite deployment admission publishes one validated release transactionall
       en: { result: { sha256: "c".repeat(64) }, artifact: accepted(database, revisionId, "audio-en", "audio", "en", "c".repeat(64)) },
     } };
     const releaseJobId = `release-${draft.articleId.replaceAll("-", "")}-r1-1234abcd`;
-    queueDatabaseRelease(database, { draft, translation, audio, jobId: releaseJobId, path: join(root, "release"), settings: { schemaVersion: 1 }, publishedAt: "2026-09-09T01:00:00Z", now: new Date("2026-09-09T01:00:00Z") });
+    queueDatabaseRelease(database, { draft, translation, audio, jobId: releaseJobId, path: join(root, "release"), settings: { schemaVersion: 1 }, publishedAt: "2026-09-09T01:00:00Z", sourceCommit: "d".repeat(40), now: new Date("2026-09-09T01:00:00Z") });
     startDatabaseRelease(database, releaseJobId, new Date("2026-09-09T01:10:00Z"), new Date("2026-09-09T01:01:00Z"));
     completeDatabaseRelease(database, releaseJobId, { schemaVersion: 1, articleId: draft.articleId }, "d".repeat(64), new Date("2026-09-09T01:02:00Z"));
     const queued = queueDatabaseDeployment(database, { articleId: draft.articleId, draftRevision: 1, releaseJobId, now: new Date("2026-09-09T01:03:00Z") });

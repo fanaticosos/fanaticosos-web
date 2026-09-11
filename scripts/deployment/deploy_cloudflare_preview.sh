@@ -34,11 +34,25 @@ readonly wrangler="$repository/node_modules/.bin/wrangler"
 [[ -x "$wrangler" ]] || stop "Pinned Wrangler runtime is missing."
 
 mapfile -t manifest_values < <(python3 - "$manifest" "$dist_root" <<'PY'
+import hashlib
 import json
 import os
 import sys
 
 manifest_path, dist_root = sys.argv[1:]
+release_root = os.path.dirname(dist_root)
+
+def directory_sha256(root):
+    digest = hashlib.sha256()
+    for directory, subdirectories, files in os.walk(root):
+        subdirectories.sort()
+        for name in sorted(files):
+            path = os.path.join(directory, name)
+            relative = os.path.relpath(path, root).replace(os.sep, "/")
+            digest.update(relative.encode()); digest.update(b"\0")
+            with open(path, "rb") as handle: digest.update(handle.read())
+            digest.update(b"\0")
+    return digest.hexdigest()
 with open(manifest_path, encoding="utf-8") as handle:
     manifest = json.load(handle)
 if manifest.get("schemaVersion") != 1 or manifest.get("deployment") != "disabled":
@@ -48,15 +62,25 @@ if len(commit) != 40 or any(char not in "0123456789abcdef" for char in commit):
     raise SystemExit("release manifest commit is invalid")
 routes = manifest.get("routes", {})
 assets = manifest.get("assets", {})
+application = manifest.get("application", {})
+functions_root = os.path.join(release_root, "functions")
+if not os.path.isdir(functions_root) or directory_sha256(functions_root) != application.get("functionsSha256"):
+    raise SystemExit("release Functions checksum is invalid")
+if application.get("nflLogoCount") != 32:
+    raise SystemExit("release NFL logo count is invalid")
 required = [routes.get("es"), routes.get("en")]
 for key in ("esAudio", "enAudio"):
     path = assets.get(key, {}).get("path", "")
     if not path.startswith("public/audio/") or not path.endswith(".mp3"):
         raise SystemExit(f"release manifest {key} is invalid")
     required.append("/" + path.removeprefix("public/"))
+for path in application.get("requiredPaths", []):
+    if path not in required: required.append(path)
 for path in required:
     if not isinstance(path, str) or not path.startswith("/"):
         raise SystemExit("release path is invalid")
+    if path.startswith("/api/"):
+        continue
     local = os.path.join(dist_root, path.lstrip("/"))
     if path.endswith("/"):
         local = os.path.join(local, "index.html")
@@ -69,7 +93,7 @@ for path in required:
     print(path)
 PY
 )
-[[ ${#manifest_values[@]} == 5 ]] || stop "Release manifest validation did not return five values."
+[[ ${#manifest_values[@]} -ge 11 ]] || stop "Release manifest validation returned too few complete-package paths."
 readonly commit="${manifest_values[0]}"
 
 set -a
