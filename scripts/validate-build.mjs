@@ -16,6 +16,7 @@ const routes = [
     lang: "es",
     canonical: "https://fanaticosos.com/",
     requiredLinks: [
+      "/participa",
       "/pages/contact",
       "/pages/terms",
       siteSettings.music.playlistUrl,
@@ -24,6 +25,25 @@ const routes = [
     requiredScripts: [
       "https://api.podcache.net/embedded-show-player/sh/5a9a1f60-f1a6-4463-8714-1de495d92428?theme=dark&bgColor=%231A3558",
     ],
+  },
+  {
+    route: "/participa",
+    file: "participa/index.html",
+    title: "Participa — FanaticOSOS",
+    lang: "es",
+    canonical: "https://fanaticosos.com/participa",
+    requiredLinks: ["/", "/participa", "/pages/contact", "/pages/terms"],
+    requiredText: ["Solicita una fecha", "Fecha de nacimiento", "¿Cómo te hiciste fan", "Título de la canción", "Artista", "Enviar solicitud", "Solicitud recibida", "No pudimos enviar"],
+    requiredScripts: ["https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"],
+  },
+  {
+    route: "/admin/invitados",
+    file: "admin/invitados/index.html",
+    title: "Invitados — Administración FanaticOSOS",
+    lang: "es",
+    canonical: "https://fanaticosos.com/admin/invitados",
+    requiredLinks: ["/"],
+    requiredText: ["Invitados", "Pendientes", "Confirmadas"],
   },
   {
     route: "/pages/contact",
@@ -214,6 +234,9 @@ for (const page of routes) {
   const hrefs = anchorTags.map((entry) => entry.attributes.get("href")).filter(Boolean);
   for (const requiredLink of page.requiredLinks) {
     record(hrefs.includes(requiredLink), `${page.route}: missing required link ${requiredLink}`);
+  }
+  for (const requiredText of page.requiredText ?? []) {
+    record(html.includes(requiredText), `${page.route}: missing required text ${requiredText}`);
   }
 
   const scriptSources = scriptTags.map((entry) => entry.attributes.get("src")).filter(Boolean);

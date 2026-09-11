@@ -1,0 +1,120 @@
+---
+import { gameCenter } from "../lib/gameCenter";
+import "../styles/game-center.css";
+
+const { nextGame, previousGame, recentResults, nfcNorth, updatedAt } = gameCenter;
+const dateFormatter = new Intl.DateTimeFormat("es-MX", {
+  weekday: "long", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+  timeZone: "America/Mexico_City", timeZoneName: "short",
+});
+const formatDate = (value: string | null) => value ? dateFormatter.format(new Date(value)) : "Horario por confirmar";
+const shortName = (name: string) => name.replace("Chicago Bears", "Bears").replace("Carolina Panthers", "Panthers").replace("Tennessee Titans", "Titans").replace("Cincinnati Bengals", "Bengals").replace("Cleveland Browns", "Browns").replace("Detroit Lions", "Lions").replace("Green Bay Packers", "Packers").replace("Minnesota Vikings", "Vikings");
+const resultForBears = (game: NonNullable<typeof previousGame>) => {
+  const bearsHome = game.home.abbreviation === "CHI";
+  const bearsScore = bearsHome ? game.homeScore : game.awayScore;
+  const opponentScore = bearsHome ? game.awayScore : game.homeScore;
+  return bearsScore > opponentScore ? "V" : bearsScore < opponentScore ? "D" : "E";
+};
+---
+
+<section class="game-center" aria-labelledby="game-center-title">
+  <header class="game-center-header">
+    <p class="game-center-kicker">En la cancha</p>
+    <h2 id="game-center-title">Game Center</h2>
+    <p>Partidos y posiciones de los Chicago Bears</p>
+  </header>
+
+  <div class="game-center-grid">
+    <article class="game-panel game-next">
+      <h3><span aria-hidden="true"></span>Próximo partido</h3>
+      {nextGame ? (
+        <>
+          <div class="matchup" aria-label={`${nextGame.away.name} contra ${nextGame.home.name}`}>
+            <div class="team"><span class="team-mark">{nextGame.away.abbreviation}</span><strong>{shortName(nextGame.away.name)}</strong></div>
+            <span class="at" aria-hidden="true">@</span>
+            <div class="team"><span class="team-mark">{nextGame.home.abbreviation}</span><strong>{shortName(nextGame.home.name)}</strong></div>
+          </div>
+          <div class="countdown" data-countdown={nextGame.startsAt ?? undefined} aria-label="Cuenta regresiva al próximo partido">
+            {[["días", "00"], ["horas", "00"], ["min", "00"], ["seg", "00"]].map(([label, value]) => (
+              <span class="countdown-unit"><strong data-unit={label}>{value}</strong><small>{label}</small></span>
+            ))}
+          </div>
+          <p class="game-date">{formatDate(nextGame.startsAt)}</p>
+          {nextGame.venue && <p class="game-venue">{nextGame.venue}</p>}
+        </>
+      ) : <p class="empty-state">Próximo partido por anunciar.</p>}
+    </article>
+
+    <article class="game-panel game-previous">
+      <h3><span aria-hidden="true"></span>Último partido</h3>
+      {previousGame ? (
+        <>
+          <div class="scoreboard">
+            <div class="score-team"><span class="team-mark">{previousGame.away.abbreviation}</span><strong>{shortName(previousGame.away.name)}</strong><b>{previousGame.awayScore}</b></div>
+            <span class="score-separator" aria-hidden="true">—</span>
+            <div class="score-team"><span class="team-mark">{previousGame.home.abbreviation}</span><strong>{shortName(previousGame.home.name)}</strong><b>{previousGame.homeScore}</b></div>
+          </div>
+          <p class="final-label">Final · {formatDate(previousGame.startsAt)}</p>
+          <a class="box-score-link" href={previousGame.boxScoreUrl} target="_blank" rel="noopener">Ver box score en ESPN <span aria-hidden="true">→</span></a>
+        </>
+      ) : <p class="empty-state">Aún no hay resultados.</p>}
+    </article>
+
+    <article class="game-panel game-results">
+      <h3><span aria-hidden="true"></span>Últimos resultados</h3>
+      <div class="results-list">
+        {recentResults.map((game) => {
+          const opponent = game.home.abbreviation === "CHI" ? game.away : game.home;
+          const bearsScore = game.home.abbreviation === "CHI" ? game.homeScore : game.awayScore;
+          const opponentScore = game.home.abbreviation === "CHI" ? game.awayScore : game.homeScore;
+          const outcome = resultForBears(game);
+          return (
+            <a href={game.boxScoreUrl} target="_blank" rel="noopener" aria-label={`Bears ${bearsScore}, ${opponent.name} ${opponentScore}; ver box score`}>
+              <span class="result-opponent"><span class="team-mark team-mark-small">{opponent.abbreviation}</span>{shortName(opponent.name)}</span>
+              <strong>{bearsScore}–{opponentScore}</strong>
+              <b class:list={["result-badge", `result-${outcome.toLowerCase()}`]}>{outcome}</b>
+            </a>
+          );
+        })}
+      </div>
+    </article>
+
+    <article class="game-panel game-standings">
+      <h3><span aria-hidden="true"></span>Así va la NFC Norte</h3>
+      <table>
+        <thead><tr><th>Equipo</th><th>V</th><th>D</th><th>E</th></tr></thead>
+        <tbody>{nfcNorth.map((entry) => (
+          <tr class:list={{ bears: entry.team.abbreviation === "CHI" }}>
+            <th><span class="team-mark team-mark-small">{entry.team.abbreviation}</span>{shortName(entry.team.name)}</th>
+            <td>{entry.wins}</td><td>{entry.losses}</td><td>{entry.ties}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    </article>
+  </div>
+  <p class="game-center-updated">Actualizado <time datetime={updatedAt}>{formatDate(updatedAt)}</time></p>
+</section>
+
+<script>
+  const pad = (value: number) => String(Math.max(0, value)).padStart(2, "0");
+  document.querySelectorAll<HTMLElement>("[data-countdown]").forEach((countdown) => {
+    const target = Date.parse(countdown.dataset.countdown ?? "");
+    if (!Number.isFinite(target)) return;
+    const render = () => {
+      const remaining = Math.max(0, target - Date.now());
+      const values: Record<string, number> = {
+        días: Math.floor(remaining / 86_400_000),
+        horas: Math.floor(remaining / 3_600_000) % 24,
+        min: Math.floor(remaining / 60_000) % 60,
+        seg: Math.floor(remaining / 1_000) % 60,
+      };
+      Object.entries(values).forEach(([unit, value]) => {
+        const output = countdown.querySelector<HTMLElement>(`[data-unit="${unit}"]`);
+        if (output) output.textContent = pad(value);
+      });
+    };
+    render();
+    const timer = window.setInterval(render, 1_000);
+    document.addEventListener("astro:before-swap", () => window.clearInterval(timer), { once: true });
+  });
+</script>

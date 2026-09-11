@@ -1,0 +1,80 @@
+.game-center {
+  margin: 56px auto 0;
+  max-width: 1320px;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.game-center-header { margin-bottom: 18px; text-align: center; }
+.game-center-kicker { color: var(--orange); font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; }
+.game-center-header h2 { font-family: "Bebas Neue", sans-serif; font-size: clamp(38px, 6vw, 58px); letter-spacing: .12em; line-height: 1; margin-top: 5px; text-transform: uppercase; }
+.game-center-header > p:last-child { color: var(--gray); font-size: 13px; margin-top: 7px; }
+
+.game-center-grid {
+  background: var(--navy-mid);
+  border: 1px solid rgba(240,120,32,.35);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: 1.05fr 1.45fr 1fr 1fr;
+  overflow: hidden;
+}
+.game-panel { min-width: 0; padding: 24px 22px; }
+.game-panel + .game-panel { border-left: 1px solid rgba(255,255,255,.09); }
+.game-panel h3 { align-items: center; color: var(--orange); display: flex; font-family: "Bebas Neue", sans-serif; font-size: 18px; gap: 8px; letter-spacing: .09em; margin-bottom: 22px; }
+.game-panel h3 span { background: var(--orange); border-radius: 50%; height: 7px; width: 7px; }
+.team-mark { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(240,120,32,.55); border-radius: 50%; color: var(--white); display: inline-flex; flex-shrink: 0; font-family: "Bebas Neue", sans-serif; font-size: 18px; height: 58px; justify-content: center; letter-spacing: .04em; width: 58px; }
+.team-mark-small { font-size: 11px; height: 31px; width: 31px; }
+
+.matchup { align-items: center; display: grid; gap: 8px; grid-template-columns: 1fr auto 1fr; }
+.team { align-items: center; display: flex; flex-direction: column; gap: 8px; min-width: 0; text-align: center; }
+.team strong { font-size: 12px; line-height: 1.2; }
+.at { color: var(--orange); font-family: "Bebas Neue", sans-serif; font-size: 24px; }
+.countdown { display: grid; gap: 5px; grid-template-columns: repeat(4, 1fr); margin-top: 23px; }
+.countdown-unit { background: rgba(3,18,33,.34); border: 1px solid rgba(240,120,32,.3); border-radius: 7px; padding: 8px 2px; text-align: center; }
+.countdown-unit strong { display: block; font-family: "Bebas Neue", sans-serif; font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: .04em; line-height: 1; }
+.countdown-unit small { color: var(--orange); display: block; font-size: 7px; letter-spacing: .09em; margin-top: 5px; text-transform: uppercase; }
+.game-date { font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: .05em; margin-top: 17px; text-align: center; text-transform: capitalize; }
+.game-venue { color: var(--gray); font-size: 10px; margin-top: 5px; text-align: center; }
+
+.scoreboard { align-items: end; display: grid; gap: 10px; grid-template-columns: 1fr auto 1fr; }
+.score-team { align-items: center; display: grid; gap: 7px; grid-template-columns: auto 1fr; min-width: 0; }
+.score-team b { font-family: "Bebas Neue", sans-serif; font-size: 52px; grid-column: 1 / -1; line-height: .9; text-align: center; }
+.score-team:has(.team-mark + strong) strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-separator { color: var(--gray); font-size: 25px; padding-bottom: 5px; }
+.final-label { color: var(--gray); font-size: 9px; letter-spacing: .06em; margin-top: 18px; text-align: center; text-transform: uppercase; }
+.box-score-link { border: 1px solid var(--orange); border-radius: 7px; color: var(--orange); display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; margin-top: 13px; padding: 10px; text-align: center; text-decoration: none; text-transform: uppercase; transition: background .2s, color .2s; }
+.box-score-link:hover { background: var(--orange); color: var(--navy); }
+
+.results-list { display: grid; gap: 8px; }
+.results-list a { align-items: center; background: rgba(3,18,33,.3); border: 1px solid rgba(255,255,255,.09); border-radius: 8px; color: var(--white); display: grid; font-size: 11px; gap: 7px; grid-template-columns: minmax(0,1fr) auto 25px; padding: 8px; text-decoration: none; }
+.result-opponent { align-items: center; display: flex; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results-list a > strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.result-badge { align-items: center; border-radius: 5px; display: flex; height: 25px; justify-content: center; width: 25px; }
+.result-v { background: #1f9d61; }.result-d { background: #c74740; }.result-e { background: var(--gray); }
+
+.game-standings table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.game-standings th, .game-standings td { border-bottom: 1px solid rgba(255,255,255,.08); padding: 8px 4px; text-align: center; }
+.game-standings thead th { color: var(--orange); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.game-standings thead th:first-child, .game-standings tbody th { text-align: left; }
+.game-standings tbody th { align-items: center; display: flex; font-weight: 500; gap: 7px; }
+.game-standings tr.bears { background: rgba(240,120,32,.08); }
+.game-standings tr.bears th { color: var(--orange); font-weight: 700; }
+.empty-state { color: var(--gray); font-size: 13px; line-height: 1.5; }
+.game-center-updated { color: rgba(203,213,225,.55); font-size: 9px; margin: 9px 4px 0; text-align: right; }
+
+@media (max-width: 1050px) {
+  .game-center-grid { grid-template-columns: 1fr 1.3fr; }
+  .game-panel:nth-child(3) { border-left: 0; }
+  .game-panel:nth-child(n+3) { border-top: 1px solid rgba(255,255,255,.09); }
+}
+@media (max-width: 620px) {
+  .game-center { margin-top: 44px; padding: 0 16px; }
+  .game-center-grid { display: flex; flex-direction: column; }
+  .game-panel { padding: 24px 20px; }
+  .game-panel + .game-panel { border-left: 0; border-top: 1px solid rgba(255,255,255,.09); }
+  .game-next { order: 1; }.game-previous { order: 2; }.game-standings { order: 3; }.game-results { order: 4; }
+  .game-panel h3 { margin-bottom: 18px; }
+  .score-team b { font-size: 46px; }
+}
+@media (prefers-reduced-motion: reduce) { .box-score-link { transition: none; } }

@@ -11,6 +11,7 @@ const termsPath = locale === "es" ? "/pages/terms" : "/en/pages/terms";
 
 <footer>
   <span>© {year} FanaticOSOS</span>
+  {locale === "es" && <a href="/participa">Participa</a>}
   <a href={contactPath}>{locale === "es" ? "Contacto" : "Contact"}</a>
   <a href={termsPath}>{locale === "es" ? "Términos" : "Terms"}</a>
 </footer>

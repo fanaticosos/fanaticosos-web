@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "season": 2026,
+  "time": "20:00",
+  "timeZone": "America/Mexico_City",
+  "source": "FanaticOSOS-Temporada-2026.xlsx",
+  "slots": [
+    { "id": "2026-09-16", "date": "2026-09-16", "status": "available", "previousGame": "Bears @ Carolina Panthers — 13 sep", "nextGame": "Minnesota Vikings @ Bears — 20 sep", "specialTopic": null },
+    { "id": "2026-09-23", "date": "2026-09-23", "status": "available", "previousGame": "Minnesota Vikings @ Bears — 20 sep", "nextGame": "Philadelphia Eagles @ Bears — 28 sep", "specialTopic": null },
+    { "id": "2026-09-30", "date": "2026-09-30", "status": "available", "previousGame": "Philadelphia Eagles @ Bears — 28 sep", "nextGame": "New York Jets @ Bears — 4 oct", "specialTopic": null },
+    { "id": "2026-10-07", "date": "2026-10-07", "status": "available", "previousGame": "New York Jets @ Bears — 4 oct", "nextGame": "Bears @ Green Bay Packers — 11 oct", "specialTopic": null },
+    { "id": "2026-10-14", "date": "2026-10-14", "status": "available", "previousGame": "Bears @ Green Bay Packers — 11 oct", "nextGame": "Bears @ Atlanta Falcons — 18 oct", "specialTopic": null },
+    { "id": "2026-10-21", "date": "2026-10-21", "status": "available", "previousGame": "Bears @ Atlanta Falcons — 18 oct", "nextGame": "New England Patriots @ Bears — 22 oct", "specialTopic": null },
+    { "id": "2026-10-28", "date": "2026-10-28", "status": "available", "previousGame": "New England Patriots @ Bears — 22 oct", "nextGame": "Bears @ Seattle Seahawks — 2 nov", "specialTopic": null },
+    { "id": "2026-11-04", "date": "2026-11-04", "status": "available", "previousGame": "Bears @ Seattle Seahawks — 2 nov", "nextGame": "Tampa Bay Buccaneers @ Bears — 8 nov", "specialTopic": null },
+    { "id": "2026-11-11", "date": "2026-11-11", "status": "available", "previousGame": "Tampa Bay Buccaneers @ Bears — 8 nov", "nextGame": "BYE — semana de descanso", "specialTopic": "Evaluación de media temporada, objetivos y desempeño" },
+    { "id": "2026-11-25", "date": "2026-11-25", "status": "available", "previousGame": "New Orleans Saints @ Bears — 22 nov", "nextGame": "Bears @ Detroit Lions — 26 nov", "specialTopic": null },
+    { "id": "2026-12-02", "date": "2026-12-02", "status": "available", "previousGame": "Bears @ Detroit Lions — 26 nov", "nextGame": "Jacksonville Jaguars @ Bears — 6 dic", "specialTopic": null },
+    { "id": "2026-12-09", "date": "2026-12-09", "status": "available", "previousGame": "Jacksonville Jaguars @ Bears — 6 dic", "nextGame": "Bears @ Miami Dolphins — 13 dic", "specialTopic": null },
+    { "id": "2026-12-16", "date": "2026-12-16", "status": "available", "previousGame": "Bears @ Miami Dolphins — 13 dic", "nextGame": "Bears @ Buffalo Bills — 19 dic", "specialTopic": null },
+    { "id": "2026-12-23", "date": "2026-12-23", "status": "available", "previousGame": "Bears @ Buffalo Bills — 19 dic", "nextGame": "Green Bay Packers @ Bears — 25 dic", "specialTopic": null },
+    { "id": "2026-12-30", "date": "2026-12-30", "status": "available", "previousGame": "Green Bay Packers @ Bears — 25 dic", "nextGame": "Detroit Lions @ Bears — 3 ene", "specialTopic": null },
+    { "id": "2027-01-06", "date": "2027-01-06", "status": "available", "previousGame": "Detroit Lions @ Bears — 3 ene", "nextGame": "Bears @ Minnesota Vikings — fecha por definir", "specialTopic": null }
+  ]
+}

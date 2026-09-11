@@ -1,0 +1,128 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/admin-invitados.css";
+---
+
+<BaseLayout
+  title="Invitados — Administración FanaticOSOS"
+  description="Panel privado de solicitudes de invitados de FanaticOSOS."
+  canonicalPath="/admin/invitados"
+  bodyClass="admin-invitados-page"
+>
+  <main class="admin-wrap">
+    <header class="admin-header">
+      <div><p>Administración</p><h1>Invitados</h1></div>
+      <a href="/">Ver sitio</a>
+    </header>
+    <div class="admin-notice" data-admin-status role="status">Cargando solicitudes…</div>
+    <div class="admin-filters" aria-label="Filtrar solicitudes">
+      <button class="active" type="button" data-filter="active">Pendientes</button>
+      <button type="button" data-filter="all">Todas</button>
+      <button type="button" data-filter="confirmed">Confirmadas</button>
+    </div>
+    <section class="request-list" data-request-list aria-label="Solicitudes de invitados"></section>
+  </main>
+</BaseLayout>
+
+<script>
+  type GuestRequest = {
+    id: string; slotId: string; status: string; fullName: string; email: string; phone: string;
+    birthDate: string; bearsStory: string; songTitle: string; songArtist: string; songReason: string;
+    emailStatus: string; decisionEmailStatus: string | null; submittedAt: string; streamDate: string;
+    previousGame: string; nextGame: string; specialTopic: string | null;
+  };
+  const list = document.querySelector<HTMLElement>("[data-request-list]");
+  const status = document.querySelector<HTMLElement>("[data-admin-status]");
+  let requests: GuestRequest[] = [];
+  let filter = "active";
+  const labels: Record<string, string> = { pending: "Pendiente", waitlisted: "Espera", confirmed: "Confirmada", rejected: "Rechazada", canceled: "Cancelada" };
+  const formatDate = (value: string) => new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+
+  function element(tag: string, className?: string, content?: string) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content) node.textContent = content;
+    return node;
+  }
+
+  function render() {
+    if (!list) return;
+    list.replaceChildren();
+    const visible = requests.filter((item) => filter === "all" || filter === "confirmed" ? item.status === filter || filter === "all" : ["pending", "waitlisted"].includes(item.status));
+    if (!visible.length) {
+      list.append(element("p", "admin-empty", "No hay solicitudes en esta vista."));
+      return;
+    }
+    for (const item of visible) {
+      const article = element("article", "request-card");
+      article.dataset.requestId = item.id;
+      const heading = element("header", "request-heading");
+      const title = element("div");
+      title.append(element("span", `request-status status-${item.status}`, labels[item.status] ?? item.status), element("h2", "", item.fullName));
+      heading.append(title, element("time", "", formatDate(item.submittedAt)));
+      const schedule = element("div", "request-schedule");
+      schedule.append(element("strong", "", `${item.streamDate} · 8:00 p.m. CDMX`), element("span", "", `Revisión: ${item.previousGame}`), element("span", "", `Próximo: ${item.nextGame}`));
+      if (item.specialTopic) schedule.append(element("span", "", `Tema: ${item.specialTopic}`));
+      const contact = element("p", "request-contact", `${item.email} · ${item.phone} · Nacimiento: ${item.birthDate}`);
+      const story = element("details");
+      story.append(element("summary", "", "Historia y canción"));
+      const storyBody = element("div", "request-story");
+      storyBody.append(element("h3", "", "Cómo se hizo fan"), element("p", "", item.bearsStory), element("h3", "", "Canción"), element("p", "", `${item.songTitle} — ${item.songArtist}`), element("p", "", item.songReason));
+      story.append(storyBody);
+      article.append(heading, schedule, contact, story);
+      if (["pending", "waitlisted"].includes(item.status)) {
+        const actions = element("div", "request-actions");
+        for (const [action, copy] of [["confirm", "Confirmar fecha"], ["reject", "Rechazar"]]) {
+          const button = element("button", `action-${action}`, copy);
+          button.setAttribute("type", "button");
+          button.dataset.action = action;
+          actions.append(button);
+        }
+        article.append(actions);
+      }
+      const email = element("small", `email-state email-${item.emailStatus}`, `Correo inicial: ${item.emailStatus}`);
+      if (item.decisionEmailStatus) email.textContent += ` · Decisión: ${item.decisionEmailStatus}`;
+      article.append(email);
+      list.append(article);
+    }
+  }
+
+  async function load() {
+    try {
+      const response = await fetch("/api/admin/invitados", { headers: { accept: "application/json" } });
+      if (!response.ok) throw new Error(response.status === 401 ? "Acceso administrativo no autorizado." : "No se pudieron cargar las solicitudes.");
+      ({ requests } = await response.json());
+      if (status) status.textContent = `${requests.length} solicitud${requests.length === 1 ? "" : "es"}.`;
+      render();
+    } catch (error) {
+      if (status) status.textContent = error instanceof Error ? error.message : "No se pudieron cargar las solicitudes.";
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>("[data-filter]").forEach((button) => button.addEventListener("click", () => {
+    filter = button.dataset.filter ?? "active";
+    document.querySelectorAll("[data-filter]").forEach((item) => item.classList.toggle("active", item === button));
+    render();
+  }));
+  list?.addEventListener("click", async (event) => {
+    const button = (event.target as Element).closest<HTMLButtonElement>("[data-action]");
+    const card = button?.closest<HTMLElement>("[data-request-id]");
+    if (!button || !card) return;
+    button.disabled = true;
+    if (status) status.textContent = "Guardando decisión…";
+    try {
+      const response = await fetch("/api/admin/invitados/action", {
+        method: "POST", headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ requestId: card.dataset.requestId, action: button.dataset.action }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "request_failed");
+      if (status) status.textContent = result.emailStatus === "sent" ? "Decisión guardada y correo enviado." : "Decisión guardada; el correo requiere reenvío.";
+      await load();
+    } catch {
+      if (status) status.textContent = "No se pudo guardar la decisión.";
+      button.disabled = false;
+    }
+  });
+  load();
+</script>

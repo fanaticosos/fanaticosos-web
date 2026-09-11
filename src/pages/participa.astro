@@ -1,0 +1,295 @@
+---
+import BackLink from "../components/BackLink.astro";
+import GameCenter from "../components/GameCenter.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { participationSchedule } from "../lib/participationSlots";
+import "../styles/participa.css";
+
+const dateFormatter = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const statusCopy = {
+  available: { label: "Disponible", detail: "Puedes solicitar esta fecha" },
+  pending: { label: "Lista de espera", detail: "Ya existe una solicitud; aún puedes anotarte" },
+  confirmed: { label: "No disponible", detail: "Invitado confirmado" },
+};
+---
+
+<BaseLayout
+  title="Participa — FanaticOSOS"
+  description="Participa como invitado en el podcast y stream de FanaticOSOS."
+  canonicalPath="/participa"
+  bodyClass="participa-page"
+>
+  <main>
+    <div class="participa-intro">
+      <BackLink />
+      <p class="participa-eyebrow">La comunidad también eres tú</p>
+      <h1>Participa en FanaticOSOS</h1>
+      <p>Comparte tu historia como aficionado de los Chicago Bears y acompáñanos en uno de nuestros streams de los miércoles.</p>
+    </div>
+    <GameCenter />
+
+    <section class="participation-content" aria-labelledby="participation-heading">
+      <div class="participation-heading">
+        <p class="participa-eyebrow">Tu voz en el programa</p>
+        <h2 id="participation-heading">Solicita una fecha</h2>
+        <p>Elige el programa que mejor conozcas. En cada fecha analizaremos el partido anterior y prepararemos el siguiente.</p>
+      </div>
+
+      <div class="process-grid" aria-label="Cómo funciona">
+        <div><b>1</b><strong>Elige</strong><span>Revisa los partidos y temas de cada fecha.</span></div>
+        <div><b>2</b><strong>Solicita</strong><span>Cuéntanos tu historia y qué canción compartirías.</span></div>
+        <div><b>3</b><strong>Espera confirmación</strong><span>La solicitud no reserva automáticamente el lugar.</span></div>
+      </div>
+
+      <form class="participation-form" method="post" action="/api/participa" data-participation-form>
+        <div class="submission-banner submission-success" data-submission-success role="status" hidden>
+          <strong>Solicitud recibida</strong>
+          <span>Te enviamos una copia por email. La fecha todavía no está reservada; recibirás otra confirmación cuando FanaticOSOS la apruebe.</span>
+        </div>
+        <div class="submission-banner submission-error" data-submission-error role="alert" hidden>
+          <strong>No pudimos enviar la solicitud</strong>
+          <span>Tus datos no se enviaron. Revisa los campos e inténtalo nuevamente.</span>
+        </div>
+        <fieldset class="form-section slot-section">
+          <legend><span>01</span> Fecha y tema del stream</legend>
+          <p class="field-help">Miércoles a las 8:00 p.m., hora de la Ciudad de México. Selecciona una tarjeta para ver el resumen.</p>
+          <div class="status-key" aria-label="Estados de las fechas">
+            <span><i class="status-dot available"></i>Disponible</span>
+            <span><i class="status-dot pending"></i>Lista de espera</span>
+            <span><i class="status-dot confirmed"></i>No disponible</span>
+          </div>
+          <div class="slot-grid">
+            {participationSchedule.slots.map((slot) => {
+              const state = statusCopy[slot.status];
+              const unavailable = slot.status === "confirmed";
+              return (
+                <label class:list={["slot-card", `slot-${slot.status}`, { disabled: unavailable }]} data-slot-card={slot.id}>
+                  <input
+                    type="radio"
+                    name="streamSlot"
+                    value={slot.id}
+                    required
+                    disabled={unavailable}
+                    data-date={dateFormatter.format(new Date(`${slot.date}T12:00:00Z`))}
+                    data-previous={slot.previousGame}
+                    data-next={slot.nextGame}
+                    data-topic={slot.specialTopic ?? ""}
+                    data-status={slot.status}
+                  />
+                  <span class="slot-topline"><time datetime={slot.date}>{dateFormatter.format(new Date(`${slot.date}T12:00:00Z`))}</time><b>{state.label}</b></span>
+                  <span class="slot-detail"><small>Revisión</small><strong>{slot.previousGame}</strong></span>
+                  <span class="slot-detail"><small>Próximo</small><strong>{slot.nextGame}</strong></span>
+                  {slot.specialTopic && <span class="slot-topic"><small>Tema adicional</small>{slot.specialTopic}</span>}
+                  <span class="slot-state-detail">{state.detail}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div class="selected-slot" data-selected-slot aria-live="polite">
+            <strong>Selecciona una fecha</strong>
+            <span>Aquí aparecerá lo que deberás preparar.</span>
+          </div>
+        </fieldset>
+
+        <div class="form-columns">
+          <div class="form-main">
+            <fieldset class="form-section">
+              <legend><span>02</span> Tus datos</legend>
+              <div class="fields-grid">
+                <label class="field field-wide">Nombre completo<input type="text" name="fullName" autocomplete="name" minlength="2" maxlength="100" required /></label>
+                <label class="field">Email<input type="email" name="email" autocomplete="email" maxlength="254" required /></label>
+                <label class="field">Teléfono / WhatsApp<input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="+52 55 1234 5678" minlength="8" maxlength="25" required /></label>
+                <label class="field">Fecha de nacimiento<input type="date" name="birthDate" autocomplete="bday" required data-birth-date /><small>Debes tener 18 años o más.</small></label>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend><span>03</span> Tu historia</legend>
+              <label class="field">¿Cómo te hiciste fan de los Chicago Bears?<textarea name="bearsStory" rows="6" minlength="80" maxlength="2000" required placeholder="Cuéntanos dónde vivías, cómo conociste al equipo y qué significa para ti..."></textarea><small>Mínimo 80 caracteres.</small></label>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend><span>04</span> Tu canción</legend>
+              <div class="fields-grid">
+                <label class="field">Título de la canción<input type="text" name="songTitle" maxlength="150" required /></label>
+                <label class="field">Artista<input type="text" name="songArtist" maxlength="150" required /></label>
+              </div>
+              <label class="field">¿Por qué elegiste esta canción?<textarea name="songReason" rows="5" minlength="40" maxlength="1200" required></textarea><small>Mínimo 40 caracteres. Tú propones la canción; FanaticOSOS decide cuándo publicarla.</small></label>
+            </fieldset>
+
+            <fieldset class="form-section consent-section">
+              <legend><span>05</span> Confirmaciones</legend>
+              <label class="check-field"><input type="checkbox" name="rulesAccepted" required /><span>Leí y acepto las reglas técnicas y de etiqueta del stream.</span></label>
+              <label class="check-field"><input type="checkbox" name="privacyAccepted" required /><span>Autorizo el uso de mis datos para gestionar esta solicitud y comunicarse conmigo.</span></label>
+              <label class="check-field"><input type="checkbox" name="publicationAccepted" required /><span>Si se confirma mi participación, autorizo publicar mi nombre, historia y canción en FanaticOSOS y sus canales.</span></label>
+              <label class="check-field"><input type="checkbox" name="requestAcknowledged" required /><span>Entiendo que ésta es una solicitud y que la fecha sólo queda reservada cuando FanaticOSOS la confirme por email.</span></label>
+            </fieldset>
+
+            <label class="honeypot" aria-hidden="true">No llenar este campo<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+            <div class="turnstile-wrap">
+              <div data-turnstile></div>
+              <span data-turnstile-message>Verificando que eres una persona…</span>
+            </div>
+            <div class="form-message" data-form-message aria-live="polite"></div>
+            <button class="submit-button" type="submit">Enviar solicitud <span aria-hidden="true">→</span></button>
+            <p class="submit-note">Recibirás una copia de la solicitud. La confirmación definitiva llegará por separado.</p>
+          </div>
+
+          <aside class="preparation-card">
+            <p class="participa-eyebrow">Antes del stream</p>
+            <h3>Qué debes preparar</h3>
+            <ol>
+              <li>Ver los partidos indicados para tu fecha.</li>
+              <li>Seguir FanaticOSOS y suscribirte al podcast, YouTube y/o Facebook.</li>
+              <li>Escuchar o ver algunos streams anteriores.</li>
+              <li>Reservar la fecha sólo después de recibir confirmación.</li>
+              <li>Preparar tu historia personal y la canción que elegiste.</li>
+            </ol>
+            <h4>Reglas técnicas y de etiqueta</h4>
+            <ul>
+              <li>Conexión estable y computadora; no teléfono.</li>
+              <li>Micrófono externo obligatorio.</li>
+              <li>Ambiente silencioso y controlado.</li>
+              <li>Puntualidad, hidratación y notas preparadas.</li>
+              <li>Voz dinámica y compromiso de promover el episodio.</li>
+            </ul>
+            <p class="age-notice"><strong>Sólo mayores de 18 años.</strong> No solicitamos fotografía en este formulario.</p>
+          </aside>
+        </div>
+      </form>
+    </section>
+  </main>
+  <SiteFooter />
+</BaseLayout>
+
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-participation-form]");
+  const summary = document.querySelector<HTMLElement>("[data-selected-slot]");
+  const birthDate = document.querySelector<HTMLInputElement>("[data-birth-date]");
+  const message = document.querySelector<HTMLElement>("[data-form-message]");
+  const submitButton = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const turnstileContainer = document.querySelector<HTMLElement>("[data-turnstile]");
+  const turnstileMessage = document.querySelector<HTMLElement>("[data-turnstile-message]");
+  const result = new URLSearchParams(window.location.search).get("estado");
+  const resultBanner = result === "recibida"
+    ? document.querySelector<HTMLElement>("[data-submission-success]")
+    : result === "error"
+      ? document.querySelector<HTMLElement>("[data-submission-error]")
+      : null;
+  if (resultBanner) {
+    resultBanner.hidden = false;
+    if (result === "recibida" && new URLSearchParams(window.location.search).get("correo") === "pendiente") {
+      const detail = resultBanner.querySelector("span");
+      if (detail) detail.textContent = "Guardamos tu solicitud, pero el correo no pudo enviarse todavía. FanaticOSOS podrá reenviarlo desde el panel administrativo.";
+    }
+    resultBanner.scrollIntoView({ block: "center" });
+  }
+
+  const statusCopy = {
+    available: ["Disponible", "Puedes solicitar esta fecha"],
+    pending: ["Lista de espera", "Ya existe una solicitud; aún puedes anotarte"],
+    confirmed: ["No disponible", "Invitado confirmado"],
+  } as const;
+
+  fetch("/api/participa/slots", { headers: { accept: "application/json" } })
+    .then((response) => response.ok ? response.json() : Promise.reject(new Error("slots unavailable")))
+    .then(({ slots }) => slots.forEach(({ id, status }: { id: string; status: keyof typeof statusCopy }) => {
+      const card = document.querySelector<HTMLElement>(`[data-slot-card="${CSS.escape(id)}"]`);
+      const input = card?.querySelector<HTMLInputElement>('input[name="streamSlot"]');
+      if (!card || !input || !statusCopy[status]) return;
+      card.classList.remove("slot-available", "slot-pending", "slot-confirmed", "disabled");
+      card.classList.add(`slot-${status}`);
+      input.dataset.status = status;
+      input.disabled = status === "confirmed";
+      if (input.disabled) card.classList.add("disabled");
+      const badge = card.querySelector<HTMLElement>(".slot-topline b");
+      const detail = card.querySelector<HTMLElement>(".slot-state-detail");
+      if (badge) badge.textContent = statusCopy[status][0];
+      if (detail) detail.textContent = statusCopy[status][1];
+    }))
+    .catch(() => {
+      if (message) message.textContent = "No pudimos actualizar la disponibilidad. Confirma la fecha antes de enviar.";
+    });
+
+  async function initializeTurnstile() {
+    if (!turnstileContainer) return;
+    try {
+      const response = await fetch("/api/participa/config", { headers: { accept: "application/json" } });
+      if (!response.ok) throw new Error("configuration unavailable");
+      const { turnstileSiteKey } = await response.json();
+      for (let attempt = 0; attempt < 50 && !(window as any).turnstile; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+      if (!(window as any).turnstile) throw new Error("Turnstile unavailable");
+      (window as any).turnstile.render(turnstileContainer, {
+        sitekey: turnstileSiteKey,
+        action: "participa",
+        theme: "dark",
+        size: "flexible",
+        language: "es-MX",
+        callback: () => { if (turnstileMessage) turnstileMessage.textContent = "Verificación completada."; },
+        "error-callback": () => { if (turnstileMessage) turnstileMessage.textContent = "No se pudo completar la verificación. Inténtalo otra vez."; },
+      });
+    } catch {
+      if (turnstileMessage) turnstileMessage.textContent = "La protección anti-spam no está disponible. Inténtalo más tarde.";
+    }
+  }
+  initializeTurnstile();
+
+  if (birthDate) {
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 18);
+    birthDate.max = cutoff.toISOString().slice(0, 10);
+  }
+
+  form?.addEventListener("change", (event) => {
+    const slot = (event.target as HTMLInputElement).closest<HTMLInputElement>('input[name="streamSlot"]');
+    if (!slot || !summary) return;
+    const waitlist = slot.dataset.status === "pending" ? " Esta fecha se enviará como lista de espera." : "";
+    const heading = document.createElement("strong");
+    heading.textContent = `${slot.dataset.date} · 8:00 p.m. CDMX`;
+    const detail = document.createElement("span");
+    detail.textContent = `Revisión: ${slot.dataset.previous}. Próximo: ${slot.dataset.next}.${slot.dataset.topic ? ` Tema adicional: ${slot.dataset.topic}.` : ""}${waitlist}`;
+    summary.replaceChildren(heading, detail);
+  });
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (birthDate?.value && birthDate.max && birthDate.value > birthDate.max) {
+      birthDate.setCustomValidity("Debes tener 18 años o más para participar.");
+      birthDate.reportValidity();
+      if (message) message.textContent = "Revisa tu fecha de nacimiento.";
+      return;
+    }
+    birthDate?.setCustomValidity("");
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    if (!data.get("cf-turnstile-response")) {
+      if (message) message.textContent = "Completa la verificación anti-spam.";
+      return;
+    }
+    if (submitButton) submitButton.disabled = true;
+    if (message) message.textContent = "Enviando solicitud…";
+    try {
+      const response = await fetch(form.action, { method: "POST", body: data, headers: { accept: "application/json" } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "request_failed");
+      const parameters = new URLSearchParams({ estado: "recibida", folio: result.requestId });
+      if (result.emailStatus !== "sent") parameters.set("correo", "pendiente");
+      window.location.assign(`/participa?${parameters}`);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "request_failed";
+      const messages: Record<string, string> = {
+        duplicate_request: "Ya existe una solicitud activa con este email para esa fecha.",
+        slot_unavailable: "La fecha acaba de quedar ocupada. Selecciona otra.",
+        turnstile_failed: "La verificación anti-spam venció. Recarga la página e inténtalo nuevamente.",
+      };
+      if (message) message.textContent = messages[code] ?? "No pudimos enviar la solicitud. Inténtalo nuevamente.";
+      (window as any).turnstile?.reset();
+      if (submitButton) submitButton.disabled = false;
+    }
+  });
+  birthDate?.addEventListener("input", () => birthDate.setCustomValidity(""));
+</script>

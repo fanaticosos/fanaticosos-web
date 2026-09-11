@@ -6,6 +6,7 @@ import MusicCard from "../components/MusicCard.astro";
 import PodcastEmbed from "../components/PodcastEmbed.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SocialLinks from "../components/SocialLinks.astro";
+import GameCenter from "../components/GameCenter.astro";
 import { siteSettings } from "../lib/siteSettings";
 import { latestArticleForLocale } from "../lib/articles";
 import "../styles/home.css";
@@ -48,6 +49,8 @@ const structuredData = {
       <LatestArticleCard article={latestArticle} />
     </div>
   </section>
+
+  <GameCenter />
 
   <div class="hashtag-strip">
     <p>#DaBears &nbsp;·&nbsp; #BearDown &nbsp;·&nbsp; #ChicagoBears &nbsp;·&nbsp; #Fanaticosos</p>
