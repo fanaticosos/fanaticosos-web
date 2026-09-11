@@ -113,15 +113,19 @@ set +a
 [[ "$CLOUDFLARE_PAGES_PROJECT" == "$project_name" ]] || stop "Cloudflare project mismatch."
 
 readonly api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$project_name"
+readonly project_json="$(curl --fail --silent --show-error --max-time 30 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api")"
 readonly before_json="$(curl --fail --silent --show-error --max-time 30 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments?env=production&per_page=10")"
-mapfile -t deployment_state < <(python3 - "$before_json" <<'PY'
+mapfile -t deployment_state < <(python3 - "$project_json" "$before_json" <<'PY'
 import json, sys
-results = json.loads(sys.argv[1]).get("result", [])
-if len(results) < 2:
-    raise SystemExit("fewer than two production deployments returned")
-current = results[0]
+project = json.loads(sys.argv[1]).get("result") or {}
+current = project.get("canonical_deployment") or {}
+results = json.loads(sys.argv[2]).get("result", [])
+if not current.get("id"):
+    raise SystemExit("canonical production deployment is missing")
+previous = next((item for item in results if item.get("id") != current.get("id")), None)
+if previous is None:
+    raise SystemExit("previous production deployment is missing")
 current_commit = ((current.get("source") or {}).get("config") or {}).get("commit_hash", "")
-previous = results[1]
 print(current.get("id", ""))
 print(current.get("url", ""))
 print(current_commit)

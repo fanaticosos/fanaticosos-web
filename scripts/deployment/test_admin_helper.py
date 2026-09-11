@@ -267,6 +267,7 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('--branch "$production_branch"', script)
         self.assertIn('manifest.get("deployment") != "disabled"', script)
         self.assertIn('deployments?env=production&per_page=10', script)
+        self.assertIn('canonical_deployment', script)
         self.assertIn('Resuming validation of the already-uploaded production deployment.', script)
         self.assertIn('Production recovery state is ambiguous', script)
         self.assertIn('uploaded_url="$(grep -Eo', script)
