@@ -32,8 +32,8 @@ const routes = [
     title: "Participa — FanaticOSOS",
     lang: "es",
     canonical: "https://fanaticosos.com/participa",
-    requiredLinks: ["/", "/participa", "/pages/contact", "/pages/terms"],
-    requiredText: ["Solicita una fecha", "Fecha de nacimiento", "¿Cómo te hiciste fan", "Título de la canción", "Artista", "Enviar solicitud", "Solicitud recibida", "No pudimos enviar"],
+    requiredLinks: ["/", "/participa", "/admin/invitados/", "/pages/contact", "/pages/terms"],
+    requiredText: ["Solicita una fecha", "Fecha de nacimiento", "¿Cómo te hiciste fan", "Título de la canción", "Artista", "Enviar solicitud", "Solicitud recibida", "No pudimos enviar", "Administrar solicitudes", "Reintentar verificación"],
     requiredScripts: ["https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"],
   },
   {

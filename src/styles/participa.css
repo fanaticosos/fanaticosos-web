@@ -62,7 +62,11 @@
 .submit-button:disabled { cursor: wait; opacity: .6; }
 .submit-note { color: var(--gray); font-size: 9px; line-height: 1.5; margin-top: -22px; }.form-message { color: #ff9b91; font-size: 11px; min-height: 1px; }
 .honeypot { height: 1px; left: -10000px; overflow: hidden; position: absolute; width: 1px; }
-.turnstile-wrap { display: grid; gap: 7px; max-width: 380px; }.turnstile-wrap > span { color: var(--gray); font-size: 9px; }
+.turnstile-wrap { display: grid; gap: 10px; max-width: 420px; }.turnstile-wrap > span { color: var(--gray-light); font-size: 12px; line-height: 1.45; }
+.turnstile-recovery { background: rgba(199,71,64,.1); border: 1px solid rgba(255,155,145,.55); border-radius: 10px; display: grid; gap: 7px; padding: 16px; }
+.turnstile-recovery[hidden] { display: none; }.turnstile-recovery strong { color: #ffb1a9; font-size: 14px; }.turnstile-recovery span { color: var(--gray-light); font-size: 13px; line-height: 1.5; }
+.turnstile-recovery button { background: transparent; border: 1px solid var(--orange); border-radius: 7px; color: var(--white); cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; justify-self: start; margin-top: 3px; padding: 10px 14px; }.turnstile-recovery button:hover, .turnstile-recovery button:focus-visible { background: var(--orange); color: var(--navy); outline: 0; }
+.admin-link { align-items: center; border: 1px solid rgba(240,120,32,.65); border-radius: 9px; color: var(--white); display: flex; justify-content: space-between; margin-top: 18px; padding: 13px 14px; text-decoration: none; transition: background .2s, border-color .2s; }.admin-link:hover, .admin-link:focus-visible { background: rgba(240,120,32,.14); border-color: var(--orange); outline: 0; }.admin-link span { font-size: 13px; font-weight: 700; }.admin-link small { color: var(--orange); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 @media (max-width: 800px) { .form-columns { grid-template-columns: 1fr; }.preparation-card { grid-row: 1; position: static; }.process-grid { grid-template-columns: 1fr; } }
 @media (max-width: 620px) { .participa-page main { padding-top: 36px; }.participation-content { margin-top: 56px; padding: 0 16px; }.slot-grid { grid-template-columns: 1fr; max-height: 720px; }.fields-grid { grid-template-columns: 1fr; }.field-wide { grid-column: auto; }.slot-topline time { font-size: 18px; } }
 @media (prefers-reduced-motion: reduce) { .slot-card { transition: none; } }

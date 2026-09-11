@@ -122,6 +122,11 @@ const statusCopy = {
             <div class="turnstile-wrap">
               <div data-turnstile></div>
               <span data-turnstile-message>Verificando que eres una persona…</span>
+              <div class="turnstile-recovery" data-turnstile-recovery role="alert" hidden>
+                <strong>No pudimos completar la verificación</strong>
+                <span>No se enviaron tus datos. Revisa tu conexión y vuelve a intentarlo.</span>
+                <button type="button" data-turnstile-retry>Reintentar verificación</button>
+              </div>
             </div>
             <div class="form-message" data-form-message aria-live="polite"></div>
             <button class="submit-button" type="submit">Enviar solicitud <span aria-hidden="true">→</span></button>
@@ -155,6 +160,10 @@ const statusCopy = {
               <li>Voz dinámica y compromiso de promover el episodio.</li>
             </ul>
             <p class="age-notice"><strong>Sólo mayores de 18 años.</strong> No solicitamos fotografía en este formulario.</p>
+            <a class="admin-link" href="/admin/invitados/">
+              <span>Administrar solicitudes</span>
+              <small>Acceso restringido</small>
+            </a>
           </aside>
         </div>
       </form>
@@ -172,6 +181,15 @@ const statusCopy = {
   const submitButton = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
   const turnstileContainer = document.querySelector<HTMLElement>("[data-turnstile]");
   const turnstileMessage = document.querySelector<HTMLElement>("[data-turnstile-message]");
+  const turnstileRecovery = document.querySelector<HTMLElement>("[data-turnstile-recovery]");
+  const turnstileRetry = document.querySelector<HTMLButtonElement>("[data-turnstile-retry]");
+  let turnstileWidgetId: string | undefined;
+
+  function showTurnstileFailure(messageText = "No se pudo completar la verificación.") {
+    if (turnstileMessage) turnstileMessage.textContent = messageText;
+    if (turnstileContainer) turnstileContainer.hidden = true;
+    if (turnstileRecovery) turnstileRecovery.hidden = false;
+  }
   const result = new URLSearchParams(window.location.search).get("estado");
   const resultBanner = result === "recibida"
     ? document.querySelector<HTMLElement>("[data-submission-success]")
@@ -224,20 +242,37 @@ const statusCopy = {
         await new Promise((resolve) => window.setTimeout(resolve, 100));
       }
       if (!(window as any).turnstile) throw new Error("Turnstile unavailable");
-      (window as any).turnstile.render(turnstileContainer, {
+      turnstileWidgetId = (window as any).turnstile.render(turnstileContainer, {
         sitekey: turnstileSiteKey,
         action: "participa",
         theme: "dark",
         size: "flexible",
         language: "es-MX",
-        callback: () => { if (turnstileMessage) turnstileMessage.textContent = "Verificación completada."; },
-        "error-callback": () => { if (turnstileMessage) turnstileMessage.textContent = "No se pudo completar la verificación. Inténtalo otra vez."; },
+        callback: () => {
+          if (turnstileMessage) turnstileMessage.textContent = "Verificación completada.";
+          if (turnstileRecovery) turnstileRecovery.hidden = true;
+        },
+        "error-callback": () => showTurnstileFailure(),
+        "expired-callback": () => showTurnstileFailure("La verificación venció."),
+        "timeout-callback": () => showTurnstileFailure("La verificación tardó demasiado."),
       });
     } catch {
-      if (turnstileMessage) turnstileMessage.textContent = "La protección anti-spam no está disponible. Inténtalo más tarde.";
+      showTurnstileFailure("La protección anti-spam no está disponible.");
     }
   }
   initializeTurnstile();
+
+  turnstileRetry?.addEventListener("click", () => {
+    if (turnstileWidgetId !== undefined) (window as any).turnstile?.remove(turnstileWidgetId);
+    turnstileWidgetId = undefined;
+    if (turnstileContainer) {
+      turnstileContainer.replaceChildren();
+      turnstileContainer.hidden = false;
+    }
+    if (turnstileRecovery) turnstileRecovery.hidden = true;
+    if (turnstileMessage) turnstileMessage.textContent = "Verificando que eres una persona…";
+    initializeTurnstile();
+  });
 
   if (birthDate) {
     const cutoff = new Date();
