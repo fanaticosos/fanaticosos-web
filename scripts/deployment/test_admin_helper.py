@@ -271,6 +271,8 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('Production recovery state is ambiguous', script)
         self.assertIn('uploaded_url="$(grep -Eo', script)
         self.assertIn('rollback_id="${deployment_state[0]}"', script)
+        self.assertIn('Re-uploading the immutable release after a completed rollback.', script)
+        self.assertIn('cloudflare-production-rolled-back-', script)
         self.assertIn('"rollbackDeploymentId": rollback_id', script)
         self.assertIn('"productionChanged": True', script)
         self.assertIn('https://fanaticosos.com', script)

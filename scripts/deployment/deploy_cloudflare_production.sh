@@ -147,15 +147,18 @@ if [[ ${#temporary_logs[@]} == 1 ]]; then
     rollback_id="${deployment_state[3]}"
     rollback_url="${deployment_state[4]}"
   elif [[ "$uploaded_url" == "${deployment_state[4]}" ]]; then
-    # A previous validation already restored the old deployment. Resume the
-    # uploaded candidate while preserving the current deployment as rollback.
-    deployment_url="${deployment_state[4]}"
+    # A previous validation restored the old deployment, so production aliases
+    # no longer point at the uploaded candidate. Preserve its diagnostics and
+    # upload the same immutable release again before validating those aliases.
     rollback_id="${deployment_state[0]}"
     rollback_url="${deployment_state[1]}"
+    mv "$temporary_log" "$job_root/cloudflare-production-rolled-back-$(date -u +%Y%m%dT%H%M%SZ).log"
+    temporary_log="$job_root/.cloudflare-production.log.$$"
+    echo "Re-uploading the immutable release after a completed rollback."
   else
     stop "Production recovery state is ambiguous; refusing another upload."
   fi
-  echo "Resuming validation of the already-uploaded production deployment."
+  [[ -n "$deployment_url" ]] && echo "Resuming validation of the already-uploaded production deployment."
 elif [[ ${#temporary_logs[@]} == 0 ]]; then
   temporary_log="$job_root/.cloudflare-production.log.$$"
 else
