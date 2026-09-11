@@ -273,6 +273,7 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('"productionChanged": True', script)
         self.assertIn('https://fanaticosos.com', script)
         self.assertIn('https://www.fanaticosos.com', script)
+        self.assertNotIn('readonly domains=("$deployment_url"', script)
         self.assertIn('sha256sum "$temporary_body"', script)
         self.assertIn('scripts/publisher/select_release.mjs', script)
         self.assertIn('--releases-root "$data_root/publisher/releases" --job-id "$job_id"', script)

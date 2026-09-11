@@ -171,7 +171,10 @@ rollback_production() {
   python3 -c 'import json,sys; value=json.load(sys.stdin); assert value.get("success") is True; assert (value.get("result") or {}).get("id")' \
     <<<"$rollback_response"
 }
-readonly domains=("$deployment_url" "https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
+# Cloudflare Access protects immutable *.pages.dev deployment URLs, including
+# production uploads. Validate the public production aliases after the upload;
+# the immutable URL is still retained in the receipt for audit and rollback.
+readonly domains=("https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
 for domain in "${domains[@]}"; do
   for item in "${manifest_values[@]:1}"; do
     IFS=$'\t' read -r path checksum <<<"$item"

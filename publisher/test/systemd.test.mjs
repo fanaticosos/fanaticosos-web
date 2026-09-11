@@ -83,7 +83,8 @@ test("every validated production deployment becomes the source for later music b
   const musicBuild = await readFile(new URL("../../scripts/publisher/build_music_release.mjs", import.meta.url), "utf8");
   assert.match(production, /scripts\/publisher\/select_release\.mjs/);
   assert.match(production, /--releases-root "\$data_root\/publisher\/releases" --job-id "\$job_id"/);
-  assert.match(production, /readonly domains=\("\$deployment_url" "https:\/\/fanaticosos\.com"/);
+  assert.match(production, /readonly domains=\("https:\/\/fanaticosos\.com"/);
+  assert.doesNotMatch(production, /readonly domains=\("\$deployment_url"/);
   assert.match(production, /release homepage checksum is invalid/);
   assert.match(production, /deployments\/\$rollback_id\/rollback/);
   assert.match(production, /The previous validated deployment was restored/);
