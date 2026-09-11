@@ -24,10 +24,22 @@ test("publisher has a single private write boundary", () => {
   assert.match(unit, /UMask=0077/);
 });
 
+test("publisher database and backups stay inside the private data boundary", () => {
+  assert.match(unit, /Environment=PUBLISHER_DATABASE_PATH=\/opt\/fanaticosos-blog\/publisher\/database\/publisher\.sqlite/);
+  assert.match(unit, /Environment=PUBLISHER_DATABASE_BACKUP_ROOT=\/opt\/fanaticosos-blog\/publisher\/backups\/database/);
+  assert.match(unit, /Environment=PUBLISHER_TRANSLATION_ARTIFACTS_ROOT=\/opt\/fanaticosos-blog\/publisher\/artifacts\/translations/);
+  assert.match(unit, /Environment=PUBLISHER_AUDIO_ARTIFACTS_ROOT=\/opt\/fanaticosos-blog\/publisher\/artifacts\/audio/);
+  assert.match(unit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
+});
+
 test("publisher dispatches jobs through a separate fixed systemd path", async () => {
   const pathUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-publisher-dispatcher.path", import.meta.url), "utf8");
   const serviceUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-publisher-dispatcher.service", import.meta.url), "utf8");
   const dispatcher = await readFile(new URL("../../deploy/publisher/fanaticosos-publisher-dispatcher", import.meta.url), "utf8");
+  assert.match(dispatcher, /claim_database_job\.mjs/);
+  assert.match(dispatcher, /claim_job "\$job_id"/);
+  assert.match(dispatcher, /claim_job "\$deploy_id"/);
+  assert.match(serviceUnit, /ReadWritePaths=.*\/publisher\/database/);
   assert.match(unit, /NoNewPrivileges=yes/);
   assert.match(pathUnit, /PathExists=\/opt\/fanaticosos-blog\/publisher\/queue\/\.wake/);
   assert.match(serviceUnit, /ExecStart=\/usr\/local\/sbin\/fanaticosos-publisher-dispatcher/);
@@ -39,6 +51,14 @@ test("publisher dispatches jobs through a separate fixed systemd path", async ()
   assert.match(dispatcher, /build_release\.mjs[^\n]*--releases-root "\$releases_root"/);
   assert.match(dispatcher, /fanaticosos-music-release@\$job_id\.service/);
   assert.doesNotMatch(dispatcher, /eval /);
+});
+
+test("TTS worker failures become private reconciliation evidence", async () => {
+  const ttsUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-tts@.service", import.meta.url), "utf8");
+  const recorder = await readFile(new URL("../../scripts/publisher/record_tts_exit.mjs", import.meta.url), "utf8");
+  assert.match(ttsUnit, /ExecStopPost=.*record_tts_exit\.mjs/);
+  assert.match(ttsUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/jobs\/%i/);
+  assert.match(recorder, /La generación de audio no pudo completarse/);
 });
 
 test("music publication builds privately then deploys through a root-only unit", async () => {
@@ -80,6 +100,17 @@ test("article releases preserve the selected production content set", async () =
   assert.match(build, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);
   assert.match(build, /join\(releasesRoot, "current"\)/);
   assert.match(releaseUnit, /--releases-root \/opt\/fanaticosos-blog\/publisher\/releases/);
+});
+
+test("article release workers read authoritative SQLite state and immutable audio", async () => {
+  const releaseUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-release@.service", import.meta.url), "utf8");
+  const builder = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");
+  assert.match(releaseUnit, /--database \/opt\/fanaticosos-blog\/publisher\/database\/publisher\.sqlite/);
+  assert.match(builder, /readDatabaseDraft/);
+  assert.match(builder, /readDatabaseTranslationState/);
+  assert.match(builder, /readDatabaseAudioState/);
+  assert.match(builder, /openDatabase\(databasePath, \{ readOnly: true, migrate: false \}\)/);
+  assert.match(builder, /accepted audio is outside the private artifact store/);
 });
 
 test("release retention is fixed, private, and bounded by the approved policy", async () => {

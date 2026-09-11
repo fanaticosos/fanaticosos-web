@@ -16,6 +16,7 @@ EnvironmentFile=-/etc/fanaticosos-blog/elevenlabs.env
 ExecStartPre=/usr/bin/test -f /opt/fanaticosos-blog/jobs/%i/request.json
 ExecStartPre=/usr/bin/test ! -e /opt/fanaticosos-blog/jobs/%i/audio
 ExecStart=/opt/fanaticosos-blog/runtimes/tts-benchmark-kokoro-v1/bin/python /opt/fanaticosos-blog/repository/scripts/tts/render_article_production.py --request /opt/fanaticosos-blog/jobs/%i/request.json --repository /opt/fanaticosos-blog/repository --output /opt/fanaticosos-blog/jobs/%i/audio
+ExecStopPost=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/record_tts_exit.mjs --job-root /opt/fanaticosos-blog/jobs/%i --service-result ${SERVICE_RESULT} --exit-status ${EXIT_STATUS}
 RuntimeMaxSec=15min
 MemoryMax=8G
 MemorySwapMax=1G

@@ -190,6 +190,8 @@ def build_correction_prompt(
         "terminology and return only the requested JSON.\n"
         f"Rejected translation: {json.dumps(rejected_translation, ensure_ascii=False)}\n"
         f"Validation error: {json.dumps(validation_error, ensure_ascii=False)}\n\n"
+        "Any protected value named by the validation error must appear verbatim "
+        "in the corrected translation. Do not replace it with an equivalent phrase.\n\n"
         "Translate these ordered segments:\n",
         1,
     )
@@ -253,7 +255,14 @@ def preserved_value_occurs(value: str, source: str, translation: str) -> bool:
         return True
     if (
         value == "Chicago"
-        and re.search(r"\bhora de Chicago\b", source, re.IGNORECASE)
+        and (
+            re.search(r"\bhora de Chicago\b", source, re.IGNORECASE)
+            or re.search(
+                r"\b\d{1,2}:\d{2}.{0,20}\bde Chicago\b",
+                source,
+                re.IGNORECASE,
+            )
+        )
         and re.search(r"\bCentral (?:Time|Standard Time|Daylight Time)\b", translation)
     ):
         return True

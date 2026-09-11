@@ -10,6 +10,25 @@ function renderInline(source) {
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
 }
 
+function tableCells(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+}
+
+function renderTable(lines) {
+  if (lines.length < 3) return null;
+  const headings = tableCells(lines[0]);
+  const separators = tableCells(lines[1]);
+  if (headings.length < 2 || separators.length !== headings.length
+    || !separators.every((cell) => /^:?-{3,}:?$/.test(cell))) return null;
+  const rows = lines.slice(2).map(tableCells);
+  if (rows.some((cells) => cells.length !== headings.length)) return null;
+  const head = headings.map((cell) => `<th scope="col">${renderInline(cell)}</th>`).join("");
+  const body = rows.map((cells) => `<tr>${cells.map((cell, index) => index === 0
+    ? `<th scope="row">${renderInline(cell)}</th>`
+    : `<td>${renderInline(cell)}</td>`).join("")}</tr>`).join("");
+  return `<div class="table-scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
 export function renderMarkdown(source) {
   return source.replaceAll("\r\n", "\n").split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
     const block = part.trim();
@@ -19,6 +38,8 @@ export function renderMarkdown(source) {
       return `<h${level}>${renderInline(block.slice(heading[0].length))}</h${level}>`;
     }
     const lines = block.split("\n").map((line) => line.trim());
+    const table = renderTable(lines);
+    if (table) return table;
     if (lines.every((line) => /^>\s+/.test(line))) {
       return `<blockquote><p>${renderInline(lines.map((line) => line.replace(/^>\s+/, "")).join(" "))}</p></blockquote>`;
     }
@@ -33,7 +54,7 @@ export function renderMarkdown(source) {
 }
 
 export function previewErrorPage() {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Vista previa no disponible</title><link rel="stylesheet" href="/preview.css"></head><body><header><a class="brand" href="/">FANATICOSOS</a><span>Vista previa privada</span></header><main><article><h1>La vista previa todavía no está lista</h1><p class="description">Regresa al editor. Allí verás el paso pendiente y podrás continuar sin perder tu trabajo.</p><p><a href="/">Volver al editor</a></p></article></main></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Vista previa no disponible</title><link rel="stylesheet" href="/preview.css"></head><body><header><a class="brand" href="/">FANATICOSOS</a><a class="editor-return" href="/">← Volver al editor</a></header><main><article><h1>La vista previa todavía no está lista</h1><p class="description">Regresa al editor. Allí verás el paso pendiente y podrás continuar sin perder tu trabajo.</p><p><a class="primary-link" href="/">Volver al editor</a></p></article></main></body></html>`;
 }
 
 export function previewPage({ draft, translation, audio, locale, settings }) {
@@ -42,6 +63,7 @@ export function previewPage({ draft, translation, audio, locale, settings }) {
   const english = locale === "en";
   const content = english ? translation.result : draft;
   const alternate = english ? "es" : "en";
+  const editorPath = `/?draft=${encodeURIComponent(draft.articleId)}`;
   const promoHeading = english ? settings.promotion.headingEn : settings.promotion.heading;
   const promoLabel = english ? settings.promotion.labelEn : settings.promotion.label;
   const platforms = [
@@ -57,6 +79,6 @@ export function previewPage({ draft, translation, audio, locale, settings }) {
   const player = `<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/${english ? "en" : "es"}"></audio>`;
   return `<!doctype html>
 <html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(content.title)} · Vista previa</title><link rel="stylesheet" href="/preview.css"></head>
-<body><header><a class="brand" href="/">FANATICOSOS</a><span>Vista previa privada</span><div class="language-control"><small>${english ? "Language" : "Idioma"}</small><a href="/preview/${draft.articleId}/${alternate}">${english ? "← Versión en español" : "English version →"}</a></div></header>
+<body><header><a class="brand" href="${editorPath}">FANATICOSOS</a><nav class="preview-navigation" aria-label="${english ? "Preview navigation" : "Navegación de vista previa"}"><a class="editor-return" href="${editorPath}">← ${english ? "Back to editor" : "Volver al editor"}</a><div class="language-control"><span aria-current="${english ? "false" : "page"}">ES</span><a href="/preview/${draft.articleId}/${alternate}">${english ? "EN → ES" : "ES → EN"}</a><span aria-current="${english ? "page" : "false"}">EN</span></div></nav></header>
 <main><article><p class="eyebrow">${escapeHtml(draft.category)} · ${draft.season}</p><h1>${escapeHtml(content.title)}</h1><p class="description">${escapeHtml(content.description)}</p><p class="byline">${escapeHtml(settings.author.name)} · ${escapeHtml(settings.author.socialHandle)}</p>${image}${player}<div class="story">${renderMarkdown(content.body)}</div><div class="tags">${tags}</div><footer><strong>${escapeHtml(promoHeading)}</strong><p>${escapeHtml(promoLabel)}</p><nav class="social-bar" aria-label="${english ? "Social media" : "Redes sociales"}">${platforms}</nav></footer></article></main></body></html>`;
 }

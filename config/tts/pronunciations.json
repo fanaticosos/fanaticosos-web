@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "version": 11,
+  "schemaVersion": 4,
+  "version": 13,
   "overrides": {
     "es": [
       {
@@ -176,5 +176,11 @@
         "status": "approved"
       }
     ]
+  },
+  "providerOverrides": {
+    "elevenlabs": {
+      "es": [],
+      "en": []
+    }
   }
 }

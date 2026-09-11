@@ -1,14 +1,53 @@
 #!/usr/bin/env python3
+import json
 import sys
+import tempfile
 import unittest
+import urllib.error
+from io import BytesIO
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_article_elevenlabs import resolve_voice_id, split_text
+from render_article_elevenlabs import api_request, prepare_spoken_request, render_production, resolve_voice_id, split_text
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class ElevenLabsProductionTests(unittest.TestCase):
+    def test_spanish_preserves_bears_for_the_reviewed_elevenlabs_voice(self):
+        pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
+        request = {
+            "schemaVersion": 1,
+            "articleId": "00000000-0000-4000-8000-000000000001",
+            "locale": "es",
+            "sourceRevision": "a" * 64,
+            "title": "Los Bears reciben a Carolina",
+            "segments": [{"id": "body-001", "text": "Los Chicago Bears necesitan un touchdown con Caleb Williams."}],
+        }
+        spoken = prepare_spoken_request(request, pronunciations)
+        self.assertEqual(spoken["title"], "Los Bears reciben a Carolina")
+        self.assertEqual(spoken["segments"][0]["text"], "Los Chicago Bears necesitan un touchdown con Caleb Williams.")
+        self.assertEqual(request["title"], "Los Bears reciben a Carolina")
+
+    def test_worker_rejects_a_stale_pronunciation_knowledge_version(self):
+        pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
+        configuration = json.loads((ROOT / "config/tts/elevenlabs-production.json").read_text(encoding="utf-8"))
+        configuration["pronunciationVersion"] -= 1
+        request = {
+            "schemaVersion": 1,
+            "articleId": "00000000-0000-4000-8000-000000000001",
+            "locale": "es",
+            "sourceRevision": "a" * 64,
+            "title": "Los Bears",
+            "segments": [{"id": "body-001", "text": "Bear Down."}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "version is stale"):
+                render_production(request, configuration, pronunciations, Path(directory) / "output", "key")
+
     def test_long_articles_are_split_without_losing_text(self):
         text = "\n\n".join(["A" * 2000, "B" * 2000, "C" * 2000])
         chunks = split_text(text, 4500)
@@ -21,6 +60,26 @@ class ElevenLabsProductionTests(unittest.TestCase):
         self.assertEqual(resolve_voice_id("key", "Will - Relaxed Optimist", requester), "approved")
         with self.assertRaisesRegex(ValueError, "voice was not found"):
             resolve_voice_id("key", "Missing", requester)
+
+    def test_provider_error_preserves_only_actionable_response_detail(self):
+        error = urllib.error.HTTPError(
+            "https://api.elevenlabs.io/v1/text-to-speech/voice",
+            401,
+            "Unauthorized",
+            {},
+            BytesIO(json.dumps({
+                "detail": {
+                    "status": "quota_exceeded",
+                    "message": "Insufficient quota",
+                    "request_id": "private-request-id",
+                }
+            }).encode()),
+        )
+        with patch("urllib.request.urlopen", side_effect=error):
+            with self.assertRaisesRegex(RuntimeError, "401: quota_exceeded: Insufficient quota") as caught:
+                api_request("https://api.elevenlabs.io/v1/text-to-speech/voice", "secret", {"text": "safe"})
+        self.assertNotIn("secret", str(caught.exception))
+        self.assertNotIn("private-request-id", str(caught.exception))
 
 
 if __name__ == "__main__":

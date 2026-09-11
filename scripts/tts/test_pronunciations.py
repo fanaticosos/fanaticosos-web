@@ -40,6 +40,11 @@ class PronunciationTests(unittest.TestCase):
         )
         self.assertNotIn("Chicago Chicago", spoken)
 
+    def test_elevenlabs_preserves_bears_after_owner_listening_review(self):
+        written = "Los Chicago Bears necesitan un touchdown con Caleb Williams en Soldier Field."
+        spoken = apply_pronunciations(written, "es", self.configuration, provider="elevenlabs")
+        self.assertEqual(spoken, written)
+
     def test_english_text_is_unchanged(self):
         text = "The Bears beat Green Bay."
         self.assertEqual(apply_pronunciations(text, "en", self.configuration), text)

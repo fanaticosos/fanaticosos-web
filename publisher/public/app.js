@@ -43,6 +43,7 @@ let translationTimer = null;
 let translationClockTimer = null;
 let audioTimer = null;
 let releaseTimer = null;
+let previewRequestedArticleId = null;
 let audiogramTimer = null;
 let deploymentTimer = null;
 let markdownPreviewTimer = null;
@@ -363,17 +364,22 @@ async function refreshList() {
     button.querySelector("strong").textContent = draft.title;
     button.querySelector("span").textContent = new Date(draft.updatedAt).toLocaleString("es-MX");
     button.addEventListener("click", async () => {
-      current = (await request(`/api/drafts/${draft.articleId}`)).draft;
-      setFields(current);
-      await refreshTtsPreflight();
-      message.hidden = true;
-      await refreshList();
-      const status = await pollTranslation();
-      if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
+      await loadDraft(draft.articleId);
     });
     return button;
   }));
   if (!drafts.length) list.textContent = "Todavía no hay borradores.";
+}
+
+async function loadDraft(articleId) {
+  current = (await request(`/api/drafts/${articleId}`)).draft;
+  window.history.replaceState(null, "", `/?draft=${encodeURIComponent(articleId)}`);
+  setFields(current);
+  await refreshTtsPreflight();
+  message.hidden = true;
+  await refreshList();
+  const status = await pollTranslation();
+  if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
 }
 
 form.addEventListener("input", (event) => {
@@ -662,9 +668,10 @@ uploadSpanishAudio.addEventListener("click", async () => {
 
 openPreview.addEventListener("click", async () => {
   if (!current) return;
-  window.open(`/preview/${current.articleId}/es`, "_blank", "noopener,noreferrer");
+  previewRequestedArticleId = current.articleId;
   openPreview.disabled = true;
   publishRelease.disabled = true;
+  workflowState.textContent = "Preparando y validando la vista previa privada…";
   try {
     const { release } = await request(`/api/drafts/${current.articleId}/release`);
     let status = release?.status ?? null;
@@ -678,9 +685,8 @@ openPreview.addEventListener("click", async () => {
     const releaseStatus = await pollRelease();
     if (["queued", "running"].includes(releaseStatus || status) && !releaseTimer) releaseTimer = setInterval(pollRelease, 5000);
   } catch (error) {
+    previewRequestedArticleId = null;
     showError(error.message);
-  } finally {
-    openPreview.disabled = false;
   }
 });
 
@@ -725,15 +731,23 @@ async function pollRelease() {
       publishRelease.disabled = false;
       generateEnglish.disabled = true;
       await refreshNotifications();
+      if (previewRequestedArticleId === articleId) {
+        previewRequestedArticleId = null;
+        window.location.assign(`/preview/${articleId}/es`);
+      }
     } else if (release.status === "failed") {
       if (releaseTimer) clearInterval(releaseTimer);
       releaseTimer = null;
+      previewRequestedArticleId = null;
+      openPreview.disabled = false;
       prepareRelease.disabled = false;
       showError(release.error || "La compilación privada no pasó la validación.");
       await refreshNotifications();
     } else if (release.status === "stale") {
       if (releaseTimer) clearInterval(releaseTimer);
       releaseTimer = null;
+      previewRequestedArticleId = null;
+      openPreview.disabled = false;
       workflowState.textContent = "Los audios cambiaron · prepara una nueva vista previa antes de publicar.";
       prepareRelease.disabled = false;
       publishRelease.disabled = true;
@@ -795,6 +809,7 @@ publishRelease.addEventListener("click", async () => {
 
 document.querySelector("#new-draft").addEventListener("click", () => {
   current = null;
+  window.history.replaceState(null, "", "/");
   form.reset();
   setFields(null);
   message.hidden = true;
@@ -840,6 +855,8 @@ async function initialize() {
   renderMusic(musicResponse.settings);
   setFields(null);
   await Promise.all([refreshList(), refreshNotifications()]);
+  const requestedDraft = new URLSearchParams(window.location.search).get("draft");
+  if (requestedDraft && /^[0-9a-f-]{36}$/.test(requestedDraft)) await loadDraft(requestedDraft);
 }
 
 initialize().catch((error) => showError(error.message));

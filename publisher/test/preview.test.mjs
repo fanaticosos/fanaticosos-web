@@ -24,14 +24,17 @@ test("private preview switches the complete article and escapes owner text", () 
   assert.doesNotMatch(spanish, /<script>/);
   assert.match(spanish, /¡Gracias por acompañarnos!/);
   assert.match(spanish, /class="social-bar"/);
-  assert.match(spanish, /English version →/);
+  assert.match(spanish, /ES → EN/);
   assert.match(english, /lang="en"/);
   assert.match(english, /The Bears win/);
   assert.match(english, /alt="The Bears win"/);
   assert.match(english, /Thank you for joining us!/);
-  assert.match(english, /← Versión en español/);
+  assert.match(english, /EN → ES/);
   assert.match(english, /audio\/en/);
   assert.match(spanish, /audio\/es/);
+  assert.match(spanish, /Volver al editor/);
+  assert.match(english, /Back to editor/);
+  assert.match(spanish, /\?draft=00000000-0000-4000-8000-000000000001/);
 });
 
 test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes safely", () => {
@@ -41,5 +44,16 @@ test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes
   assert.match(html, /<strong>Importante<\/strong>/);
   assert.match(html, /<ul><li>Uno<\/li><li>Dos<\/li><\/ul>/);
   assert.match(html, /<blockquote><p>Una cita<\/p><\/blockquote>/);
+  assert.doesNotMatch(html, /<script>/);
+});
+
+test("article Markdown renders comparison tables instead of pipe-delimited prose", () => {
+  const html = renderMarkdown(`## El enfrentamiento\n\n| Factor | Bears | Panthers |\n|---|---|---|\n| **Quarterback** | Williams improvisa. | Young protege el balón. |\n| *Defensa* | Presiona. | <script>alert(1)</script> |`);
+  assert.match(html, /<div class="table-scroll"><table>/);
+  assert.match(html, /<th scope="col">Factor<\/th>/);
+  assert.match(html, /<th scope="row"><strong>Quarterback<\/strong><\/th>/);
+  assert.match(html, /<th scope="row"><em>Defensa<\/em><\/th>/);
+  assert.match(html, /<td>Williams improvisa\.<\/td>/);
+  assert.doesNotMatch(html, /\|---\|/);
   assert.doesNotMatch(html, /<script>/);
 });

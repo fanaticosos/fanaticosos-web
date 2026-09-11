@@ -5,7 +5,13 @@ readonly queue_root="/opt/fanaticosos-blog/publisher/queue"
 readonly jobs_root="/opt/fanaticosos-blog/jobs"
 readonly releases_root="/opt/fanaticosos-blog/publisher/releases"
 readonly repository="/opt/fanaticosos-blog/repository"
+readonly database="/opt/fanaticosos-blog/publisher/database/publisher.sqlite"
 readonly service_account="fanaticosos-blog"
+
+claim_job() {
+  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+    "$repository/scripts/publisher/claim_database_job.mjs" "$database" "$1"
+}
 
 [[ "$(id -u)" == "0" ]] || { echo "Must run as root." >&2; exit 1; }
 [[ "$(hostname)" == "papabear" ]] || { echo "Wrong host." >&2; exit 1; }
@@ -29,6 +35,7 @@ from article_contract import validate_translation_request
 with open(sys.argv[2], encoding="utf-8") as handle:
     validate_translation_request(json.load(handle))
 PY
+  claim_job "$job_id"
   mv "$queued" "$jobs_root/$job_id"
   chown -R "$service_account:$service_account" "$jobs_root/$job_id"
   chmod 0700 "$jobs_root/$job_id"
@@ -52,6 +59,7 @@ from article_contract import validate_request
 with open(sys.argv[2], encoding="utf-8") as handle:
     validate_request(json.load(handle))
 PY
+  claim_job "$job_id"
   mv "$queued" "$jobs_root/$job_id"
   chown -R "$service_account:$service_account" "$jobs_root/$job_id"
   chmod 0700 "$jobs_root/$job_id"
@@ -65,6 +73,7 @@ for queued in "$queue_root"/audiogram-es-*-r*-*; do
   [[ "$job_id" =~ ^audiogram-es-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || continue
   [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
   [[ -f "$queued/request.json" && ! -L "$queued/request.json" && ! -e "$jobs_root/$job_id" ]] || continue
+  claim_job "$job_id"
   mv "$queued" "$jobs_root/$job_id"
   chown -R "$service_account:$service_account" "$jobs_root/$job_id"; chmod 0700 "$jobs_root/$job_id"; chmod 0600 "$jobs_root/$job_id/request.json"
   systemctl reset-failed "fanaticosos-audiogram@$job_id.service" 2>/dev/null || true
@@ -81,8 +90,9 @@ for queued in "$queue_root"/release-*-r*-*; do
   if [[ "$release_kind" == "music" ]]; then
     runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_music_release.mjs" --request "$queued/request.json" --repository "$repository" --releases-root "$releases_root" --output "$releases_root/$job_id/release" --validate-only
   else
-    runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_release.mjs" --request "$queued/request.json" --repository "$repository" --publisher-root /opt/fanaticosos-blog/publisher --jobs-root "$jobs_root" --releases-root "$releases_root" --output "$releases_root/$job_id/release" --validate-only
+    runuser -u "$service_account" -- /opt/nodejs/current/bin/node "$repository/scripts/publisher/build_release.mjs" --request "$queued/request.json" --repository "$repository" --publisher-root /opt/fanaticosos-blog/publisher --database /opt/fanaticosos-blog/publisher/database/publisher.sqlite --jobs-root "$jobs_root" --releases-root "$releases_root" --output "$releases_root/$job_id/release" --validate-only
   fi
+  claim_job "$job_id"
   mv "$queued" "$releases_root/$job_id"
   chown -R "$service_account:$service_account" "$releases_root/$job_id"
   chmod 0700 "$releases_root/$job_id"
@@ -99,6 +109,7 @@ for queued in "$queue_root"/deploy-release-*-r*-*; do
   [[ "$(stat -c %U:%G "$queued")" == "$service_account:$service_account" ]] || continue
   [[ -f "$queued/request.json" && ! -L "$queued/request.json" && -f "$releases_root/$job_id/release/release-manifest.json" ]] || continue
   [[ ! -e "$releases_root/$job_id/production-request.json" ]] || continue
+  claim_job "$deploy_id"
   mv "$queued/request.json" "$releases_root/$job_id/production-request.json"; rm -d "$queued"
   chown "$service_account:$service_account" "$releases_root/$job_id/production-request.json"; chmod 0600 "$releases_root/$job_id/production-request.json"
   systemctl reset-failed "fanaticosos-production-deploy@$job_id.service" 2>/dev/null || true

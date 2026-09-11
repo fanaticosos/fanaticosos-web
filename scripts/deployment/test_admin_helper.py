@@ -93,6 +93,8 @@ class AdminHelperTests(unittest.TestCase):
                 "openai-credential-status",
                 "install-elevenlabs-credential",
                 "elevenlabs-credential-status",
+                "elevenlabs-capacity-status",
+                "run-elevenlabs-pronunciation-diagnostic",
                 "run-elevenlabs-tts-sample",
                 "run-elevenlabs-tts-full",
                 "run-openai-tts-sample",
@@ -110,6 +112,22 @@ class AdminHelperTests(unittest.TestCase):
                 "cloudflare-production-failure",
                 "install-publisher",
                 "publisher-status",
+                "initialize-database",
+                "database-status",
+                "backup-database",
+                "restore-database-drill",
+                "database-draft-import-preview",
+                "import-drafts",
+                "database-translation-import-preview",
+                "import-translations",
+                "database-audio-import-preview",
+                "import-audio",
+                "database-release-import-preview",
+                "import-releases",
+                "database-audiogram-import-preview",
+                "import-audiograms",
+                "database-music-import-preview",
+                "import-music",
                 "latest-private-release",
                 "select-private-release",
                 "release-retention-preview",
@@ -188,6 +206,8 @@ class AdminHelperTests(unittest.TestCase):
         )[0]
         self.assertIn('systemd-analyze verify "$publisher_source_unit"', installer)
         self.assertIn('install -d -o "$service_account"', installer)
+        self.assertIn('"$publisher_database_root"', installer)
+        self.assertIn('"$publisher_database_backup_root"', installer)
         self.assertIn("systemctl enable fanaticosos-publisher.service", installer)
         self.assertIn("systemctl restart fanaticosos-publisher.service", installer)
         self.assertIn('cmp -s "$publisher_source_unit"', installer)
@@ -201,6 +221,16 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('install -o root -g root -m 0644 "$publisher_retention_timer_source"', installer)
         self.assertIn("systemctl enable fanaticosos-release-retention.timer", installer)
         self.assertNotIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
+
+    def test_database_operations_are_fixed_bounded_and_service_owned(self):
+        self.assertIn('readonly publisher_database="$publisher_database_root/publisher.sqlite"', self.helper)
+        self.assertIn('validate_database_backup_id "$backup_id"', self.helper)
+        self.assertIn('run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli"', self.helper)
+        self.assertIn('initialize --database "$publisher_database"', self.helper)
+        self.assertIn('backup --database "$publisher_database"', self.helper)
+        self.assertIn('restore-drill --backup-root "$publisher_database_backup_root"', self.helper)
+        self.assertIn('draft-import-preview --database "$publisher_database"', self.helper)
+        self.assertIn('draft-import-apply --database "$publisher_database"', self.helper)
 
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(

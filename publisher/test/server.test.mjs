@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { closeDatabase, openDatabase } from "../lib/database.mjs";
+import { databaseDraftStore } from "../lib/draft-store.mjs";
+import { translationSourceRevision } from "../lib/translation-jobs.mjs";
 import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
@@ -90,6 +93,14 @@ test("translation freshness follows article text revisions", () => {
   assert.equal(translationWithFreshness(translation, { revision: 3 }).status, "stale");
 });
 
+test("translation freshness follows its dependency across metadata-only revisions", () => {
+  const draft = { ...fields, articleId: "00000000-0000-4000-8000-000000000001", revision: 3 };
+  const sourceRevision = translationSourceRevision(draft);
+  const translation = { status: "completed", draftRevision: 2, sourceRevision };
+  assert.equal(translationWithFreshness(translation, draft).status, "completed");
+  assert.equal(translationWithFreshness(translation, { ...draft, description: "Changed" }).status, "stale");
+});
+
 test("audiogram freshness follows the draft image and Spanish audio", () => {
   const draft = { revision: 2 };
   const audio = { jobs: { es: { result: { sha256: "current" } } } };
@@ -99,7 +110,7 @@ test("audiogram freshness follows the draft image and Spanish audio", () => {
   assert.equal(audiogramWithFreshness({ ...audiogram, audioSha256: "old" }, draft, audio).status, "stale");
 });
 
-async function fixture() {
+async function fixture({ draftStore } = {}) {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
   const uploadsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-uploads-"));
   const notificationsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-notifications-"));
@@ -115,10 +126,10 @@ async function fixture() {
     coverUrl: "https://music.fanaticosos.com/share/img/cover-token",
     streamUrl: "https://music.fanaticosos.com/share/s/stream-token",
   });
-  const server = createPublisherServer({ draftsRoot, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver });
+  const server = createPublisherServer({ draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
-  return { server, base: `http://127.0.0.1:${port}`, queueRoot, statesRoot, siteSettingsPath };
+  return { server, base: `http://127.0.0.1:${port}`, draftsRoot, queueRoot, statesRoot, siteSettingsPath };
 }
 
 test("health endpoint is available without touching drafts", async (context) => {
@@ -146,6 +157,9 @@ test("owner defaults are centralized and available to the editor", async (contex
   assert.equal(settings.defaultSeason, 2026);
   assert.equal(settings.defaultTags.length, 10);
   assert.equal(settings.promotion.platforms.length, 3);
+  const serverSource = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+  assert.match(serverSource, /audioStore\.read\(previewMatch\[1\]\),\s*readFile\(settingsPath, "utf8"\)\.then\(JSON\.parse\)/);
+  assert.doesNotMatch(serverSource, /audioStore\.read\(previewMatch\[1\]\),\s*musicStore\.settings\(\)/);
 });
 
 test("weekly song can be resolved, previewed, and persisted", async (context) => {
@@ -230,9 +244,11 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Copiar título y descripción para YouTube/);
   assert.match(html, /id="prepare-release" disabled hidden/);
   assert.match(html, /id="remove-image"/);
-  assert.match(html, /Revisar vista previa y validar/);
+  assert.match(html, /Preparar y abrir vista previa/);
 
   const app = await (await fetch(`${base}/app.js`)).text();
+  assert.doesNotMatch(app, /window\.open\(`\/preview/);
+  assert.match(app, /window\.location\.assign\(`\/preview/);
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /Esto no bloquea la traducción, el audio ni la publicación/);
@@ -273,6 +289,38 @@ test("draft can be created, listed, reopened, and updated", async (context) => {
   });
   assert.equal(updatedResponse.status, 200);
   assert.equal((await updatedResponse.json()).draft.revision, 2);
+});
+
+test("publisher can use SQLite as the sole draft authority without writing legacy JSON", async (context) => {
+  const databaseRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-database-"));
+  const database = await openDatabase(join(databaseRoot, "publisher.sqlite"));
+  const { server, base, draftsRoot } = await fixture({ draftStore: databaseDraftStore(database) });
+  context.after(async () => {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    closeDatabase(database);
+  });
+
+  const createdResponse = await fetch(`${base}/api/drafts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fields),
+  });
+  assert.equal(createdResponse.status, 201);
+  const created = (await createdResponse.json()).draft;
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM articles").get().count, 1);
+  assert.deepEqual(await readdir(draftsRoot), []);
+
+  const listed = (await (await fetch(`${base}/api/drafts`)).json()).drafts;
+  assert.equal(listed[0].articleId, created.articleId);
+  const updatedResponse = await fetch(`${base}/api/drafts/${created.articleId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: 1, draft: { ...fields, title: "Autoridad SQLite" } }),
+  });
+  assert.equal(updatedResponse.status, 200);
+  assert.equal((await updatedResponse.json()).draft.revision, 2);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM revisions").get().count, 2);
+  assert.deepEqual(await readdir(draftsRoot), []);
 });
 
 test("saved draft workflow endpoints are idle before processing starts", async (context) => {

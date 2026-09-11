@@ -110,6 +110,7 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertIn("The previous translation was rejected", prompt)
         self.assertIn("Rejected translation:", prompt)
         self.assertIn("translation appears to remain Spanish", prompt)
+        self.assertIn("must appear verbatim", prompt)
 
     def test_prompt_includes_only_batch_relevant_glossary_terms(self):
         glossary = copy.deepcopy(self.glossary)
@@ -353,6 +354,20 @@ class TranslateArticleQwenTests(unittest.TestCase):
         validate_segment_translation(
             segment,
             "The game will be at 6:00 p.m. Central Time.",
+            glossary,
+        )
+
+    def test_accepts_central_time_for_clock_de_chicago(self):
+        segment = {
+            "id": "body-001",
+            "kind": "paragraph",
+            "text": "El partido será a las **12:00 p. m. de Chicago**.",
+            "preserve": [],
+        }
+        glossary = {"version": 1, "protectedNames": ["Chicago"], "terms": []}
+        validate_segment_translation(
+            segment,
+            "The game will be at **12:00 p.m. Central Time**.",
             glossary,
         )
 

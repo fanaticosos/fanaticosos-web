@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { queueTranslation, readTranslationState, reconcileTranslations, translationRequestForDraft, updateTranslationResult } from "../lib/translation-jobs.mjs";
+import { queueTranslation, readTranslationState, reconcileTranslations, translationRequestForDraft, translationSourceRevision, updateTranslationResult } from "../lib/translation-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 3,
@@ -20,6 +20,14 @@ test("draft becomes ordered translation segments without losing Markdown layout"
     { id: "body-003", kind: "list-item" },
   ]);
   assert.equal(value.request.segments[2].text, "Primer cuarto");
+});
+
+test("translation dependency includes title, description, and article body", () => {
+  const sourceRevision = translationSourceRevision(draft);
+  assert.notEqual(translationSourceRevision({ ...draft, title: "Otro título" }), sourceRevision);
+  assert.notEqual(translationSourceRevision({ ...draft, description: "Otro resumen" }), sourceRevision);
+  assert.notEqual(translationSourceRevision({ ...draft, body: "Otro artículo" }), sourceRevision);
+  assert.equal(translationSourceRevision({ ...draft, category: "NFL", season: 2027 }), sourceRevision);
 });
 
 test("translation queue and completed result remain private and reconstruct Markdown", async () => {

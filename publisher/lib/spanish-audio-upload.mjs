@@ -14,7 +14,7 @@ async function atomicJson(path, value) {
   await rename(temporary, path);
 }
 
-export async function saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision, now = new Date(), probe }) {
+export async function writeSpanishAudioJob({ draft, translation, buffer, jobsRoot, now = new Date(), probe }) {
   if (!Buffer.isBuffer(buffer) || buffer.length < 1024) throw new Error("El MP3 en español está vacío o es demasiado pequeño.");
   if (buffer.length > MAX_SPANISH_AUDIO_BYTES) throw new Error("El MP3 en español supera el límite de 100 MB.");
   const requests = ttsRequestsForDraft(draft, translation);
@@ -40,6 +40,12 @@ export async function saveSpanishAudio({ draft, translation, buffer, jobsRoot, s
   const sha256 = createHash("sha256").update(buffer).digest("hex");
   const result = { schemaVersion: 1, locale: "es", file, sizeBytes: buffer.length, sha256, durationSeconds, codec: "mp3", sampleRate: Number(stream.sample_rate) || null, channels: Number(stream.channels) || null, voice: "Audio proporcionado por el autor", engine: "MP3 uploaded", textHash: requests.es.sourceRevision, generatedAt: now.toISOString() };
   await atomicJson(join(audioDir, "result.json"), result);
+  return { jobId, request: requests.es, result, path };
+}
+
+export async function saveSpanishAudio({ draft, translation, buffer, jobsRoot, statesRoot, policyRevision, now = new Date(), probe }) {
+  const { jobId, result } = await writeSpanishAudioJob({ draft, translation, buffer, jobsRoot, now, probe });
+  const requests = ttsRequestsForDraft(draft, translation);
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
   let existing = {};

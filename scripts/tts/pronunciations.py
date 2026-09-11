@@ -14,8 +14,8 @@ SYNTHESIS_PROFILES = {"es": "latino-em_alex", "en": "american-af-heart"}
 
 
 def validate_pronunciations(value: Any) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("schemaVersion") != 3:
-        raise ValueError("pronunciation schema version must be 3")
+    if not isinstance(value, dict) or value.get("schemaVersion") not in {3, 4}:
+        raise ValueError("pronunciation schema version must be 3 or 4")
     version = value.get("version")
     if not isinstance(version, int) or isinstance(version, bool) or version < 1:
         raise ValueError("pronunciation version must be a positive integer")
@@ -80,26 +80,54 @@ def validate_pronunciations(value: Any) -> dict[str, Any]:
                 raise ValueError("pronunciation override source type is invalid")
             if item.get("status") not in ALLOWED_STATUSES:
                 raise ValueError("pronunciation override status is invalid")
+    provider_overrides = value.get("providerOverrides", {})
+    if not isinstance(provider_overrides, dict):
+        raise ValueError("provider pronunciation overrides must be an object")
+    for provider, locales in provider_overrides.items():
+        if provider not in {"elevenlabs"} or not isinstance(locales, dict) or set(locales) != {"es", "en"}:
+            raise ValueError("provider pronunciation override is invalid")
+        for entries in locales.values():
+            if not isinstance(entries, list):
+                raise ValueError("provider pronunciation entries must be a list")
+            seen = set()
+            for item in entries:
+                if not isinstance(item, dict) or set(item) != {"written", "synthesisText", "reason", "source", "sourceType", "status"}:
+                    raise ValueError("provider pronunciation entry is invalid")
+                if any(not isinstance(item[field], str) or not item[field].strip() or item[field] != item[field].strip()
+                       for field in ("written", "synthesisText", "reason", "source")):
+                    raise ValueError("provider pronunciation text is invalid")
+                normalized = item["written"].casefold()
+                if normalized in seen:
+                    raise ValueError("duplicate provider pronunciation term")
+                seen.add(normalized)
+                if item["sourceType"] not in ALLOWED_SOURCE_TYPES or item["status"] not in ALLOWED_STATUSES:
+                    raise ValueError("provider pronunciation authority is invalid")
     return value
 
 
-def apply_pronunciations(text: str, locale: str, configuration: dict[str, Any]) -> str:
+def apply_pronunciations(text: str, locale: str, configuration: dict[str, Any], provider: str | None = None) -> str:
     validate_pronunciations(configuration)
     if locale not in {"es", "en"}:
         raise ValueError("locale must be es or en")
     spoken_text = text
-    replacements = [
-        replacement
-        for item in configuration["overrides"][locale]
-        if item["status"] == "approved"
-        for replacement in [
-            (item["canonical"], item["synthesis"]["text"]),
-            *(
-                (alias["written"], alias["synthesisText"])
-                for alias in item["aliases"]
-            ),
+    if provider is None:
+        replacements = [
+            replacement
+            for item in configuration["overrides"][locale]
+            if item["status"] == "approved"
+            for replacement in [
+                (item["canonical"], item["synthesis"]["text"]),
+                *((alias["written"], alias["synthesisText"]) for alias in item["aliases"]),
+            ]
         ]
-    ]
+    else:
+        if provider not in configuration.get("providerOverrides", {}):
+            raise ValueError(f"pronunciation provider is not configured: {provider}")
+        replacements = [
+            (item["written"], item["synthesisText"])
+            for item in configuration["providerOverrides"][provider][locale]
+            if item["status"] == "approved"
+        ]
     for written, spoken in sorted(replacements, key=lambda value: len(value[0]), reverse=True):
         pattern = rf"(?<!\w){re.escape(written)}(?!\w)"
         spoken_text = re.sub(pattern, spoken, spoken_text, flags=re.IGNORECASE)

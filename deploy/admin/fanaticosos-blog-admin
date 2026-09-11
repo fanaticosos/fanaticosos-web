@@ -46,6 +46,10 @@ readonly publisher_retention_timer_installed="/etc/systemd/system/fanaticosos-re
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
 readonly publisher_data="$data_root/publisher"
+readonly publisher_database_root="$publisher_data/database"
+readonly publisher_database_backup_root="$publisher_data/backups/database"
+readonly publisher_database="$publisher_database_root/publisher.sqlite"
+readonly publisher_database_cli="$repository/scripts/publisher/manage_database.mjs"
 readonly tts_demo_fixture="$repository/benchmarks/tts/long-form-review.json"
 readonly fixture="$repository/benchmarks/translation/full-article-request.json"
 readonly jobs_root="$data_root/jobs"
@@ -123,6 +127,8 @@ Commands:
   openai-credential-status
   install-elevenlabs-credential EXPECTED_COMMIT
   elevenlabs-credential-status
+  elevenlabs-capacity-status EXPECTED_COMMIT
+  run-elevenlabs-pronunciation-diagnostic EXPECTED_COMMIT
   run-elevenlabs-tts-sample EXPECTED_COMMIT ARTICLE_ID
   run-elevenlabs-tts-full EXPECTED_COMMIT ARTICLE_ID
   run-openai-tts-sample EXPECTED_COMMIT ARTICLE_ID LOCALE
@@ -140,6 +146,22 @@ Commands:
   cloudflare-production-failure RELEASE_JOB_ID
   install-publisher EXPECTED_COMMIT
   publisher-status
+  initialize-database EXPECTED_COMMIT
+  database-status EXPECTED_COMMIT
+  backup-database EXPECTED_COMMIT BACKUP_ID
+  restore-database-drill EXPECTED_COMMIT BACKUP_ID
+  database-draft-import-preview EXPECTED_COMMIT
+  import-drafts EXPECTED_COMMIT
+  database-translation-import-preview EXPECTED_COMMIT
+  import-translations EXPECTED_COMMIT
+  database-audio-import-preview EXPECTED_COMMIT
+  import-audio EXPECTED_COMMIT
+  database-release-import-preview EXPECTED_COMMIT
+  import-releases EXPECTED_COMMIT
+  database-audiogram-import-preview EXPECTED_COMMIT
+  import-audiograms EXPECTED_COMMIT
+  database-music-import-preview EXPECTED_COMMIT
+  import-music EXPECTED_COMMIT
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -174,6 +196,10 @@ validate_commit() {
 
 validate_job_id() {
   [[ "${1:-}" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || stop "Invalid job ID."
+}
+
+validate_database_backup_id() {
+  [[ "${1:-}" =~ ^db-[0-9]{8}T[0-9]{6}Z$ ]] || stop "Invalid database backup ID."
 }
 
 run_as_service() {
@@ -901,6 +927,16 @@ command_elevenlabs_credential_status() {
   echo "PASS: ElevenLabs credential exists with root-only permissions."
 }
 
+command_elevenlabs_capacity_status() {
+  local expected="$1" api_key
+  require_repository_commit "$expected"
+  command_elevenlabs_credential_status >/dev/null
+  api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
+  run_as_service env ELEVENLABS_API_KEY="$api_key" python3 \
+    "$repository/scripts/tts/check_elevenlabs_capacity.py"
+  unset api_key
+}
+
 command_run_elevenlabs_tts_sample() {
   local expected="$1" article_id="$2" api_key output="$data_root/work/elevenlabs-tts-sample-$2"
   require_repository_commit "$expected"
@@ -910,6 +946,23 @@ command_run_elevenlabs_tts_sample() {
   run_as_service env ELEVENLABS_API_KEY="$api_key" python3 "$repository/scripts/tts/generate_elevenlabs_sample.py" --draft "$publisher_data/drafts/$article_id.json" --output "$output"
   unset api_key
   install -o sysadmin -g sysadmin -m 0600 "$output/sample-es.mp3" "/home/sysadmin/fanaticosos-elevenlabs-sample-$article_id-es.mp3"
+}
+
+command_run_elevenlabs_pronunciation_diagnostic() {
+  local expected="$1" api_key
+  local output="$data_root/work/elevenlabs-pronunciation-bears-v1"
+  require_repository_commit "$expected"
+  command_elevenlabs_credential_status >/dev/null
+  [[ ! -e "$output" ]] || stop "ElevenLabs Bears pronunciation diagnostic already exists."
+  api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
+  run_as_service env ELEVENLABS_API_KEY="$api_key" python3 \
+    "$repository/scripts/tts/generate_elevenlabs_pronunciation_diagnostic.py" \
+    --output "$output"
+  unset api_key
+  for source in "$output"/bears-*.mp3; do
+    install -o sysadmin -g sysadmin -m 0600 "$source" "/home/sysadmin/fanaticosos-$(basename "$source")"
+  done
+  echo "PASS: private Bears pronunciation samples exported to /home/sysadmin."
 }
 
 command_run_elevenlabs_tts_full() {
@@ -1167,7 +1220,9 @@ command_install_publisher() {
   install -d -o "$service_account" -g "$service_account" -m 0700 \
     "$publisher_data" "$publisher_data/drafts" "$publisher_data/uploads" \
     "$publisher_data/notifications" "$publisher_data/queue" "$publisher_data/states" \
-    "$publisher_data/releases" "$jobs_root"
+    "$publisher_data/releases" "$publisher_database_root" \
+    "$publisher_database_backup_root" "$publisher_data/artifacts/translations" \
+    "$publisher_data/artifacts/audio" "$publisher_data/artifacts/images" "$jobs_root"
   install -o root -g root -m 0644 "$publisher_source_unit" "$publisher_installed_unit"
   install -o root -g root -m 0644 "$audiogram_source_unit" "$audiogram_installed_unit"
   install -o root -g root -m 0644 "$publisher_dispatcher_service_source" "$publisher_dispatcher_service_installed"
@@ -1211,6 +1266,146 @@ command_install_publisher() {
   [[ "$(systemctl is-active fanaticosos-publisher-dispatcher.path)" == "active" ]] || \
     stop "Publisher dispatcher path is not active."
   echo "PASS: Private publisher installed and active on the NetBird address."
+}
+
+command_initialize_database() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  [[ -f "$publisher_database_cli" && ! -L "$publisher_database_cli" ]] || \
+    stop "Database administration CLI is missing."
+  [[ -d "$publisher_database_root" && ! -L "$publisher_database_root" ]] || \
+    stop "Publisher database directory is invalid."
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    initialize --database "$publisher_database"
+}
+
+command_database_status() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    status --database "$publisher_database"
+}
+
+command_backup_database() {
+  local expected="$1" backup_id="$2"
+  require_repository_commit "$expected"
+  validate_database_backup_id "$backup_id"
+  [[ -d "$publisher_database_backup_root" && ! -L "$publisher_database_backup_root" ]] || \
+    stop "Publisher database backup directory is invalid."
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    backup --database "$publisher_database" \
+    --backup-root "$publisher_database_backup_root" --backup-id "$backup_id"
+}
+
+command_restore_database_drill() {
+  local expected="$1" backup_id="$2"
+  require_repository_commit "$expected"
+  validate_database_backup_id "$backup_id"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    restore-drill --backup-root "$publisher_database_backup_root" --backup-id "$backup_id"
+}
+
+command_database_draft_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    draft-import-preview --database "$publisher_database" \
+    --drafts-root "$publisher_data/drafts"
+}
+
+command_import_drafts() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    draft-import-apply --database "$publisher_database" \
+    --drafts-root "$publisher_data/drafts"
+}
+
+command_database_translation_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    translation-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states"
+}
+
+command_import_translations() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  install -d -o fanaticosos-blog -g fanaticosos-blog -m 0700 "$publisher_data/artifacts/translations"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    translation-import-apply --database "$publisher_database" \
+    --states-root "$publisher_data/states" \
+    --artifacts-root "$publisher_data/artifacts/translations"
+}
+
+command_database_audio_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audio-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states" --jobs-root "$jobs_root"
+}
+
+command_import_audio() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  install -d -o fanaticosos-blog -g fanaticosos-blog -m 0700 "$publisher_data/artifacts/audio"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audio-import-apply --database "$publisher_database" \
+    --states-root "$publisher_data/states" --jobs-root "$jobs_root" \
+    --artifacts-root "$publisher_data/artifacts/audio"
+}
+
+command_database_release_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    release-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
+}
+
+command_import_releases() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  install -d -o fanaticosos-blog -g fanaticosos-blog -m 0700 "$publisher_data/artifacts/images"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    release-import-apply --database "$publisher_database" \
+    --states-root "$publisher_data/states" --releases-root "$publisher_data/releases" \
+    --images-root "$publisher_data/artifacts/images"
+}
+
+command_database_audiogram_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audiogram-import-preview --database "$publisher_database" \
+    --states-root "$publisher_data/states" --jobs-root "$jobs_root"
+}
+
+command_import_audiograms() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  install -d -o fanaticosos-blog -g fanaticosos-blog -m 0700 "$publisher_data/artifacts/audiograms"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" \
+    audiogram-import-apply --database "$publisher_database" --states-root "$publisher_data/states" \
+    --jobs-root "$jobs_root" --artifacts-root "$publisher_data/artifacts/audiograms"
+}
+
+command_database_music_import_preview() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" music-import-preview \
+    --database "$publisher_database" --settings "$publisher_data/site-settings.json" \
+    --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
+}
+
+command_import_music() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  run_as_service /opt/nodejs/current/bin/node "$publisher_database_cli" music-import-apply \
+    --database "$publisher_database" --settings "$publisher_data/site-settings.json" \
+    --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
 }
 
 command_latest_private_release() {
@@ -2010,6 +2205,14 @@ case "$command" in
     [[ $# == 0 ]] || stop "elevenlabs-credential-status takes no arguments."
     command_elevenlabs_credential_status
     ;;
+  elevenlabs-capacity-status)
+    [[ $# == 1 ]] || stop "elevenlabs-capacity-status requires EXPECTED_COMMIT."
+    command_elevenlabs_capacity_status "$1"
+    ;;
+  run-elevenlabs-pronunciation-diagnostic)
+    [[ $# == 1 ]] || stop "run-elevenlabs-pronunciation-diagnostic requires EXPECTED_COMMIT."
+    command_run_elevenlabs_pronunciation_diagnostic "$1"
+    ;;
   run-elevenlabs-tts-sample)
     [[ $# == 2 ]] || stop "run-elevenlabs-tts-sample requires EXPECTED_COMMIT ARTICLE_ID."
     command_run_elevenlabs_tts_sample "$1" "$2"
@@ -2077,6 +2280,70 @@ case "$command" in
   publisher-status)
     [[ $# == 0 ]] || stop "publisher-status takes no arguments."
     command_publisher_status
+    ;;
+  initialize-database)
+    [[ $# == 1 ]] || stop "initialize-database requires EXPECTED_COMMIT."
+    command_initialize_database "$1"
+    ;;
+  database-status)
+    [[ $# == 1 ]] || stop "database-status requires EXPECTED_COMMIT."
+    command_database_status "$1"
+    ;;
+  backup-database)
+    [[ $# == 2 ]] || stop "backup-database requires EXPECTED_COMMIT BACKUP_ID."
+    command_backup_database "$1" "$2"
+    ;;
+  restore-database-drill)
+    [[ $# == 2 ]] || stop "restore-database-drill requires EXPECTED_COMMIT BACKUP_ID."
+    command_restore_database_drill "$1" "$2"
+    ;;
+  database-draft-import-preview)
+    [[ $# == 1 ]] || stop "database-draft-import-preview requires EXPECTED_COMMIT."
+    command_database_draft_import_preview "$1"
+    ;;
+  import-drafts)
+    [[ $# == 1 ]] || stop "import-drafts requires EXPECTED_COMMIT."
+    command_import_drafts "$1"
+    ;;
+  database-translation-import-preview)
+    [[ $# == 1 ]] || stop "database-translation-import-preview requires EXPECTED_COMMIT."
+    command_database_translation_import_preview "$1"
+    ;;
+  import-translations)
+    [[ $# == 1 ]] || stop "import-translations requires EXPECTED_COMMIT."
+    command_import_translations "$1"
+    ;;
+  database-audio-import-preview)
+    [[ $# == 1 ]] || stop "database-audio-import-preview requires EXPECTED_COMMIT."
+    command_database_audio_import_preview "$1"
+    ;;
+  import-audio)
+    [[ $# == 1 ]] || stop "import-audio requires EXPECTED_COMMIT."
+    command_import_audio "$1"
+    ;;
+  database-release-import-preview)
+    [[ $# == 1 ]] || stop "database-release-import-preview requires EXPECTED_COMMIT."
+    command_database_release_import_preview "$1"
+    ;;
+  import-releases)
+    [[ $# == 1 ]] || stop "import-releases requires EXPECTED_COMMIT."
+    command_import_releases "$1"
+    ;;
+  database-audiogram-import-preview)
+    [[ $# == 1 ]] || stop "database-audiogram-import-preview requires EXPECTED_COMMIT."
+    command_database_audiogram_import_preview "$1"
+    ;;
+  import-audiograms)
+    [[ $# == 1 ]] || stop "import-audiograms requires EXPECTED_COMMIT."
+    command_import_audiograms "$1"
+    ;;
+  database-music-import-preview)
+    [[ $# == 1 ]] || stop "database-music-import-preview requires EXPECTED_COMMIT."
+    command_database_music_import_preview "$1"
+    ;;
+  import-music)
+    [[ $# == 1 ]] || stop "import-music requires EXPECTED_COMMIT."
+    command_import_music "$1"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
