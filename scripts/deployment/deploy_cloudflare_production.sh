@@ -135,11 +135,23 @@ shopt -u nullglob
 deployment_url=""
 rollback_id="${deployment_state[0]}"
 rollback_url="${deployment_state[1]}"
-if [[ ${#temporary_logs[@]} == 1 ]] && grep -Fq "${deployment_state[1]}" "${temporary_logs[0]}"; then
+if [[ ${#temporary_logs[@]} == 1 ]]; then
   temporary_log="${temporary_logs[0]}"
-  deployment_url="${deployment_state[1]}"
-  rollback_id="${deployment_state[3]}"
-  rollback_url="${deployment_state[4]}"
+  uploaded_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"
+  if [[ "$uploaded_url" == "${deployment_state[1]}" ]]; then
+    # The upload is current; the prior deployment is the rollback target.
+    deployment_url="${deployment_state[1]}"
+    rollback_id="${deployment_state[3]}"
+    rollback_url="${deployment_state[4]}"
+  elif [[ "$uploaded_url" == "${deployment_state[4]}" ]]; then
+    # A previous validation already restored the old deployment. Resume the
+    # uploaded candidate while preserving the current deployment as rollback.
+    deployment_url="${deployment_state[4]}"
+    rollback_id="${deployment_state[0]}"
+    rollback_url="${deployment_state[1]}"
+  else
+    stop "Production recovery state is ambiguous; refusing another upload."
+  fi
   echo "Resuming validation of the already-uploaded production deployment."
 elif [[ ${#temporary_logs[@]} == 0 ]]; then
   temporary_log="$job_root/.cloudflare-production.log.$$"

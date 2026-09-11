@@ -269,6 +269,8 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('deployments?env=production&per_page=10', script)
         self.assertIn('Resuming validation of the already-uploaded production deployment.', script)
         self.assertIn('Production recovery state is ambiguous', script)
+        self.assertIn('uploaded_url="$(grep -Eo', script)
+        self.assertIn('rollback_id="${deployment_state[0]}"', script)
         self.assertIn('"rollbackDeploymentId": rollback_id', script)
         self.assertIn('"productionChanged": True', script)
         self.assertIn('https://fanaticosos.com', script)
