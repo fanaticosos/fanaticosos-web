@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "check": "astro check",
-    "build": "npm run validate:content && npm run validate:settings && npm run validate:game-center && npm run validate:participation-slots && npm run validate:functions && astro check && astro build && npm run validate:build",
+    "build": "npm run validate:content && npm run validate:settings && npm run validate:game-center && npm run validate:nfl-logos && npm run validate:participation-slots && npm run validate:functions && astro check && astro build && npm run validate:build",
     "validate:content": "node scripts/validate-content.mjs",
     "test:content-validation": "node scripts/test-content-validation.mjs",
     "test:article-routes": "node scripts/test-article-routes.mjs",
@@ -15,6 +15,7 @@
     "validate:settings": "node scripts/validate-site-settings.mjs",
     "test:site-settings": "node scripts/test-site-settings.mjs",
     "validate:game-center": "node scripts/validate-game-center.mjs",
+    "validate:nfl-logos": "node scripts/validate-nfl-logos.mjs",
     "test:game-center": "node scripts/test-game-center.mjs",
     "test:espn-game-center": "node scripts/test-espn-game-center.mjs",
     "test:bears-schedule-verification": "node scripts/test-bears-schedule-verification.mjs",

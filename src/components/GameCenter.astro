@@ -9,7 +9,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-MX", {
 });
 const formatDate = (value: string | null) => value ? dateFormatter.format(new Date(value)) : "Horario por confirmar";
 const shortName = (name: string) => name.replace("Chicago Bears", "Bears").replace("Carolina Panthers", "Panthers").replace("Tennessee Titans", "Titans").replace("Cincinnati Bengals", "Bengals").replace("Cleveland Browns", "Browns").replace("Detroit Lions", "Lions").replace("Green Bay Packers", "Packers").replace("Minnesota Vikings", "Vikings");
-const logoUrl = (abbreviation: string) => `https://a.espncdn.com/i/teamlogos/nfl/500/${abbreviation.toLowerCase()}.png`;
+const logoUrl = (abbreviation: string) => `/assets/nfl-logos/${abbreviation.toLowerCase()}.png`;
 const resultForBears = (game: NonNullable<typeof previousGame>) => {
   const bearsHome = game.home.abbreviation === "CHI";
   const bearsScore = bearsHome ? game.homeScore : game.awayScore;
