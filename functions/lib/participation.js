@@ -29,7 +29,7 @@ export function validateParticipationForm(form, today) {
     email: text(form, "email", 5, 254).toLowerCase(),
     phone: text(form, "phone", 8, 26),
     birthDate: text(form, "birthDate", 10, 10),
-    bearsStory: text(form, "bearsStory", 80, 2000),
+    bearsStory: text(form, "bearsStory", 40, 2000),
     songTitle: text(form, "songTitle", 1, 150),
     songArtist: text(form, "songArtist", 1, 150),
     songReason: text(form, "songReason", 40, 1200),
