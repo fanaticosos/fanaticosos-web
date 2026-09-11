@@ -43,14 +43,6 @@ const statusCopy = {
       </div>
 
       <form class="participation-form" method="post" action="/api/participa" data-participation-form>
-        <div class="submission-banner submission-success" data-submission-success role="status" hidden>
-          <strong>Solicitud recibida</strong>
-          <span>Te enviamos una copia por email. La fecha todavía no está reservada; recibirás otra confirmación cuando FanaticOSOS la apruebe.</span>
-        </div>
-        <div class="submission-banner submission-error" data-submission-error role="alert" hidden>
-          <strong>No pudimos enviar la solicitud</strong>
-          <span>Tus datos no se enviaron. Revisa los campos e inténtalo nuevamente.</span>
-        </div>
         <fieldset class="form-section slot-section">
           <legend><span>01</span> Fecha y tema del stream</legend>
           <p class="field-help">Miércoles a las 8:00 p.m., hora de la Ciudad de México. Selecciona una tarjeta para ver el resumen.</p>
@@ -134,6 +126,14 @@ const statusCopy = {
             <div class="form-message" data-form-message aria-live="polite"></div>
             <button class="submit-button" type="submit">Enviar solicitud <span aria-hidden="true">→</span></button>
             <p class="submit-note">Recibirás una copia de la solicitud. La confirmación definitiva llegará por separado.</p>
+            <div id="solicitud-resultado" class="submission-banner submission-success" data-submission-success role="status" tabindex="-1" hidden>
+              <strong>Solicitud recibida</strong>
+              <span>Te enviamos una copia por email. La fecha todavía no está reservada; recibirás otra confirmación cuando FanaticOSOS la apruebe.</span>
+            </div>
+            <div class="submission-banner submission-error" data-submission-error role="alert" tabindex="-1" hidden>
+              <strong>No pudimos enviar la solicitud</strong>
+              <span>Tus datos no se enviaron. Revisa los campos e inténtalo nuevamente.</span>
+            </div>
           </div>
 
           <aside class="preparation-card">
@@ -184,7 +184,8 @@ const statusCopy = {
       const detail = resultBanner.querySelector("span");
       if (detail) detail.textContent = "Guardamos tu solicitud, pero el correo no pudo enviarse todavía. FanaticOSOS podrá reenviarlo desde el panel administrativo.";
     }
-    resultBanner.scrollIntoView({ block: "center" });
+    resultBanner.focus({ preventScroll: true });
+    resultBanner.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
   const statusCopy = {
@@ -278,7 +279,7 @@ const statusCopy = {
       if (!response.ok) throw new Error(result.error ?? "request_failed");
       const parameters = new URLSearchParams({ estado: "recibida", folio: result.requestId });
       if (result.emailStatus !== "sent") parameters.set("correo", "pendiente");
-      window.location.assign(`/participa?${parameters}`);
+      window.location.assign(`/participa?${parameters}#solicitud-resultado`);
     } catch (error) {
       const code = error instanceof Error ? error.message : "request_failed";
       const messages: Record<string, string> = {
