@@ -86,6 +86,7 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /readonly domains=\("https:\/\/fanaticosos\.com"/);
   assert.doesNotMatch(production, /readonly domains=\("\$deployment_url"/);
   assert.match(production, /release homepage checksum is invalid/);
+  assert.match(production, /items = \[\("\/", ""\), \(routes\.get\("es"\), ""\), \(routes\.get\("en"\), ""\)\]/);
   assert.match(production, /deployments\/\$rollback_id\/rollback/);
   assert.match(production, /The previous validated deployment was restored/);
   assert.match(articleBuild, /homepageSha256: await sha256\(join\(temporary, "dist", "index\.html"\)\)/);

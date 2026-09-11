@@ -67,7 +67,10 @@ if application.get("nflLogoCount") != 32:
 homepage_checksum = manifest.get("homepageSha256", "")
 if len(homepage_checksum) != 64:
     raise SystemExit("release homepage checksum is invalid")
-items = [("/", homepage_checksum), (routes.get("es"), ""), (routes.get("en"), "")]
+# The checksum above proves the immutable local release bundle. Cloudflare may
+# transform HTML at the edge, so remote HTML is checked for a successful,
+# non-empty response while immutable binary assets remain byte-exact.
+items = [("/", ""), (routes.get("es"), ""), (routes.get("en"), "")]
 for key in ("esAudio", "enAudio"):
     asset = assets.get(key, {})
     path = asset.get("path", "")
@@ -197,7 +200,7 @@ for domain in "${domains[@]}"; do
     for attempt in $(seq 1 40); do
       temporary_body="$job_root/.cloudflare-body.$$"
       if curl --fail --silent --show-error --max-time 30 --output "$temporary_body" "$domain$path"; then
-        if [[ -z "$checksum" || "$(sha256sum "$temporary_body" | cut -d' ' -f1)" == "$checksum" ]]; then passed=true; fi
+        if [[ -s "$temporary_body" && ( -z "$checksum" || "$(sha256sum "$temporary_body" | cut -d' ' -f1)" == "$checksum" ) ]]; then passed=true; fi
       fi
       rm -f "$temporary_body"
       [[ "$passed" == true ]] && break
