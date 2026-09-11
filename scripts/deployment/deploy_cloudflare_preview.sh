@@ -44,14 +44,18 @@ release_root = os.path.dirname(dist_root)
 
 def directory_sha256(root):
     digest = hashlib.sha256()
-    for directory, subdirectories, files in os.walk(root):
-        subdirectories.sort()
-        for name in sorted(files):
-            path = os.path.join(directory, name)
-            relative = os.path.relpath(path, root).replace(os.sep, "/")
-            digest.update(relative.encode()); digest.update(b"\0")
-            with open(path, "rb") as handle: digest.update(handle.read())
-            digest.update(b"\0")
+    def visit(directory):
+        for entry in sorted(os.scandir(directory), key=lambda item: item.name):
+            if entry.is_dir(follow_symlinks=False):
+                visit(entry.path)
+            elif entry.is_file(follow_symlinks=False):
+                relative = os.path.relpath(entry.path, root).replace(os.sep, "/")
+                digest.update(relative.encode()); digest.update(b"\0")
+                with open(entry.path, "rb") as handle: digest.update(handle.read())
+                digest.update(b"\0")
+            else:
+                raise SystemExit(f"release Functions entry is not a regular file: {entry.path}")
+    visit(root)
     return digest.hexdigest()
 with open(manifest_path, encoding="utf-8") as handle:
     manifest = json.load(handle)
