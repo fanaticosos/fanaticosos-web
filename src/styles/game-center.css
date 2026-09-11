@@ -23,7 +23,9 @@
 .game-panel + .game-panel { border-left: 1px solid rgba(255,255,255,.09); }
 .game-panel h3 { align-items: center; color: var(--orange); display: flex; font-family: "Bebas Neue", sans-serif; font-size: 18px; gap: 8px; letter-spacing: .09em; margin-bottom: 22px; }
 .game-panel h3 span { background: var(--orange); border-radius: 50%; height: 7px; width: 7px; }
-.team-mark { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(240,120,32,.55); border-radius: 50%; color: var(--white); display: inline-flex; flex-shrink: 0; font-family: "Bebas Neue", sans-serif; font-size: 18px; height: 58px; justify-content: center; letter-spacing: .04em; width: 58px; }
+.team-mark { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(240,120,32,.55); border-radius: 50%; color: var(--white); display: inline-flex; flex-shrink: 0; font-family: "Bebas Neue", sans-serif; font-size: 18px; height: 58px; justify-content: center; letter-spacing: .04em; position: relative; width: 58px; }
+.team-mark:has(img) { color: transparent; }
+.team-mark img { height: 82%; inset: 9%; object-fit: contain; position: absolute; width: 82%; }
 .team-mark-small { font-size: 11px; height: 31px; width: 31px; }
 
 .matchup { align-items: center; display: grid; gap: 8px; grid-template-columns: 1fr auto 1fr; }

@@ -9,6 +9,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-MX", {
 });
 const formatDate = (value: string | null) => value ? dateFormatter.format(new Date(value)) : "Horario por confirmar";
 const shortName = (name: string) => name.replace("Chicago Bears", "Bears").replace("Carolina Panthers", "Panthers").replace("Tennessee Titans", "Titans").replace("Cincinnati Bengals", "Bengals").replace("Cleveland Browns", "Browns").replace("Detroit Lions", "Lions").replace("Green Bay Packers", "Packers").replace("Minnesota Vikings", "Vikings");
+const logoUrl = (abbreviation: string) => `https://a.espncdn.com/i/teamlogos/nfl/500/${abbreviation.toLowerCase()}.png`;
 const resultForBears = (game: NonNullable<typeof previousGame>) => {
   const bearsHome = game.home.abbreviation === "CHI";
   const bearsScore = bearsHome ? game.homeScore : game.awayScore;
@@ -30,9 +31,9 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
       {nextGame ? (
         <>
           <div class="matchup" aria-label={`${nextGame.away.name} contra ${nextGame.home.name}`}>
-            <div class="team"><span class="team-mark">{nextGame.away.abbreviation}</span><strong>{shortName(nextGame.away.name)}</strong></div>
+            <div class="team"><span class="team-mark">{nextGame.away.abbreviation}<img src={logoUrl(nextGame.away.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(nextGame.away.name)}</strong></div>
             <span class="at" aria-hidden="true">@</span>
-            <div class="team"><span class="team-mark">{nextGame.home.abbreviation}</span><strong>{shortName(nextGame.home.name)}</strong></div>
+            <div class="team"><span class="team-mark">{nextGame.home.abbreviation}<img src={logoUrl(nextGame.home.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(nextGame.home.name)}</strong></div>
           </div>
           <div class="countdown" data-countdown={nextGame.startsAt ?? undefined} aria-label="Cuenta regresiva al próximo partido">
             {[["días", "00"], ["horas", "00"], ["min", "00"], ["seg", "00"]].map(([label, value]) => (
@@ -50,9 +51,9 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
       {previousGame ? (
         <>
           <div class="scoreboard">
-            <div class="score-team"><span class="team-mark">{previousGame.away.abbreviation}</span><strong>{shortName(previousGame.away.name)}</strong><b>{previousGame.awayScore}</b></div>
+            <div class="score-team"><span class="team-mark">{previousGame.away.abbreviation}<img src={logoUrl(previousGame.away.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(previousGame.away.name)}</strong><b>{previousGame.awayScore}</b></div>
             <span class="score-separator" aria-hidden="true">—</span>
-            <div class="score-team"><span class="team-mark">{previousGame.home.abbreviation}</span><strong>{shortName(previousGame.home.name)}</strong><b>{previousGame.homeScore}</b></div>
+            <div class="score-team"><span class="team-mark">{previousGame.home.abbreviation}<img src={logoUrl(previousGame.home.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(previousGame.home.name)}</strong><b>{previousGame.homeScore}</b></div>
           </div>
           <p class="final-label">Final · {formatDate(previousGame.startsAt)}</p>
           <a class="box-score-link" href={previousGame.boxScoreUrl} target="_blank" rel="noopener">Ver box score en ESPN <span aria-hidden="true">→</span></a>
@@ -70,7 +71,7 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
           const outcome = resultForBears(game);
           return (
             <a href={game.boxScoreUrl} target="_blank" rel="noopener" aria-label={`Bears ${bearsScore}, ${opponent.name} ${opponentScore}; ver box score`}>
-              <span class="result-opponent"><span class="team-mark team-mark-small">{opponent.abbreviation}</span>{shortName(opponent.name)}</span>
+              <span class="result-opponent"><span class="team-mark team-mark-small">{opponent.abbreviation}<img src={logoUrl(opponent.abbreviation)} alt="" width="31" height="31" loading="lazy" data-team-logo /></span>{shortName(opponent.name)}</span>
               <strong>{bearsScore}–{opponentScore}</strong>
               <b class:list={["result-badge", `result-${outcome.toLowerCase()}`]}>{outcome}</b>
             </a>
@@ -85,7 +86,7 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
         <thead><tr><th>Equipo</th><th>V</th><th>D</th><th>E</th></tr></thead>
         <tbody>{nfcNorth.map((entry) => (
           <tr class:list={{ bears: entry.team.abbreviation === "CHI" }}>
-            <th><span class="team-mark team-mark-small">{entry.team.abbreviation}</span>{shortName(entry.team.name)}</th>
+            <th><span class="team-mark team-mark-small">{entry.team.abbreviation}<img src={logoUrl(entry.team.abbreviation)} alt="" width="31" height="31" loading="lazy" data-team-logo /></span>{shortName(entry.team.name)}</th>
             <td>{entry.wins}</td><td>{entry.losses}</td><td>{entry.ties}</td>
           </tr>
         ))}</tbody>
@@ -96,6 +97,12 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
 </section>
 
 <script>
+  document.querySelectorAll<HTMLImageElement>("[data-team-logo]").forEach((logo) => {
+    const showFallback = () => logo.remove();
+    if (logo.complete && logo.naturalWidth === 0) showFallback();
+    else logo.addEventListener("error", showFallback, { once: true });
+  });
+
   const pad = (value: number) => String(Math.max(0, value)).padStart(2, "0");
   document.querySelectorAll<HTMLElement>("[data-countdown]").forEach((countdown) => {
     const target = Date.parse(countdown.dataset.countdown ?? "");

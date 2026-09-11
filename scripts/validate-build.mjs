@@ -248,9 +248,8 @@ for (const page of routes) {
 
   for (const image of imageTags) {
     const source = image.attributes.get("src");
-    const alt = image.attributes.get("alt");
     record(Boolean(source), `${page.route}: image is missing src`);
-    record(Boolean(alt), `${page.route}: image ${source ?? "(unknown)"} is missing alt text`);
+    record(image.attributes.has("alt"), `${page.route}: image ${source ?? "(unknown)"} is missing an alt attribute`);
     if (source) await validateLocalReference(page.route, source);
   }
 
