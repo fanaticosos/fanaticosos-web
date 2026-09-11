@@ -160,10 +160,7 @@ const statusCopy = {
               <li>Voz dinámica y compromiso de promover el episodio.</li>
             </ul>
             <p class="age-notice"><strong>Sólo mayores de 18 años.</strong> No solicitamos fotografía en este formulario.</p>
-            <a class="admin-link" href="/admin/invitados/">
-              <span>Administrar solicitudes</span>
-              <small>Acceso restringido</small>
-            </a>
+            <a class="admin-link" href="/admin/invitados/">Administrar solicitudes</a>
           </aside>
         </div>
       </form>
@@ -189,6 +186,12 @@ const statusCopy = {
     if (turnstileMessage) turnstileMessage.textContent = messageText;
     if (turnstileContainer) turnstileContainer.hidden = true;
     if (turnstileRecovery) turnstileRecovery.hidden = false;
+  }
+
+  function deferTurnstileFailure() {
+    if (turnstileMessage) turnstileMessage.textContent = "La verificación se completará antes de enviar.";
+    if (turnstileContainer) turnstileContainer.hidden = true;
+    if (turnstileRecovery) turnstileRecovery.hidden = true;
   }
   const result = new URLSearchParams(window.location.search).get("estado");
   const resultBanner = result === "recibida"
@@ -232,7 +235,7 @@ const statusCopy = {
       if (message) message.textContent = "No pudimos actualizar la disponibilidad. Confirma la fecha antes de enviar.";
     });
 
-  async function initializeTurnstile() {
+  async function initializeTurnstile(showFailure = false) {
     if (!turnstileContainer) return;
     try {
       const response = await fetch("/api/participa/config", { headers: { accept: "application/json" } });
@@ -252,12 +255,13 @@ const statusCopy = {
           if (turnstileMessage) turnstileMessage.textContent = "Verificación completada.";
           if (turnstileRecovery) turnstileRecovery.hidden = true;
         },
-        "error-callback": () => showTurnstileFailure(),
-        "expired-callback": () => showTurnstileFailure("La verificación venció."),
-        "timeout-callback": () => showTurnstileFailure("La verificación tardó demasiado."),
+        "error-callback": () => showFailure ? showTurnstileFailure() : deferTurnstileFailure(),
+        "expired-callback": () => showFailure ? showTurnstileFailure("La verificación venció.") : deferTurnstileFailure(),
+        "timeout-callback": () => showFailure ? showTurnstileFailure("La verificación tardó demasiado.") : deferTurnstileFailure(),
       });
     } catch {
-      showTurnstileFailure("La protección anti-spam no está disponible.");
+      if (showFailure) showTurnstileFailure("La protección anti-spam no está disponible.");
+      else deferTurnstileFailure();
     }
   }
   initializeTurnstile();
@@ -271,7 +275,7 @@ const statusCopy = {
     }
     if (turnstileRecovery) turnstileRecovery.hidden = true;
     if (turnstileMessage) turnstileMessage.textContent = "Verificando que eres una persona…";
-    initializeTurnstile();
+    initializeTurnstile(true);
   });
 
   if (birthDate) {
@@ -304,6 +308,7 @@ const statusCopy = {
     const data = new FormData(form);
     if (!data.get("cf-turnstile-response")) {
       if (message) message.textContent = "Completa la verificación anti-spam.";
+      showTurnstileFailure("No se pudo completar la verificación.");
       return;
     }
     if (submitButton) submitButton.disabled = true;
