@@ -104,6 +104,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-pages-deployment-runtime",
                 "pages-deployment-runtime-status",
                 "verify-cloudflare-pages-token",
+                "repair-production-turnstile-binding",
                 "deploy-cloudflare-preview",
                 "cloudflare-preview-status",
                 "cloudflare-preview-failure",

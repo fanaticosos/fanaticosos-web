@@ -138,6 +138,7 @@ Commands:
   install-pages-deployment-runtime EXPECTED_COMMIT
   pages-deployment-runtime-status
   verify-cloudflare-pages-token EXPECTED_COMMIT
+  repair-production-turnstile-binding EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   cloudflare-preview-status RELEASE_JOB_ID
   cloudflare-preview-failure RELEASE_JOB_ID
@@ -1095,6 +1096,30 @@ command_verify_cloudflare_pages_token() {
   python3 -c 'import json,sys; value=json.load(sys.stdin); result=value.get("result") or {}; assert value.get("success") is True; assert result.get("name")=="fanaticosos-web"; assert result.get("production_branch")=="main"' <<<"$response" || \
     stop "Cloudflare token did not return the expected Pages project."
   echo "PASS: Cloudflare token can access fanaticosos-web with production branch main."
+}
+
+command_repair_production_turnstile_binding() {
+  local expected="$1"
+  local api
+  local response
+  local site_key='0x4AAAAAAEvqezWY_kXD-9vt'
+  require_repository_commit "$expected"
+  command_cloudflare_pages_credential_status
+  set -a
+  # shellcheck disable=SC1090
+  source "$cloudflare_credential_file"
+  set +a
+  api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT"
+  response="$(curl --fail --silent --show-error --max-time 30 \
+    --request PATCH \
+    --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    --header 'Content-Type: application/json' \
+    --data "{\"deployment_configs\":{\"production\":{\"env_vars\":{\"PUBLIC_TURNSTILE_SITE_KEY\":{\"type\":\"plain_text\",\"value\":\"$site_key\"}}}}}" \
+    "$api")"
+  unset CLOUDFLARE_API_TOKEN
+  python3 -c 'import json,sys; value=json.load(sys.stdin); result=value.get("result") or {}; production=((result.get("deployment_configs") or {}).get("production") or {}); variables=production.get("env_vars") or {}; site=variables.get("PUBLIC_TURNSTILE_SITE_KEY") or {}; database=(production.get("d1_databases") or {}).get("DB") or {}; assert value.get("success") is True; assert site.get("type")=="plain_text"; assert site.get("value")=="0x4AAAAAAEvqezWY_kXD-9vt"; assert database.get("id")=="6bbd7721-7b4e-4280-ba01-3ef35ca82d53"; assert "TURNSTILE_SECRET_KEY" in variables' <<<"$response" || \
+    stop "Cloudflare did not preserve the expected production Turnstile and D1 bindings."
+  echo "PASS: Production Turnstile public binding corrected; secret and D1 bindings remain present."
 }
 
 command_deploy_cloudflare_preview() {
@@ -2248,6 +2273,10 @@ case "$command" in
   verify-cloudflare-pages-token)
     [[ $# == 1 ]] || stop "verify-cloudflare-pages-token requires EXPECTED_COMMIT."
     command_verify_cloudflare_pages_token "$1"
+    ;;
+  repair-production-turnstile-binding)
+    [[ $# == 1 ]] || stop "repair-production-turnstile-binding requires EXPECTED_COMMIT."
+    command_repair_production_turnstile_binding "$1"
     ;;
   deploy-cloudflare-preview)
     [[ $# == 2 ]] || stop "deploy-cloudflare-preview requires EXPECTED_COMMIT RELEASE_JOB_ID."
