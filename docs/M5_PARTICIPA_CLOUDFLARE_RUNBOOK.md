@@ -75,6 +75,7 @@ La configuración actual es válida para el propietario, pero no se considera la
 5. Rechazar una solicitud en otra fecha y comprobar la promoción de la primera persona en espera.
 6. Revisar que el panel no sea accesible sin sesión de Access.
 7. Sólo después de estas pruebas, solicitar aprobación para Production.
+8. Si se habilitan temporalmente los despliegues automáticos para efectuar la liberación aprobada, volver a pausarlos después de verificar Production.
 
 ## Stop / rollback
 
