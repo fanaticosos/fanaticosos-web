@@ -181,17 +181,23 @@ const statusCopy = {
   const turnstileRecovery = document.querySelector<HTMLElement>("[data-turnstile-recovery]");
   const turnstileRetry = document.querySelector<HTMLButtonElement>("[data-turnstile-retry]");
   let turnstileWidgetId: string | undefined;
+  let turnstileSubmissionAttempted = false;
 
   function showTurnstileFailure(messageText = "No se pudo completar la verificación.") {
     if (turnstileMessage) turnstileMessage.textContent = messageText;
-    if (turnstileContainer) turnstileContainer.hidden = true;
+    if (turnstileContainer) turnstileContainer.hidden = false;
     if (turnstileRecovery) turnstileRecovery.hidden = false;
   }
 
-  function deferTurnstileFailure() {
-    if (turnstileMessage) turnstileMessage.textContent = "La verificación se completará antes de enviar.";
-    if (turnstileContainer) turnstileContainer.hidden = true;
-    if (turnstileRecovery) turnstileRecovery.hidden = true;
+  function handleTurnstileError(errorCode?: string) {
+    console.warn("Turnstile verification error", errorCode ?? "unknown");
+    if (turnstileContainer) turnstileContainer.hidden = false;
+    if (turnstileSubmissionAttempted) showTurnstileFailure("La verificación se está reintentando.");
+    else {
+      if (turnstileMessage) turnstileMessage.textContent = "Verificación en curso…";
+      if (turnstileRecovery) turnstileRecovery.hidden = true;
+    }
+    return false;
   }
   const result = new URLSearchParams(window.location.search).get("estado");
   const resultBanner = result === "recibida"
@@ -235,7 +241,7 @@ const statusCopy = {
       if (message) message.textContent = "No pudimos actualizar la disponibilidad. Confirma la fecha antes de enviar.";
     });
 
-  async function initializeTurnstile(showFailure = false) {
+  async function initializeTurnstile() {
     if (!turnstileContainer) return;
     try {
       const response = await fetch("/api/participa/config", { headers: { accept: "application/json" } });
@@ -252,30 +258,36 @@ const statusCopy = {
         size: "flexible",
         language: "es-MX",
         callback: () => {
+          turnstileSubmissionAttempted = false;
           if (turnstileMessage) turnstileMessage.textContent = "Verificación completada.";
           if (turnstileRecovery) turnstileRecovery.hidden = true;
         },
-        "error-callback": () => showFailure ? showTurnstileFailure() : deferTurnstileFailure(),
-        "expired-callback": () => showFailure ? showTurnstileFailure("La verificación venció.") : deferTurnstileFailure(),
-        "timeout-callback": () => showFailure ? showTurnstileFailure("La verificación tardó demasiado.") : deferTurnstileFailure(),
+        "error-callback": handleTurnstileError,
+        "expired-callback": () => {
+          if (turnstileMessage) turnstileMessage.textContent = "Renovando la verificación…";
+          (window as any).turnstile?.reset(turnstileWidgetId);
+        },
+        "timeout-callback": () => {
+          if (turnstileMessage) turnstileMessage.textContent = "Reintentando la verificación…";
+          (window as any).turnstile?.reset(turnstileWidgetId);
+        },
+        "unsupported-callback": () => showTurnstileFailure("Este navegador no admite la verificación anti-spam."),
       });
     } catch {
-      if (showFailure) showTurnstileFailure("La protección anti-spam no está disponible.");
-      else deferTurnstileFailure();
+      if (turnstileMessage) turnstileMessage.textContent = "La verificación se completará antes de enviar.";
+      if (turnstileRecovery) turnstileRecovery.hidden = true;
     }
   }
   initializeTurnstile();
 
   turnstileRetry?.addEventListener("click", () => {
-    if (turnstileWidgetId !== undefined) (window as any).turnstile?.remove(turnstileWidgetId);
-    turnstileWidgetId = undefined;
-    if (turnstileContainer) {
-      turnstileContainer.replaceChildren();
-      turnstileContainer.hidden = false;
-    }
+    turnstileSubmissionAttempted = true;
+    if (turnstileContainer) turnstileContainer.hidden = false;
     if (turnstileRecovery) turnstileRecovery.hidden = true;
     if (turnstileMessage) turnstileMessage.textContent = "Verificando que eres una persona…";
-    initializeTurnstile(true);
+    if (turnstileWidgetId !== undefined && (window as any).turnstile) {
+      (window as any).turnstile.reset(turnstileWidgetId);
+    } else initializeTurnstile();
   });
 
   if (birthDate) {
@@ -307,8 +319,10 @@ const statusCopy = {
     if (!form.reportValidity()) return;
     const data = new FormData(form);
     if (!data.get("cf-turnstile-response")) {
+      turnstileSubmissionAttempted = true;
       if (message) message.textContent = "Completa la verificación anti-spam.";
-      showTurnstileFailure("No se pudo completar la verificación.");
+      showTurnstileFailure("Completa la verificación para enviar tu solicitud.");
+      if (turnstileWidgetId !== undefined) (window as any).turnstile?.reset(turnstileWidgetId);
       return;
     }
     if (submitButton) submitButton.disabled = true;
