@@ -36,7 +36,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
-  const visitorHash = await hash(`${env.MAP_IP_PEPPER}:visitor:${visitorId}`);
+  const submissionId = crypto.randomUUID();
+  const visitorHash = await hash(`${env.MAP_IP_PEPPER}:visitor:${visitorId}:${submissionId}`);
   const ipHash = await hash(`${env.MAP_IP_PEPPER}:ip:${ip}`);
   const recent = await env.MAP_DB.prepare(
     "SELECT COUNT(*) AS total FROM supporters WHERE ip_hash = ? AND updated_at > datetime('now', '-1 hour')",
@@ -45,9 +46,7 @@ export async function onRequestPost({ request, env }) {
 
   await env.MAP_DB.prepare(`INSERT INTO supporters
     (city, country, lat, lng, visitor_hash, ip_hash, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'approved', datetime('now'), datetime('now'))
-    ON CONFLICT(visitor_hash) DO UPDATE SET city=excluded.city, country=excluded.country,
-      lat=excluded.lat, lng=excluded.lng, ip_hash=excluded.ip_hash, status='approved', updated_at=datetime('now')`)
+    VALUES (?, ?, ?, ?, ?, ?, 'approved', datetime('now'), datetime('now'))`)
     .bind(city, country, lat, lng, visitorHash, ipHash).run();
   const count = await env.MAP_DB.prepare(
     "SELECT COUNT(*) AS total FROM supporters WHERE status = 'approved'",

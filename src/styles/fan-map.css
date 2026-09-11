@@ -3,7 +3,9 @@
 .map-topbar { align-items: center; display: flex; justify-content: space-between; margin-bottom: 24px; }
 .map-brand { align-items: center; color: var(--white); display: flex; font-family: "Bebas Neue", sans-serif; font-size: 24px; gap: 10px; letter-spacing: .06em; text-decoration: none; }
 .map-brand img { height: 48px; object-fit: contain; width: 48px; }
-.language-link { color: var(--gray-light); font-size: 14px; }
+.map-nav { align-items: center; display: flex; gap: 18px; }
+.map-nav a { color: var(--gray-light); font-size: 14px; font-weight: 600; text-underline-offset: 4px; }
+.map-nav a:hover, .map-nav a:focus-visible { color: var(--orange); }
 .map-intro { max-width: 760px; }
 .map-kicker { color: var(--orange); font-size: 13px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
 .map-intro h1 { font-family: "Bebas Neue", sans-serif; font-size: clamp(48px, 9vw, 82px); letter-spacing: .02em; line-height: .95; margin-top: 8px; }

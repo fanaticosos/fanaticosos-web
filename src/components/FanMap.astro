@@ -8,6 +8,7 @@ const copy = locale === "es" ? {
   point: "Aún no has elegido un punto.", chosen: "Ubicación aproximada elegida", submit: "Añadirme al mapa",
   privacy: "Publicaremos únicamente la ciudad, el país y una posición aproximada. No publiques tu dirección.", loading: "Cargando el mapa…",
   success: "¡Ya formas parte de Bears Nation!", failure: "No pudimos guardar tu ubicación. Inténtalo de nuevo.", countPrefix: "Fanaticosos:", countSuffix: "en el mundo",
+  home: "Inicio",
 } : {
   title: "Bear Nation map", kicker: "FanaticOSOS worldwide",
   intro: "Tell us where you support the Bears from. Your marker is rounded so it only shows an approximate location.",
@@ -15,12 +16,16 @@ const copy = locale === "es" ? {
   point: "You haven't chosen a point yet.", chosen: "Approximate location selected", submit: "Add me to the map",
   privacy: "We only publish your city, country, and an approximate position. Do not enter your address.", loading: "Loading map…",
   success: "You're now part of Bear Nation!", failure: "We couldn't save your location. Please try again.", countPrefix: "FanaticOSOS:", countSuffix: "worldwide",
+  home: "Home",
 };
 ---
 <main class="map-shell">
   <header class="map-topbar">
     <a class="map-brand" href="/"><img src="/logo.png" alt="FanaticOSOS" /> FanaticOSOS</a>
-    <a class="language-link" href={locale === "es" ? "/en/map/" : "/mapa/"}>{locale === "es" ? "English" : "Español"}</a>
+    <nav class="map-nav" aria-label={locale === "es" ? "Navegación" : "Navigation"}>
+      <a class="home-link" href="/">{copy.home}</a>
+      <a class="language-link" href={locale === "es" ? "/en/map/" : "/mapa/"}>{locale === "es" ? "English" : "Español"}</a>
+    </nav>
   </header>
   <section class="map-intro">
     <p class="map-kicker">{copy.kicker}</p><h1>{copy.title}</h1><p>{copy.intro}</p><p class="map-count" id="fan-count" aria-live="polite">{copy.countPrefix} — {copy.countSuffix}</p>
@@ -49,14 +54,21 @@ const copy = locale === "es" ? {
   const form = document.querySelector("#fan-map-form"); const status = document.querySelector("#form-status"); const coords = document.querySelector("#coordinates"); const button = form.querySelector("button");
   const localPreview = location.protocol === "http:";
   const localKey = "fanaticosos-map-preview";
+  const supporterMarkers = L.featureGroup().addTo(map);
   let draftMarker;
   const setPoint = ({ lat, lng }) => { const roundedLat = Math.round(lat * 10) / 10; const roundedLng = Math.round(lng * 10) / 10; form.elements.lat.value = roundedLat; form.elements.lng.value = roundedLng; coords.textContent = `${copy.chosen}: ${roundedLat.toFixed(1)}, ${roundedLng.toFixed(1)}`; button.disabled = false; if (draftMarker) draftMarker.remove(); draftMarker = L.marker([roundedLat, roundedLng], { icon }).addTo(map); };
   map.on("click", (event) => setPoint(event.latlng));
-  const addSupporter = (supporter) => L.marker([supporter.lat, supporter.lng], { icon }).addTo(map).bindPopup(`<strong>${escapeHtml(supporter.city)}</strong><br>${escapeHtml(supporter.country)}`);
+  const addSupporter = (supporter) => L.marker([supporter.lat, supporter.lng], { icon }).addTo(supporterMarkers).bindPopup(`<strong>${escapeHtml(supporter.city)}</strong><br>${escapeHtml(supporter.country)}`);
   const escapeHtml = (value) => { const node = document.createElement("span"); node.textContent = value; return node.innerHTML; };
   const readLocal = () => { try { return JSON.parse(localStorage.getItem(localKey) || "[]"); } catch { return []; } };
   const setCount = (count) => { document.querySelector("#fan-count").textContent = `${copy.countPrefix} ${count} ${copy.countSuffix}`; };
-  const renderSupporters = (supporters) => { supporters.forEach(addSupporter); setCount(supporters.length); };
+  const showAllPins = () => {
+    if (!supporterMarkers.getLayers().length) { map.setView(soldierField, 5); return; }
+    const bounds = supporterMarkers.getBounds();
+    bounds.extend(soldierField);
+    map.fitBounds(bounds, { padding: [42, 42], maxZoom: 7 });
+  };
+  const renderSupporters = (supporters) => { supporters.forEach(addSupporter); setCount(supporters.length); showAllPins(); };
   const load = async () => { if (localPreview) { renderSupporters(readLocal()); return; } try { const response = await fetch("/api/fan-map"); if (!response.ok) throw new Error(); const data = await response.json(); renderSupporters(data.supporters); } catch { document.querySelector("#fan-count").textContent = `${copy.countPrefix} — ${copy.countSuffix}`; } };
   form.addEventListener("submit", async (event) => {
     event.preventDefault(); button.disabled = true; status.removeAttribute("data-state");
@@ -68,9 +80,8 @@ const copy = locale === "es" ? {
       if (localPreview) {
         const supporter = { city: body.city, country: body.country, lat: Number(body.lat), lng: Number(body.lng) };
         const supporters = readLocal();
-        const ownIndex = supporters.findIndex((entry) => entry.visitorId === body.visitorId);
         const stored = { ...supporter, visitorId: body.visitorId };
-        if (ownIndex >= 0) supporters[ownIndex] = stored; else supporters.push(stored);
+        supporters.push(stored);
         localStorage.setItem(localKey, JSON.stringify(supporters));
         data = { supporter, count: supporters.length };
       } else {
@@ -78,7 +89,7 @@ const copy = locale === "es" ? {
         data = await response.json(); if (!response.ok) throw new Error(data.error);
       }
       status.textContent = copy.success; status.dataset.state = "success";
-      if (draftMarker) draftMarker.remove(); addSupporter(data.supporter); form.reset();
+      if (draftMarker) draftMarker.remove(); addSupporter(data.supporter); showAllPins(); form.reset();
       coords.textContent = copy.point; setCount(data.count);
     } catch { status.textContent = copy.failure; status.dataset.state = "error"; button.disabled = false; }
   });
