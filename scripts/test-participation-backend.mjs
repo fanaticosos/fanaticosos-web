@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import {
   escapeHtml,
+  sendDecisionEmail,
   sendParticipationEmails,
   validateParticipationForm,
   verifyTurnstile,
@@ -80,5 +81,22 @@ assert.equal(emailResult.status, "sent");
 assert.equal(messages.length, 2);
 assert.match(messages[0].htmlContent, /&lt;Ana&gt;/);
 assert.equal(messages[1].to[0].email, "stream@fanaticosos.com");
+
+const decisionMessages = [];
+await sendDecisionEmail({
+  env: { BREVO_API_KEY: "test", BREVO_FROM_EMAIL: "stream@fanaticosos.com", PARTICIPATION_ADMIN_EMAIL: "stream@fanaticosos.com" },
+  request: { email: "ana@example.com", full_name: "<Ana>" },
+  slot: { stream_date: "2026-11-11", previous_game: "Tampa", next_game: "BYE" },
+  decision: "reject",
+  fetchImplementation: async (_url, options) => {
+    decisionMessages.push(JSON.parse(options.body));
+    return new Response(JSON.stringify({ messageId: "decision-1" }), { status: 201 });
+  },
+});
+assert.equal(decisionMessages.length, 1);
+assert.match(decisionMessages[0].subject, /Actualización de tu solicitud/);
+assert.match(decisionMessages[0].htmlContent, /muchas gracias por querer compartir tu historia/);
+assert.match(decisionMessages[0].htmlContent, /otra oportunidad/);
+assert.match(decisionMessages[0].htmlContent, /&lt;Ana&gt;/);
 
 console.log("Passed participation backend tests.");

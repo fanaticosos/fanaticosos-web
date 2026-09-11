@@ -113,7 +113,7 @@ export async function sendDecisionEmail({ env, request, slot, decision, fetchImp
     subject: confirmed ? `Participación confirmada: FanaticOSOS (${slot.stream_date})` : `Actualización de tu solicitud: FanaticOSOS (${slot.stream_date})`,
     htmlContent: confirmed
       ? `<h1>Tu participación está confirmada</h1><p>Hola ${escapeHtml(request.full_name)}, reservamos el <strong>${escapeHtml(slot.stream_date)} a las 8:00 p.m., hora de la Ciudad de México</strong>.</p><p>Revisión: ${escapeHtml(slot.previous_game)}<br>Próximo: ${escapeHtml(slot.next_game)}</p><p>Agrega la fecha a tu calendario y prepara los partidos, tu historia y tu canción. Recuerda usar computadora, micrófono externo y un ambiente silencioso.</p>`
-      : `<h1>Actualización de tu solicitud</h1><p>Hola ${escapeHtml(request.full_name)}, en esta ocasión no podremos confirmar tu participación para el ${escapeHtml(slot.stream_date)}.</p><p>Gracias por querer formar parte de FanaticOSOS. Puedes solicitar otra fecha disponible.</p>`,
+      : `<h1>Gracias por tu interés en participar</h1><p>Hola ${escapeHtml(request.full_name)}, muchas gracias por querer compartir tu historia con la comunidad de FanaticOSOS.</p><p>En esta ocasión no podremos confirmar tu participación para el <strong>${escapeHtml(slot.stream_date)}</strong>.</p><p>Esperamos contar contigo en otra oportunidad. Si lo deseas, puedes consultar las fechas disponibles y enviar una nueva solicitud.</p><p>Gracias por comprender y por ser parte de FanaticOSOS.</p>`,
   }, fetchImplementation);
   return response.messageId ?? null;
 }
