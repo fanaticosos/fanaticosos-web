@@ -32,7 +32,7 @@ export function validateParticipationForm(form, today) {
     bearsStory: text(form, "bearsStory", 40, 2000),
     songTitle: text(form, "songTitle", 1, 150),
     songArtist: text(form, "songArtist", 1, 150),
-    songReason: text(form, "songReason", 40, 1200),
+    songReason: text(form, "songReason", 15, 1200),
   };
   if (!SLOT.test(result.slotId)) throw new Error("invalid:streamSlot");
   if (!EMAIL.test(result.email)) throw new Error("invalid:email");

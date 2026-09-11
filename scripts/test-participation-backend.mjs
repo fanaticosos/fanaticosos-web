@@ -30,6 +30,12 @@ shortStory.set("bearsStory", "1234567890123456789012345678901234567890");
 assert.equal(validateParticipationForm(shortStory, new Date("2026-09-10T12:00:00Z")).bearsStory.length, 40);
 shortStory.set("bearsStory", "123456789012345678901234567890123456789");
 assert.throws(() => validateParticipationForm(shortStory, new Date("2026-09-10T12:00:00Z")), /bearsStory/);
+const shortSongReason = new FormData();
+for (const [name, value] of validForm.entries()) shortSongReason.set(name, value);
+shortSongReason.set("songReason", "123456789012345");
+assert.equal(validateParticipationForm(shortSongReason, new Date("2026-09-10T12:00:00Z")).songReason.length, 15);
+shortSongReason.set("songReason", "12345678901234");
+assert.throws(() => validateParticipationForm(shortSongReason, new Date("2026-09-10T12:00:00Z")), /songReason/);
 for (const phone of ["+52 55 1234 5678", "+1 (312) 555-0188", "+34 612 34 56 78", "+44 20 7946 0958"]) {
   const international = new FormData();
   for (const [name, value] of validForm.entries()) international.set(name, value);
