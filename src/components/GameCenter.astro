@@ -40,7 +40,12 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
               <span class="countdown-unit"><strong data-unit={label}>{value}</strong><small>{label}</small></span>
             ))}
           </div>
-          <p class="game-date">{formatDate(nextGame.startsAt)}</p>
+          <time
+            class="game-date"
+            datetime={nextGame.startsAt ?? undefined}
+            data-local-kickoff={nextGame.startsAt ?? undefined}
+            title="Horario mostrado inicialmente en Ciudad de México"
+          >{formatDate(nextGame.startsAt)}</time>
           {nextGame.venue && <p class="game-venue">{nextGame.venue}</p>}
         </>
       ) : <p class="empty-state">Próximo partido por anunciar.</p>}
@@ -104,6 +109,17 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
   });
 
   const pad = (value: number) => String(Math.max(0, value)).padStart(2, "0");
+  document.querySelectorAll<HTMLTimeElement>("[data-local-kickoff]").forEach((output) => {
+    const kickoff = new Date(output.dataset.localKickoff ?? "");
+    if (!Number.isFinite(kickoff.getTime())) return;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const formatter = new Intl.DateTimeFormat("es-MX", {
+      weekday: "long", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+    });
+    output.textContent = `${formatter.format(kickoff)} · hora local`;
+    if (timeZone) output.title = `Hora local del navegador: ${timeZone}`;
+  });
+
   document.querySelectorAll<HTMLElement>("[data-countdown]").forEach((countdown) => {
     const target = Date.parse(countdown.dataset.countdown ?? "");
     if (!Number.isFinite(target)) return;

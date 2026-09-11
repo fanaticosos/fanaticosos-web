@@ -36,7 +36,7 @@
 .countdown-unit { background: rgba(3,18,33,.34); border: 1px solid rgba(240,120,32,.3); border-radius: 7px; padding: 8px 2px; text-align: center; }
 .countdown-unit strong { display: block; font-family: "Bebas Neue", sans-serif; font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: .04em; line-height: 1; }
 .countdown-unit small { color: var(--orange); display: block; font-size: 7px; letter-spacing: .09em; margin-top: 5px; text-transform: uppercase; }
-.game-date { font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: .05em; margin-top: 17px; text-align: center; text-transform: capitalize; }
+.game-date { display: block; font-family: "Bebas Neue", sans-serif; font-size: 14px; letter-spacing: .05em; margin-top: 17px; text-align: center; text-transform: capitalize; }
 .game-venue { color: var(--gray); font-size: 10px; margin-top: 5px; text-align: center; }
 
 .scoreboard { align-items: end; display: grid; gap: 10px; grid-template-columns: 1fr auto 1fr; }
