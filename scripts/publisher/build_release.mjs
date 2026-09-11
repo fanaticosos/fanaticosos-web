@@ -58,7 +58,12 @@ async function requireCleanSource(repository, expectedCommit) {
 async function directorySha256(root) {
   const hash = createHash("sha256");
   async function visit(directory, prefix = "") {
-    for (const entry of await readdir(directory, { withFileTypes: true }).then((items) => items.sort((a, b) => a.name.localeCompare(b.name)))) {
+    // Match Python's deterministic ordinal ordering in the deployment verifier.
+    // Locale-sensitive ordering can place punctuation differently (for example, dynamic
+    // route filenames beginning with '['), producing a different tree digest.
+    for (const entry of await readdir(directory, { withFileTypes: true }).then((items) => items.sort((a, b) => (
+      a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+    )))) {
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await visit(path, relative);

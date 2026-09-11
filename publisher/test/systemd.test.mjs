@@ -108,6 +108,8 @@ test("article releases bind immutable application source and Pages Functions", a
   const production = await readFile(new URL("../../scripts/deployment/deploy_cloudflare_production.sh", import.meta.url), "utf8");
   assert.match(build, /release source commit changed before assembly/);
   assert.match(build, /functionsSha256/);
+  assert.doesNotMatch(build, /localeCompare/);
+  assert.match(build, /a\.name < b\.name \? -1 : a\.name > b\.name \? 1 : 0/);
   assert.match(build, /complete release must contain exactly 32 NFL logos/);
   assert.match(build, /"\/api\/participa\/config"/);
   for (const deployment of [preview, production]) {
