@@ -121,6 +121,8 @@ test("article releases bind immutable application source and Pages Functions", a
     assert.match(deployment, /if path\.startswith\("\/api\/"\)/);
     assert.match(deployment, /for (?:path|item) in "\$\{manifest_values\[@\]:1\}"/);
   }
+  assert.match(preview, /status" == 302 && "\$redirect" == https:\/\/fanaticosos\.cloudflareaccess\.com/);
+  assert.match(preview, /"accessProtected": access_protected == "true"/);
 });
 
 test("article release workers read authoritative SQLite state and immutable audio", async () => {

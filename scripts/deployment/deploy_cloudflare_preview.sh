@@ -134,10 +134,18 @@ readonly preview_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporar
 [[ "$preview_url" =~ ^https://[a-zA-Z0-9.-]+\.pages\.dev$ ]] || stop "Wrangler did not return a valid preview URL."
 [[ "$preview_url" != "https://fanaticosos-web.pages.dev" ]] || stop "Wrangler returned the production Pages URL."
 
+access_protected=false
 for path in "${manifest_values[@]:1}"; do
   passed=false
   for attempt in 1 2 3 4 5; do
-    if curl --fail --silent --show-error --max-time 20 --output /dev/null "$preview_url$path"; then
+    response="$(curl --silent --show-error --max-time 20 --output /dev/null \
+      --write-out $'%{http_code}\t%{redirect_url}' "$preview_url$path")"
+    IFS=$'\t' read -r status redirect <<<"$response"
+    if [[ "$status" == 200 ]]; then
+      passed=true
+      break
+    elif [[ "$status" == 302 && "$redirect" == https://fanaticosos.cloudflareaccess.com/* ]]; then
+      access_protected=true
       passed=true
       break
     fi
@@ -149,14 +157,14 @@ done
 mv "$temporary_log" "$log_file"
 chown "$service_account:$service_account" "$log_file"
 chmod 0600 "$log_file"
-python3 - "$receipt" "$job_id" "$preview_branch" "$preview_url" "$commit" <<'PY'
+python3 - "$receipt" "$job_id" "$preview_branch" "$preview_url" "$commit" "$access_protected" <<'PY'
 import json
 import os
 import sys
 import tempfile
 from datetime import datetime, timezone
 
-path, job_id, branch, url, commit = sys.argv[1:]
+path, job_id, branch, url, commit, access_protected = sys.argv[1:]
 receipt = {
     "schemaVersion": 1,
     "environment": "preview",
@@ -164,6 +172,7 @@ receipt = {
     "branch": branch,
     "url": url,
     "commit": commit,
+    "accessProtected": access_protected == "true",
     "validatedAt": datetime.now(timezone.utc).isoformat(),
     "productionChanged": False,
 }
@@ -181,7 +190,11 @@ finally:
         os.unlink(temporary)
 PY
 
-echo "PASS: Validated Cloudflare preview deployed."
+if [[ "$access_protected" == true ]]; then
+  echo "PASS: Immutable Cloudflare preview uploaded behind Access; authenticated visual review is required."
+else
+  echo "PASS: Validated Cloudflare preview deployed."
+fi
 echo "Preview URL: $preview_url"
 echo "Preview branch: $preview_branch"
 echo "PASS: Production branch and domains were not targeted."
