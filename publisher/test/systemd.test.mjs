@@ -113,7 +113,9 @@ test("article releases bind immutable application source and Pages Functions", a
   for (const deployment of [preview, production]) {
     assert.match(deployment, /release Functions checksum is invalid/);
     assert.match(deployment, /cd "\$release_root"/);
-    assert.match(deployment, /\/api\/participa\/config/);
+    assert.match(deployment, /for path in application\.get\("requiredPaths", \[\]\)/);
+    assert.match(deployment, /if path\.startswith\("\/api\/"\)/);
+    assert.match(deployment, /for path in "\$\{manifest_values\[@\]:1\}"/);
   }
 });
 
