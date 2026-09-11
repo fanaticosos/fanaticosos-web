@@ -70,10 +70,6 @@ import "../../styles/admin-invitados.css";
       storyBody.append(element("h3", "", "Cómo se hizo fan"), element("p", "", item.bearsStory), element("h3", "", "Canción"), element("p", "", `${item.songTitle} — ${item.songArtist}`), element("p", "", item.songReason));
       story.append(storyBody);
       article.append(heading, schedule, contact, story);
-      const resend = element("button", "action-resend", "Reenviar correo inicial");
-      resend.setAttribute("type", "button");
-      resend.dataset.resend = item.id;
-      article.append(resend);
       if (["pending", "waitlisted"].includes(item.status)) {
         const actions = element("div", "request-actions");
         for (const [action, copy] of [["confirm", "Confirmar fecha"], ["reject", "Rechazar"]]) {
@@ -109,25 +105,6 @@ import "../../styles/admin-invitados.css";
     render();
   }));
   list?.addEventListener("click", async (event) => {
-    const resend = (event.target as Element).closest<HTMLButtonElement>("[data-resend]");
-    if (resend) {
-      resend.disabled = true;
-      if (status) status.textContent = "Reenviando correo…";
-      try {
-        const response = await fetch("/api/admin/invitados/resend", {
-          method: "POST", headers: { "content-type": "application/json", accept: "application/json" },
-          body: JSON.stringify({ id: resend.dataset.resend }),
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error ?? "request_failed");
-        if (status) status.textContent = result.emailStatus === "sent" ? "Correo inicial reenviado." : "Reenvío parcial; revisa Brevo.";
-        await load();
-      } catch {
-        if (status) status.textContent = "No se pudo reenviar el correo inicial.";
-        resend.disabled = false;
-      }
-      return;
-    }
     const button = (event.target as Element).closest<HTMLButtonElement>("[data-action]");
     const card = button?.closest<HTMLElement>("[data-request-id]");
     if (!button || !card) return;
