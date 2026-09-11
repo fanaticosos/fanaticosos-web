@@ -48,7 +48,19 @@ fanaticosos.com/admin/invitados*
 fanaticosos-web.pages.dev/admin/invitados*
 ```
 
-La política debe permitir únicamente `stream@fanaticosos.com`. Copiar el Team domain y el Application Audience (AUD) a las variables anteriores. El backend vuelve a verificar firma, emisor, audiencia, vigencia y email; la regla perimetral no es la única defensa.
+La política inicial permite miembros autorizados de la cuenta Cloudflare y usa Cloudflare como proveedor de identidad; el PIN por correo queda sólo como respaldo. Copiar el Team domain y el Application Audience (AUD) a las variables anteriores. El backend vuelve a verificar firma, emisor, audiencia y vigencia; la regla perimetral no es la única defensa.
+
+## Pendiente — acceso para colaboradores
+
+Antes de incorporar a otra persona al mantenimiento del sitio, reemplazar la configuración provisional de acceso por un esquema administrable para varios colaboradores:
+
+- asignar una identidad individual a cada colaborador; no compartir la cuenta ni las credenciales del propietario;
+- definir un grupo de Cloudflare Access exclusivo para administradores de FanaticOSOS y asociarlo a `/admin/invitados*` y `/api/admin/invitados*`;
+- usar un proveedor de identidad apropiado para el equipo y conservar el acceso por correo únicamente como recuperación controlada;
+- aplicar mínimo privilegio, retirar accesos al terminar una colaboración y revisar periódicamente los miembros autorizados;
+- documentar alta, baja, recuperación y prueba del acceso antes de habilitar colaboradores en Production.
+
+La configuración actual es válida para el propietario, pero no se considera la solución definitiva para un equipo con múltiples administradores.
 
 ## Verification
 
