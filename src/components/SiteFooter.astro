@@ -7,11 +7,13 @@ const { locale = "es" } = Astro.props;
 const year = new Date().getFullYear();
 const contactPath = locale === "es" ? "/pages/contact" : "/en/pages/contact";
 const termsPath = locale === "es" ? "/pages/terms" : "/en/pages/terms";
+const mapPath = locale === "es" ? "/mapa/" : "/en/map/";
 ---
 
 <footer>
   <span>© {year} FanaticOSOS</span>
   {locale === "es" && <a href="/participa">Participa</a>}
+  <a href={mapPath}>Bears Nation</a>
   <a href={contactPath}>{locale === "es" ? "Contacto" : "Contact"}</a>
   <a href={termsPath}>{locale === "es" ? "Términos" : "Terms"}</a>
 </footer>

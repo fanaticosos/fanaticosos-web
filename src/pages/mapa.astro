@@ -1,0 +1,12 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import FanMap from "../components/FanMap.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import "../styles/fan-map.css";
+---
+<BaseLayout title="Mapa de fanáticos de los Chicago Bears — FanaticOSOS" description="Descubre dónde están los fanáticos de los Chicago Bears y añade tu ciudad al mapa de Bears Nation." canonicalPath="/mapa/" bodyClass="map-page" alternatePaths={{ es: "/mapa/", en: "/en/map/", "x-default": "/mapa/" }}>
+  <link slot="head" rel="preconnect" href="https://tile.openstreetmap.org" crossorigin="anonymous" />
+  <link slot="head" rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+  <script is:inline slot="head" src="/vendor/leaflet/leaflet.min.js"></script>
+  <FanMap /><SiteFooter />
+</BaseLayout>

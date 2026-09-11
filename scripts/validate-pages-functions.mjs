@@ -12,7 +12,7 @@ try {
   ], { encoding: "utf8" });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || "Pages Functions compilation failed");
   const config = JSON.parse(await readFile(routes, "utf8"));
-  for (const route of ["/api/participa", "/api/participa/config", "/api/participa/slots", "/api/admin/invitados", "/api/admin/invitados/action"]) {
+  for (const route of ["/api/participa", "/api/participa/config", "/api/participa/slots", "/api/admin/invitados", "/api/admin/invitados/action", "/api/fan-map"]) {
     if (!config.include?.includes(route)) throw new Error(`Pages Functions route missing: ${route}`);
   }
   console.log(`Validated ${config.include.length} Pages Functions routes.`);

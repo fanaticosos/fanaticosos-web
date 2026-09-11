@@ -1,0 +1,86 @@
+---
+interface Props { locale?: "es" | "en"; }
+const { locale = "es" } = Astro.props;
+const copy = locale === "es" ? {
+  title: "El mapa de Bears Nation", kicker: "FanaticOSOS por el mundo",
+  intro: "¿Desde dónde apoyas a los Bears? Elige una ubicación aproximada y súmate a Bears Nation.",
+  panel: "Pon tu huella", help: "Haz clic en el mapa para elegir una zona aproximada.", city: "Ciudad", country: "País",
+  point: "Aún no has elegido un punto.", chosen: "Ubicación aproximada elegida", submit: "Añadirme al mapa",
+  privacy: "Publicaremos únicamente la ciudad, el país y una posición aproximada. No publiques tu dirección.", loading: "Cargando el mapa…",
+  success: "¡Ya formas parte de Bears Nation!", failure: "No pudimos guardar tu ubicación. Inténtalo de nuevo.", countPrefix: "Fanaticosos:", countSuffix: "en el mundo",
+} : {
+  title: "Bear Nation map", kicker: "FanaticOSOS worldwide",
+  intro: "Tell us where you support the Bears from. Your marker is rounded so it only shows an approximate location.",
+  panel: "Leave your mark", help: "Click the map to choose an approximate area.", city: "City", country: "Country",
+  point: "You haven't chosen a point yet.", chosen: "Approximate location selected", submit: "Add me to the map",
+  privacy: "We only publish your city, country, and an approximate position. Do not enter your address.", loading: "Loading map…",
+  success: "You're now part of Bear Nation!", failure: "We couldn't save your location. Please try again.", countPrefix: "FanaticOSOS:", countSuffix: "worldwide",
+};
+---
+<main class="map-shell">
+  <header class="map-topbar">
+    <a class="map-brand" href="/"><img src="/logo.png" alt="FanaticOSOS" /> FanaticOSOS</a>
+    <a class="language-link" href={locale === "es" ? "/en/map/" : "/mapa/"}>{locale === "es" ? "English" : "Español"}</a>
+  </header>
+  <section class="map-intro">
+    <p class="map-kicker">{copy.kicker}</p><h1>{copy.title}</h1><p>{copy.intro}</p><p class="map-count" id="fan-count" aria-live="polite">{copy.countPrefix} — {copy.countSuffix}</p>
+  </section>
+  <div class="map-workspace">
+    <div id="fan-map" role="application" aria-label={copy.title}><span class="hp-field">{copy.loading}</span></div>
+    <aside class="map-panel">
+      <h2>{copy.panel}</h2><p class="map-help">{copy.help}</p>
+      <form class="map-form" id="fan-map-form">
+        <label for="city">{copy.city}</label><input id="city" name="city" maxlength="80" autocomplete="address-level2" required />
+        <label for="country">{copy.country}</label><input id="country" name="country" maxlength="80" autocomplete="country-name" required />
+        <input class="hp-field" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <input type="hidden" name="lat" /><input type="hidden" name="lng" />
+        <p class="coordinates" id="coordinates">{copy.point}</p>
+        <button type="submit" disabled>{copy.submit}</button>
+        <p class="form-note">{copy.privacy}</p><p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </aside>
+  </div>
+</main>
+<script is:inline define:vars={{ copy }}>
+  const soldierField = [41.8623, -87.6167];
+  const map = L.map("fan-map", { worldCopyJump: true, minZoom: 2 }).setView(soldierField, 5);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, updateWhenIdle: true, keepBuffer: 2, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+  const icon = L.divIcon({ className: "fan-pin", html: "<span><b>C</b></span>", iconSize: [30, 34], iconAnchor: [15, 32], popupAnchor: [0, -30] });
+  const form = document.querySelector("#fan-map-form"); const status = document.querySelector("#form-status"); const coords = document.querySelector("#coordinates"); const button = form.querySelector("button");
+  const localPreview = location.protocol === "http:";
+  const localKey = "fanaticosos-map-preview";
+  let draftMarker;
+  const setPoint = ({ lat, lng }) => { const roundedLat = Math.round(lat * 10) / 10; const roundedLng = Math.round(lng * 10) / 10; form.elements.lat.value = roundedLat; form.elements.lng.value = roundedLng; coords.textContent = `${copy.chosen}: ${roundedLat.toFixed(1)}, ${roundedLng.toFixed(1)}`; button.disabled = false; if (draftMarker) draftMarker.remove(); draftMarker = L.marker([roundedLat, roundedLng], { icon }).addTo(map); };
+  map.on("click", (event) => setPoint(event.latlng));
+  const addSupporter = (supporter) => L.marker([supporter.lat, supporter.lng], { icon }).addTo(map).bindPopup(`<strong>${escapeHtml(supporter.city)}</strong><br>${escapeHtml(supporter.country)}`);
+  const escapeHtml = (value) => { const node = document.createElement("span"); node.textContent = value; return node.innerHTML; };
+  const readLocal = () => { try { return JSON.parse(localStorage.getItem(localKey) || "[]"); } catch { return []; } };
+  const setCount = (count) => { document.querySelector("#fan-count").textContent = `${copy.countPrefix} ${count} ${copy.countSuffix}`; };
+  const renderSupporters = (supporters) => { supporters.forEach(addSupporter); setCount(supporters.length); };
+  const load = async () => { if (localPreview) { renderSupporters(readLocal()); return; } try { const response = await fetch("/api/fan-map"); if (!response.ok) throw new Error(); const data = await response.json(); renderSupporters(data.supporters); } catch { document.querySelector("#fan-count").textContent = `${copy.countPrefix} — ${copy.countSuffix}`; } };
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault(); button.disabled = true; status.removeAttribute("data-state");
+    const body = Object.fromEntries(new FormData(form));
+    body.visitorId = localStorage.getItem("fanaticosos-map-id") || crypto.randomUUID();
+    localStorage.setItem("fanaticosos-map-id", body.visitorId);
+    try {
+      let data;
+      if (localPreview) {
+        const supporter = { city: body.city, country: body.country, lat: Number(body.lat), lng: Number(body.lng) };
+        const supporters = readLocal();
+        const ownIndex = supporters.findIndex((entry) => entry.visitorId === body.visitorId);
+        const stored = { ...supporter, visitorId: body.visitorId };
+        if (ownIndex >= 0) supporters[ownIndex] = stored; else supporters.push(stored);
+        localStorage.setItem(localKey, JSON.stringify(supporters));
+        data = { supporter, count: supporters.length };
+      } else {
+        const response = await fetch("/api/fan-map", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        data = await response.json(); if (!response.ok) throw new Error(data.error);
+      }
+      status.textContent = copy.success; status.dataset.state = "success";
+      if (draftMarker) draftMarker.remove(); addSupporter(data.supporter); form.reset();
+      coords.textContent = copy.point; setCount(data.count);
+    } catch { status.textContent = copy.failure; status.dataset.state = "error"; button.disabled = false; }
+  });
+  load();
+</script>

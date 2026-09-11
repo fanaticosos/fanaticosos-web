@@ -122,6 +122,32 @@
   text-transform: uppercase;
 }
 
+.community-callout {
+  align-items: center;
+  background: linear-gradient(120deg, rgba(240, 120, 32, 0.18), rgba(26, 53, 88, 0.95));
+  border: 1px solid rgba(240, 120, 32, 0.38);
+  border-radius: 16px;
+  display: flex;
+  gap: 28px;
+  justify-content: space-between;
+  margin: 28px auto 56px;
+  max-width: 812px;
+  padding: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.community-callout .section-label { margin-bottom: 8px; text-align: left; }
+.community-callout h2 { font-family: "Bebas Neue", sans-serif; font-size: clamp(30px, 5vw, 42px); letter-spacing: .03em; line-height: 1; }
+.community-callout p:not(.section-label) { color: var(--gray-light); font-size: 14px; line-height: 1.55; margin-top: 10px; max-width: 560px; }
+.community-callout a { background: var(--orange); border-radius: 10px; color: #071a31; flex: 0 0 auto; font-size: 14px; font-weight: 700; padding: 14px 18px; text-decoration: none; }
+.community-callout a:hover { background: #ff8c36; }
+
+@media (max-width: 640px) {
+  .community-callout { align-items: stretch; flex-direction: column; margin-inline: 24px; }
+  .community-callout a { text-align: center; }
+}
+
 .podcast-block {
   background: var(--navy-card);
   border: 1.5px solid rgba(255, 255, 255, 0.08);
