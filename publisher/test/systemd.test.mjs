@@ -115,7 +115,7 @@ test("article releases bind immutable application source and Pages Functions", a
     assert.match(deployment, /cd "\$release_root"/);
     assert.match(deployment, /for path in application\.get\("requiredPaths", \[\]\)/);
     assert.match(deployment, /if path\.startswith\("\/api\/"\)/);
-    assert.match(deployment, /for path in "\$\{manifest_values\[@\]:1\}"/);
+    assert.match(deployment, /for (?:path|item) in "\$\{manifest_values\[@\]:1\}"/);
   }
 });
 
