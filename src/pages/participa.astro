@@ -99,7 +99,7 @@ const statusCopy = {
               <div class="fields-grid">
                 <label class="field field-wide">Nombre completo<input type="text" name="fullName" autocomplete="name" minlength="2" maxlength="100" required /></label>
                 <label class="field">Email<input type="email" name="email" autocomplete="email" maxlength="254" required /></label>
-                <label class="field">Teléfono / WhatsApp<input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="+52 55 1234 5678" minlength="8" maxlength="25" required /></label>
+                <label class="field">Teléfono / WhatsApp<input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="+52 55 1234 5678" minlength="8" maxlength="26" pattern="\+[0-9][0-9 ()-]*[0-9]" title="Incluye +, código de país y número; por ejemplo, +52 55 1234 5678" required /><small>Incluye el código de país: +52, +1, +34, etc.</small></label>
                 <label class="field">Fecha de nacimiento<input type="date" name="birthDate" autocomplete="bday" required data-birth-date /><small>Debes tener 18 años o más.</small></label>
               </div>
             </fieldset>

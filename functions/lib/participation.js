@@ -1,5 +1,6 @@
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SLOT = /^\d{4}-\d{2}-\d{2}$/;
+const INTERNATIONAL_PHONE = /^\+[0-9][0-9 ()-]*[0-9]$/;
 
 function text(form, name, minimum, maximum) {
   const value = String(form.get(name) ?? "").trim();
@@ -26,7 +27,7 @@ export function validateParticipationForm(form, today) {
     slotId: text(form, "streamSlot", 10, 10),
     fullName: text(form, "fullName", 2, 100),
     email: text(form, "email", 5, 254).toLowerCase(),
-    phone: text(form, "phone", 8, 25),
+    phone: text(form, "phone", 8, 26),
     birthDate: text(form, "birthDate", 10, 10),
     bearsStory: text(form, "bearsStory", 80, 2000),
     songTitle: text(form, "songTitle", 1, 150),
@@ -35,6 +36,10 @@ export function validateParticipationForm(form, today) {
   };
   if (!SLOT.test(result.slotId)) throw new Error("invalid:streamSlot");
   if (!EMAIL.test(result.email)) throw new Error("invalid:email");
+  const phoneDigits = result.phone.replace(/\D/g, "");
+  if (!INTERNATIONAL_PHONE.test(result.phone) || phoneDigits.length < 8 || phoneDigits.length > 15) {
+    throw new Error("invalid:phone");
+  }
   if (!isAdult(result.birthDate, today)) throw new Error("invalid:birthDate");
   for (const consent of ["rulesAccepted", "privacyAccepted", "publicationAccepted", "requestAcknowledged"]) {
     if (form.get(consent) !== "on") throw new Error(`invalid:${consent}`);

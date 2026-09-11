@@ -24,6 +24,18 @@ for (const [name, value] of Object.entries({
 })) validForm.set(name, value);
 const submission = validateParticipationForm(validForm, new Date("2026-09-10T12:00:00Z"));
 assert.equal(submission.email, "ana@example.com");
+for (const phone of ["+52 55 1234 5678", "+1 (312) 555-0188", "+34 612 34 56 78", "+44 20 7946 0958"]) {
+  const international = new FormData();
+  for (const [name, value] of validForm.entries()) international.set(name, value);
+  international.set("phone", phone);
+  assert.equal(validateParticipationForm(international, new Date("2026-09-10T12:00:00Z")).phone, phone);
+}
+for (const phone of ["55 1234 5678", "+52 CALL BEARS", "+1 123 456 7890 12345", "+123"]) {
+  const invalidPhone = new FormData();
+  for (const [name, value] of validForm.entries()) invalidPhone.set(name, value);
+  invalidPhone.set("phone", phone);
+  assert.throws(() => validateParticipationForm(invalidPhone, new Date("2026-09-10T12:00:00Z")), /phone/);
+}
 const minor = new FormData();
 for (const [name, value] of validForm.entries()) minor.set(name, value);
 minor.set("birthDate", "2010-01-01");
