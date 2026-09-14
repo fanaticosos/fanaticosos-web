@@ -7,7 +7,9 @@ const copy = locale === "es" ? {
   panel: "Pon tu huella", help: "Haz clic en el mapa para elegir una zona aproximada.", city: "Ciudad", country: "País",
   point: "Aún no has elegido un punto.", chosen: "Ubicación aproximada elegida", submit: "Añadirme al mapa",
   privacy: "Publicaremos únicamente la ciudad, el país y una posición aproximada. No publiques tu dirección.", loading: "Cargando el mapa…",
-  success: "¡Ya formas parte de Bears Nation!", failure: "No pudimos guardar tu ubicación. Inténtalo de nuevo.", countPrefix: "Fanaticosos:", countSuffix: "en el mundo",
+  success: "¡Ya formas parte de Bears Nation!", failure: "No pudimos guardar tu ubicación. Inténtalo de nuevo.",
+  invalidLand: "Elige un punto en tierra, cerca de la ciudad indicada.", invalidCity: "El punto no coincide aproximadamente con la ciudad y el país indicados.", validationUnavailable: "No pudimos validar el punto en este momento. Inténtalo de nuevo.",
+  countPrefix: "Fanaticosos:", countSuffix: "en el mundo",
   home: "Inicio",
 } : {
   title: "Bear Nation map", kicker: "FanaticOSOS worldwide",
@@ -15,7 +17,9 @@ const copy = locale === "es" ? {
   panel: "Leave your mark", help: "Click the map to choose an approximate area.", city: "City", country: "Country",
   point: "You haven't chosen a point yet.", chosen: "Approximate location selected", submit: "Add me to the map",
   privacy: "We only publish your city, country, and an approximate position. Do not enter your address.", loading: "Loading map…",
-  success: "You're now part of Bear Nation!", failure: "We couldn't save your location. Please try again.", countPrefix: "FanaticOSOS:", countSuffix: "worldwide",
+  success: "You're now part of Bear Nation!", failure: "We couldn't save your location. Please try again.",
+  invalidLand: "Choose a point on land near the city you entered.", invalidCity: "The point does not approximately match the city and country entered.", validationUnavailable: "We couldn't validate that point right now. Please try again.",
+  countPrefix: "FanaticOSOS:", countSuffix: "worldwide",
   home: "Home",
 };
 ---
@@ -38,6 +42,7 @@ const copy = locale === "es" ? {
         <label for="city">{copy.city}</label><input id="city" name="city" maxlength="80" autocomplete="address-level2" required />
         <label for="country">{copy.country}</label><input id="country" name="country" maxlength="80" autocomplete="country-name" required />
         <input class="hp-field" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="lat" /><input type="hidden" name="lng" />
         <p class="coordinates" id="coordinates">{copy.point}</p>
         <button type="submit" disabled>{copy.submit}</button>
@@ -91,7 +96,14 @@ const copy = locale === "es" ? {
       status.textContent = copy.success; status.dataset.state = "success";
       if (draftMarker) draftMarker.remove(); addSupporter(data.supporter); showAllPins(); form.reset();
       coords.textContent = copy.point; setCount(data.count);
-    } catch { status.textContent = copy.failure; status.dataset.state = "error"; button.disabled = false; }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      status.textContent = reason === "not_on_land" ? copy.invalidLand
+        : ["city_mismatch", "country_mismatch"].includes(reason) ? copy.invalidCity
+        : reason === "validation_unavailable" ? copy.validationUnavailable
+        : copy.failure;
+      status.dataset.state = "error"; button.disabled = false;
+    }
   });
   load();
 </script>

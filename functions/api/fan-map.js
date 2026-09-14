@@ -1,4 +1,5 @@
 import { json, sameOrigin } from "../lib/http.js";
+import { validateMapLocation } from "../lib/fan-map-location.js";
 
 const cleanText = (value) => typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
 
@@ -28,6 +29,7 @@ export async function onRequestPost({ request, env }) {
   const city = cleanText(data.city);
   const country = cleanText(data.country);
   const visitorId = cleanText(data.visitorId);
+  const locale = data.locale === "en" ? "en" : "es";
   const lat = Math.round(Number(data.lat) * 10) / 10;
   const lng = Math.round(Number(data.lng) * 10) / 10;
   if (!city || city.length > 80 || !country || country.length > 80 || !visitorId || visitorId.length > 80 ||
@@ -43,6 +45,15 @@ export async function onRequestPost({ request, env }) {
     "SELECT COUNT(*) AS total FROM supporters WHERE ip_hash = ? AND updated_at > datetime('now', '-1 hour')",
   ).bind(ipHash).first();
   if (Number(recent?.total) >= 5) return json({ error: "rate_limited" }, 429);
+
+  const locationValidation = await validateMapLocation({
+    city, country, lat, lng, locale,
+    geocoderUrl: env.MAP_GEOCODER_URL || undefined,
+  });
+  if (!locationValidation.valid) {
+    const status = locationValidation.reason === "validation_unavailable" ? 503 : 400;
+    return json({ error: locationValidation.reason }, status);
+  }
 
   await env.MAP_DB.prepare(`INSERT INTO supporters
     (city, country, lat, lng, visitor_hash, ip_hash, status, created_at, updated_at)

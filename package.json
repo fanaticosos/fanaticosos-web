@@ -25,6 +25,7 @@
     "test:participation-slots": "node scripts/test-participation-slots.mjs",
     "test:participation-backend": "node scripts/test-participation-backend.mjs",
     "test:access-auth": "node scripts/test-access-auth.mjs",
+    "test:fan-map-location": "node scripts/test-fan-map-location.mjs",
     "validate:functions": "node scripts/validate-pages-functions.mjs",
     "test:build-media-policy": "node scripts/test-build-media-policy.mjs",
     "test:database": "node --test publisher/test/database.test.mjs",
