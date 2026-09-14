@@ -1,5 +1,6 @@
 import { extname } from "node:path";
 import yaml from "js-yaml";
+import { normalizeArticleMarkdown } from "./article-markdown.mjs";
 
 export function slugify(value) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -59,8 +60,8 @@ export function serializeArticlePair({ draft, translation, audio, settings, publ
   };
   return {
     files: {
-      [`src/content/articles/es/${draft.articleId}.md`]: `${frontmatter(es)}\n${draft.body.trim()}\n`,
-      [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${translation.result.body.trim()}\n`,
+      [`src/content/articles/es/${draft.articleId}.md`]: `${frontmatter(es)}\n${normalizeArticleMarkdown(draft.body).trim()}\n`,
+      [`src/content/articles/en/${draft.articleId}.md`]: `${frontmatter(en)}\n${normalizeArticleMarkdown(translation.result.body).trim()}\n`,
     },
     assets: {
       esAudio: { sourceJobId: audio.jobs.es.jobId, ...(audio.jobs.es.artifact?.path ? { sourcePath: audio.jobs.es.artifact.path } : {}), file: esAudio.file, publicPath: `public/audio/${esAudio.file}` },

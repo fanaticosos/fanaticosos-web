@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { markdownToNarrationScript, normalizeNarrationScript, plainNarrationText, stripEditorialMasthead } from "./narration-scripts.mjs";
+import { normalizeArticleMarkdown } from "./article-markdown.mjs";
 
 const JOB_ID = /^translation-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
 // The systemd worker has a 60-minute hard stop. Allow reconciliation two
@@ -158,7 +159,7 @@ export async function updateTranslationResult(statesRoot, articleId, draft, resu
 export function renderEnglish(result, state) {
   const values = new Map(result.segments.map((segment) => [segment.id, segment.translation]));
   if (!values.has("title") || !values.has("description")) throw new Error("translation result is incomplete");
-  const body = state.bodyLayout.map((entry) => entry.separator ?? `${entry.prefix}${values.get(entry.id) ?? ""}`).join("");
+  const body = normalizeArticleMarkdown(state.bodyLayout.map((entry) => entry.separator ?? `${entry.prefix}${values.get(entry.id) ?? ""}`).join(""));
   return { title: values.get("title"), description: values.get("description"), body, narrationScript: markdownToNarrationScript(body, plainNarrationText) };
 }
 

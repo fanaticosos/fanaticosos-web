@@ -35,3 +35,15 @@ test("accepted draft serializes as a bilingual publishable pair", () => {
   assert.equal(release.assets.enAudio.publicPath, `public/audio/en-${draft.articleId}.mp3`);
   assert.equal(release.assets.esAudio.publicPath, `public/audio/es-${draft.articleId}.mp3`);
 });
+
+test("release repairs duplicated Markdown list markers", () => {
+  const release = serializeArticlePair({
+    draft: { ...draft, body: "1. 1. Primera jugada" },
+    translation: { ...translation, result: { ...translation.result, body: "1. 1. First play" } },
+    audio,
+    settings,
+    publishedAt: "2026-07-31T09:00:00-05:00",
+  });
+  assert.match(release.files[`src/content/articles/es/${draft.articleId}.md`], /\n1\. Primera jugada\n$/);
+  assert.match(release.files[`src/content/articles/en/${draft.articleId}.md`], /\n1\. First play\n$/);
+});

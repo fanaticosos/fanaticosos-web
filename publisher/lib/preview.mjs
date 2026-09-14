@@ -1,3 +1,5 @@
+import { normalizeArticleMarkdown } from "./article-markdown.mjs";
+
 function escapeHtml(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
@@ -30,7 +32,7 @@ function renderTable(lines) {
 }
 
 export function renderMarkdown(source) {
-  return source.replaceAll("\r\n", "\n").split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
+  return normalizeArticleMarkdown(source).split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
     const block = part.trim();
     const heading = /^(#{1,6})\s+/.exec(block);
     if (heading) {
@@ -40,8 +42,19 @@ export function renderMarkdown(source) {
     const lines = block.split("\n").map((line) => line.trim());
     const table = renderTable(lines);
     if (table) return table;
-    if (lines.every((line) => /^>\s+/.test(line))) {
-      return `<blockquote><p>${renderInline(lines.map((line) => line.replace(/^>\s+/, "")).join(" "))}</p></blockquote>`;
+    if (lines.every((line) => /^>\s*/.test(line))) {
+      const paragraphs = [];
+      let paragraph = [];
+      for (const line of lines) {
+        const content = line.replace(/^>\s?/, "").trim();
+        if (content) paragraph.push(content);
+        else if (paragraph.length) {
+          paragraphs.push(paragraph.join(" "));
+          paragraph = [];
+        }
+      }
+      if (paragraph.length) paragraphs.push(paragraph.join(" "));
+      return `<blockquote>${paragraphs.map((value) => `<p>${renderInline(value)}</p>`).join("")}</blockquote>`;
     }
     if (lines.every((line) => /^[-*+]\s+/.test(line))) {
       return `<ul>${lines.map((line) => `<li>${renderInline(line.replace(/^[-*+]\s+/, ""))}</li>`).join("")}</ul>`;

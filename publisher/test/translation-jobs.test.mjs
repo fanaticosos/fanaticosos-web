@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { queueTranslation, readTranslationState, reconcileTranslations, translationRequestForDraft, translationSourceRevision, updateTranslationResult } from "../lib/translation-jobs.mjs";
+import { queueTranslation, readTranslationState, reconcileTranslations, renderEnglish, translationRequestForDraft, translationSourceRevision, updateTranslationResult } from "../lib/translation-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 3,
@@ -20,6 +20,16 @@ test("draft becomes ordered translation segments without losing Markdown layout"
     { id: "body-003", kind: "list-item" },
   ]);
   assert.equal(value.request.segments[2].text, "Primer cuarto");
+});
+
+test("translated list markers are not duplicated when the model repeats them", () => {
+  const state = { bodyLayout: [{ id: "body-001", prefix: "1. " }] };
+  const result = { segments: [
+    { id: "title", translation: "Title" },
+    { id: "description", translation: "Description" },
+    { id: "body-001", translation: "1. First play" },
+  ] };
+  assert.equal(renderEnglish(result, state).body, "1. First play");
 });
 
 test("translation dependency includes title, description, and article body", () => {

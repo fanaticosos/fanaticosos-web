@@ -47,6 +47,14 @@ test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes
   assert.doesNotMatch(html, /<script>/);
 });
 
+test("article Markdown renders multi-paragraph quote boxes and repairs duplicated list markers", () => {
+  const html = renderMarkdown(`> “Así queremos vernos.”\n>\n> — **Caleb Williams**\n\n1. 1. Primera jugada\n2. Segunda jugada`);
+  assert.match(html, /<blockquote><p>“Así queremos vernos\.”<\/p><p>— <strong>Caleb Williams<\/strong><\/p><\/blockquote>/);
+  assert.match(html, /<ol><li>Primera jugada<\/li><li>Segunda jugada<\/li><\/ol>/);
+  assert.doesNotMatch(html, /&gt;/);
+  assert.doesNotMatch(html, /<li>1\. Primera jugada<\/li>/);
+});
+
 test("article Markdown renders comparison tables instead of pipe-delimited prose", () => {
   const html = renderMarkdown(`## El enfrentamiento\n\n| Factor | Bears | Panthers |\n|---|---|---|\n| **Quarterback** | Williams improvisa. | Young protege el balón. |\n| *Defensa* | Presiona. | <script>alert(1)</script> |`);
   assert.match(html, /<div class="table-scroll"><table>/);
