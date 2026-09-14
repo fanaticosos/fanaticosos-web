@@ -84,7 +84,13 @@ function showSpanishAudioProgress(audio) {
     return;
   }
   const phase = job.status === "queued" ? "en cola" : "generando";
-  spanishAudioStatus.textContent = `Audio en español: ${phase} · ${formatElapsed(job.createdAt ?? audio.updatedAt ?? audio.createdAt)} transcurridos · puedes cerrar esta página.`;
+  const progress = job.progress;
+  const detail = progress?.stage === "assembling"
+    ? `ensamblando ${progress.totalChunks} bloques`
+    : Number.isInteger(progress?.completedChunks) && Number.isInteger(progress?.totalChunks)
+      ? `bloque ${progress.completedChunks} de ${progress.totalChunks}`
+      : null;
+  spanishAudioStatus.textContent = `Audio en español: ${phase}${detail ? ` · ${detail}` : ""} · ${formatElapsed(job.createdAt ?? audio.updatedAt ?? audio.createdAt)} transcurridos · puedes cerrar esta página.`;
 }
 
 function showTranslationProgress(translation) {

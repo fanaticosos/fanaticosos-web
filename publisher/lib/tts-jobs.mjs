@@ -170,6 +170,20 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
         try {
           await readFile(join(jobsRoot, job.jobId, "request.json"));
           job.status = "running";
+          try {
+            const progress = JSON.parse(await readFile(join(jobsRoot, job.jobId, "progress.json"), "utf8"));
+            if (
+              progress?.schemaVersion === 1
+              && ["generating", "assembling", "completed"].includes(progress.stage)
+              && Number.isInteger(progress.totalChunks)
+              && Number.isInteger(progress.completedChunks)
+              && progress.totalChunks > 0
+              && progress.completedChunks >= 0
+              && progress.completedChunks <= progress.totalChunks
+            ) job.progress = progress;
+          } catch (progressError) {
+            if (progressError.code !== "ENOENT" && progressError.name !== "SyntaxError") throw progressError;
+          }
         } catch (requestError) {
           if (requestError.code !== "ENOENT") throw requestError;
         }

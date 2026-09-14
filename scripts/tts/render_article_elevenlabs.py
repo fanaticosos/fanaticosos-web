@@ -27,6 +27,24 @@ from pronunciations import apply_pronunciations, validate_pronunciations
 ENGINE = "ElevenLabs"
 
 
+def write_progress(path: Path, *, stage: str, total_chunks: int, completed_chunks: int,
+                   cache_hits: int, generated_chunks: int) -> None:
+    """Publish sanitized, atomic progress without exposing narration or credentials."""
+    value = {
+        "schemaVersion": 1,
+        "stage": stage,
+        "totalChunks": total_chunks,
+        "completedChunks": completed_chunks,
+        "cacheHits": cache_hits,
+        "generatedChunks": generated_chunks,
+        "updatedAt": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
+    }
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.saving")
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.chmod(0o600)
+    os.replace(temporary, path)
+
+
 def api_request(url: str, key: str, payload: dict | None = None) -> bytes:
     request = urllib.request.Request(
         url,
@@ -202,6 +220,8 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
         voice_id = resolve_voice_id(key, configuration["voiceName"])
         spoken_request = prepare_spoken_request(request, pronunciations)
         chunks = narration_chunks(spoken_request, configuration["maximumCharactersPerRequest"])
+        progress_path = output.parent / "progress.json"
+        write_progress(progress_path, stage="generating", total_chunks=len(chunks), completed_chunks=0, cache_hits=0, generated_chunks=0)
         with tempfile.TemporaryDirectory(prefix="elevenlabs-tts-", dir=staging) as temp_name:
             temp = Path(temp_name)
             paths = []
@@ -212,9 +232,18 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
                 path.write_bytes(audio)
                 cache_hits += int(reused)
                 paths.append(path)
+                write_progress(
+                    progress_path,
+                    stage="generating",
+                    total_chunks=len(chunks),
+                    completed_chunks=index,
+                    cache_hits=cache_hits,
+                    generated_chunks=index - cache_hits,
+                )
             concat = temp / "concat.txt"
             concat.write_text("".join(f"file '{path.as_posix()}'\n" for path in paths), encoding="utf-8")
             mp3_path = staging / file_name
+            write_progress(progress_path, stage="assembling", total_chunks=len(chunks), completed_chunks=len(chunks), cache_hits=cache_hits, generated_chunks=len(chunks) - cache_hits)
             subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(concat), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-ac", "1", "-b:a", "128k", str(mp3_path)], check=True)
         probe = probe_audio(mp3_path)
         result = {
@@ -234,6 +263,7 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
         for path in staging.iterdir():
             path.chmod(0o600)
         os.replace(staging, output)
+        write_progress(progress_path, stage="completed", total_chunks=len(chunks), completed_chunks=len(chunks), cache_hits=cache_hits, generated_chunks=len(chunks) - cache_hits)
         return result
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)

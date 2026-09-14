@@ -196,6 +196,26 @@ test("bilingual TTS queues Spanish and English automatically", async () => {
   );
 });
 
+test("running Spanish audio exposes sanitized worker progress", async () => {
+  const root = await mkdtemp(join(tmpdir(), "publisher-tts-progress-"));
+  const queueRoot = join(root, "queue");
+  const statesRoot = join(root, "states");
+  const jobsRoot = join(root, "jobs");
+  const state = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision });
+  const job = state.jobs.es;
+  await mkdir(join(jobsRoot, job.jobId), { recursive: true });
+  await writeFile(join(jobsRoot, job.jobId, "request.json"), "{}\n");
+  await writeFile(join(jobsRoot, job.jobId, "progress.json"), JSON.stringify({
+    schemaVersion: 1, stage: "generating", totalChunks: 10, completedChunks: 4,
+    cacheHits: 3, generatedChunks: 1, updatedAt: "2026-09-14T20:46:00Z",
+  }));
+  await reconcileTts({ statesRoot, jobsRoot });
+  const reconciled = await readTtsState(statesRoot, draft.articleId);
+  assert.equal(reconciled.jobs.es.status, "running");
+  assert.equal(reconciled.jobs.es.progress.completedChunks, 4);
+  assert.equal(reconciled.jobs.es.progress.cacheHits, 3);
+});
+
 test("English completion is reconciled after Spanish is uploaded first", async () => {
   const root = await mkdtemp(join(tmpdir(), "publisher-tts-awaiting-english-"));
   const statesRoot = join(root, "states");

@@ -10,13 +10,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_article_elevenlabs import api_request, cached_chunk, narration_chunks, prepare_spoken_request, render_production, resolve_voice_id, split_text
+from render_article_elevenlabs import api_request, cached_chunk, narration_chunks, prepare_spoken_request, render_production, resolve_voice_id, split_text, write_progress
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class ElevenLabsProductionTests(unittest.TestCase):
+    def test_progress_is_atomic_sanitized_and_private(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "progress.json"
+            write_progress(path, stage="generating", total_chunks=10, completed_chunks=3, cache_hits=2, generated_chunks=1)
+            value = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(value["completedChunks"], 3)
+            self.assertEqual(value["cacheHits"], 2)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn("text", value)
+
     def test_production_assembly_decodes_every_chunk_instead_of_copying_mp3_boundaries(self):
         source = (ROOT / "scripts/tts/render_article_elevenlabs.py").read_text(encoding="utf-8")
         self.assertNotIn('"-c", "copy"', source)
