@@ -1306,12 +1306,12 @@ command_install_game_center_automation() {
   require_repository_commit "$expected"
   [[ -x "$game_center_runner_source" ]] || stop "Game Center automation runner is missing or not executable."
   [[ -f "$game_center_service_source" && -f "$game_center_timer_source" ]] || stop "Game Center systemd units are missing."
+  install -o root -g root -m 0755 "$game_center_runner_source" "$game_center_runner_installed"
   if ! diagnostics="$(systemd-analyze verify "$game_center_service_source" "$game_center_timer_source" 2>&1)"; then
     stop "Game Center systemd units failed verification: $diagnostics"
   fi
   [[ -z "$diagnostics" ]] || stop "Game Center systemd units produced diagnostics: $diagnostics"
   install -d -o "$service_account" -g "$service_account" -m 0700 "$publisher_data/game-center"
-  install -o root -g root -m 0755 "$game_center_runner_source" "$game_center_runner_installed"
   install -o root -g root -m 0644 "$game_center_service_source" "$game_center_service_installed"
   install -o root -g root -m 0644 "$game_center_timer_source" "$game_center_timer_installed"
   systemctl daemon-reload

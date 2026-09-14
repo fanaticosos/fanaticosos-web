@@ -225,6 +225,13 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn("systemctl enable fanaticosos-release-retention.timer", installer)
         self.assertNotIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
 
+    def test_game_center_installer_places_runner_before_unit_verification(self):
+        installer = self.helper.split("command_install_game_center_automation()", 1)[1].split("\n}\n", 1)[0]
+        install_runner = installer.index('install -o root -g root -m 0755 "$game_center_runner_source"')
+        verify_units = installer.index('systemd-analyze verify "$game_center_service_source"')
+        self.assertLess(install_runner, verify_units)
+        self.assertIn("systemctl enable --now fanaticosos-game-center-update.timer", installer)
+
     def test_database_operations_are_fixed_bounded_and_service_owned(self):
         self.assertIn('readonly publisher_database="$publisher_database_root/publisher.sqlite"', self.helper)
         self.assertIn('validate_database_backup_id "$backup_id"', self.helper)
