@@ -1,5 +1,10 @@
 const DEFAULT_GEOCODER = "https://nominatim.openstreetmap.org";
 
+export const roundMapCoordinates = (lat, lng) => ({
+  lat: Math.round(Number(lat) * 10) / 10,
+  lng: Math.round(Number(lng) * 10) / 10,
+});
+
 const stripMarks = (value) => String(value ?? "")
   .normalize("NFKD")
   .replace(/[\u0300-\u036f]/g, "")
@@ -45,9 +50,10 @@ function namesApproximatelyMatch(expected, candidates) {
 }
 
 export async function validateMapLocation({ city, country, lat, lng, locale = "es", geocoderUrl = DEFAULT_GEOCODER, fetchImplementation = fetch }) {
+  const rounded = roundMapCoordinates(lat, lng);
   const endpoint = new URL("/reverse", geocoderUrl);
   endpoint.search = new URLSearchParams({
-    format: "geocodejson", lat: String(lat), lon: String(lng), zoom: "10", addressdetails: "1",
+    format: "geocodejson", lat: String(rounded.lat), lon: String(rounded.lng), zoom: "10", addressdetails: "1",
     "accept-language": locale === "en" ? "en,es" : "es,en",
   }).toString();
 

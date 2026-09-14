@@ -1,5 +1,5 @@
 import { json, sameOrigin } from "../lib/http.js";
-import { validateMapLocation } from "../lib/fan-map-location.js";
+import { roundMapCoordinates, validateMapLocation } from "../lib/fan-map-location.js";
 
 const cleanText = (value) => typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
 
@@ -30,8 +30,7 @@ export async function onRequestPost({ request, env }) {
   const country = cleanText(data.country);
   const visitorId = cleanText(data.visitorId);
   const locale = data.locale === "en" ? "en" : "es";
-  const lat = Math.round(Number(data.lat) * 10) / 10;
-  const lng = Math.round(Number(data.lng) * 10) / 10;
+  const { lat, lng } = roundMapCoordinates(data.lat, data.lng);
   if (!city || city.length > 80 || !country || country.length > 80 || !visitorId || visitorId.length > 80 ||
       !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     return json({ error: "invalid_location" }, 400);

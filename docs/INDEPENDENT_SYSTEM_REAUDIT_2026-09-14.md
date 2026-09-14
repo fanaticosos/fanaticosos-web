@@ -368,8 +368,8 @@ No se debe adoptar ninguna alternativa sin una comparación auditiva ciega, medi
 - `ID_DEL_PIN` fue usado literalmente en SQL y SQLite lo interpretó como columna inexistente.
 - Se identificó el registro `id=49`, estado `approved`.
 - Se implementó validación aproximada de coordenadas y capacidad de reposicionar el marcador.
-- Debe reauditarse si la validación realmente comprueba tierra y coherencia ciudad/país para todos los caminos de escritura, no solo el cliente.
-- Debe confirmarse la corrección del registro histórico en la D1 correcta.
+- Reauditoría cerrada: el backend redondea a una décima antes de consultar el `/reverse` público de Nominatim y exige tierra, país y coincidencia aproximada de ciudad.
+- El registro histórico `id=49` fue confirmado en `fanaticosos-bears-nation` (`d42195be-4ff3-42cf-854d-f681536a244f`): El Paso, USA, `31.8,-106.4`, `approved`. Nominatim lo resolvió como El Paso, Texas, United States y la API pública devolvió el mismo marcador; no necesita corrección.
 
 ### Navegación y páginas bilingües
 
@@ -501,7 +501,7 @@ No se debe adoptar ninguna alternativa sin una comparación auditiva ciega, medi
 ### P1: datos y Cloudflare
 
 - [ ] Inventariar cada D1 por nombre, ID, binding, entorno y propósito.
-- [ ] Confirmar qué D1 contiene `supporters` y el registro 49.
+- [x] Confirmar qué D1 contiene `supporters` y el registro 49: `fanaticosos-bears-nation` (`d42195be-4ff3-42cf-854d-f681536a244f`).
 - [ ] Exportar/respaldar D1 por separado; el backup SQLite de Papabear no incluye Cloudflare D1.
 - [ ] Verificar Turnstile, Pages Functions, Access y variables de preview/producción.
 - [ ] Confirmar el manifest exacto actualmente desplegado en producción.
@@ -516,8 +516,8 @@ No se debe adoptar ninguna alternativa sin una comparación auditiva ciega, medi
 
 ### P2: mapa Bears Nation
 
-- [ ] Validar coordenadas en backend, no depender del navegador.
-- [ ] Comprobar tierra/agua y coherencia aproximada ciudad-país con fuente versionada o servicio definido.
+- [x] Validar coordenadas redondeadas en backend, sin depender del navegador.
+- [x] Comprobar tierra/agua y coherencia aproximada ciudad-país mediante el endpoint público versionado en código de Nominatim.
 - [ ] Auditar registros existentes y corregir outliers.
 - [ ] Diseñar panel administrativo posteriormente, con auditoría de cambios y sin acceso directo casual a D1.
 

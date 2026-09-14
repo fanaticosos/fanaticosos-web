@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { validateMapLocation } from "../functions/lib/fan-map-location.js";
+import { roundMapCoordinates, validateMapLocation } from "../functions/lib/fan-map-location.js";
 
 const response = (geocoding, status = 200) => new Response(
   JSON.stringify(geocoding ? { features: [{ properties: { geocoding } }] } : { error: "Unable to geocode" }),
@@ -13,6 +13,19 @@ const validate = (overrides = {}) => validateMapLocation({
 });
 
 assert.deepEqual(await validate(), { valid: true });
+assert.deepEqual(roundMapCoordinates(25.678, -100.345), { lat: 25.7, lng: -100.3 });
+let requestedUrl;
+assert.deepEqual(await validate({
+  lat: 25.678, lng: -100.345,
+  fetchImplementation: async (url) => {
+    requestedUrl = url;
+    return response({ name: "Monterrey", country: "México" });
+  },
+}), { valid: true });
+assert.equal(requestedUrl.origin, "https://nominatim.openstreetmap.org");
+assert.equal(requestedUrl.pathname, "/reverse");
+assert.equal(requestedUrl.searchParams.get("lat"), "25.7");
+assert.equal(requestedUrl.searchParams.get("lon"), "-100.3");
 assert.deepEqual(await validate({ country: "Estados Unidos" }), { valid: false, reason: "country_mismatch" });
 assert.deepEqual(await validate({ city: "Guadalajara" }), { valid: false, reason: "city_mismatch" });
 assert.deepEqual(await validate({
