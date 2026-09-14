@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Canción semanal — Fanaticosos</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="mark">F</span><span>FANATICOSOS</span></div>
+      <a class="back-link" href="/">← Volver a artículos</a>
+    </header>
+    <main class="music-page">
+      <p class="eyebrow">PÁGINA PRINCIPAL</p>
+      <h1>Canción semanal</h1>
+      <p class="music-intro">Cambia la canción del inicio en un solo paso.</p>
+      <section class="panel music-card">
+        <div id="music-preview" class="music-preview" hidden>
+          <img id="music-cover" alt="">
+          <div><small>PUBLICADA AHORA</small><strong id="music-title"></strong><span id="music-artist"></span></div>
+          <audio id="music-audio" controls preload="metadata"></audio>
+        </div>
+        <form id="music-form">
+          <label>Nueva canción
+            <span>Pega el enlace compartido desde Navidrome</span>
+            <input id="weekly-song-url" type="url" required placeholder="https://musica.fanaticosos.com/share/…">
+          </label>
+          <button id="save-music" class="primary" type="submit">Cambiar canción</button>
+        </form>
+        <div id="music-state" class="music-status" role="status" aria-live="polite"></div>
+        <div id="music-error" class="message" role="alert" hidden></div>
+      </section>
+    </main>
+    <script src="/music.js"></script>
+  </body>
+</html>

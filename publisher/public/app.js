@@ -35,8 +35,6 @@ const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
 const publishRelease = document.querySelector("#publish-release");
-const musicForm = document.querySelector("#music-form");
-const musicState = document.querySelector("#music-state");
 const articleBody = document.querySelector("#article-body");
 const bodyPreview = document.querySelector("#body-preview");
 let translationTimer = null;
@@ -151,18 +149,6 @@ function formatSelection(action) {
 document.querySelectorAll("[data-markdown-action]").forEach((button) => {
   button.addEventListener("click", () => formatSelection(button.dataset.markdownAction));
 });
-
-function renderMusic(settings) {
-  const song = settings.music.weeklySong;
-  document.querySelector("#weekly-song-url").value = settings.music.weeklySongUrl;
-  document.querySelector("#music-summary").textContent = `${song.title} · ${song.artist}`;
-  document.querySelector("#music-cover").src = song.coverUrl;
-  document.querySelector("#music-cover").alt = `Portada de ${song.album || song.title}`;
-  document.querySelector("#music-title").textContent = song.title;
-  document.querySelector("#music-artist").textContent = `${song.artist}${song.album ? ` · ${song.album}` : ""}`;
-  document.querySelector("#music-audio").src = song.streamUrl;
-  document.querySelector("#music-preview").hidden = false;
-}
 
 function renderSeoPreview() {
   const ownerFields = fields();
@@ -390,37 +376,6 @@ async function request(url, options) {
   if (!response.ok) throw new Error(value.error || "La operación no pudo completarse.");
   return value;
 }
-
-musicForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const button = document.querySelector("#save-music");
-  button.disabled = true;
-  musicState.textContent = "Verificando canción…";
-  message.hidden = true;
-  try {
-    const { settings } = await request("/api/music", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weeklySongUrl: document.querySelector("#weekly-song-url").value.trim() }),
-    });
-    renderMusic(settings);
-    musicState.textContent = "Publicando en la página principal…";
-    const started = Date.now();
-    let completed = false;
-    while (Date.now() - started < 10 * 60 * 1000) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      const { publication } = await request("/api/music");
-      if (publication?.status === "completed") { musicState.textContent = "Publicada en la página principal"; completed = true; break; }
-      if (publication?.status === "failed") throw new Error(publication.error || "La publicación de música no pudo completarse.");
-    }
-    if (!completed) throw new Error("La publicación sigue en curso. Puedes cerrar esta pantalla; el proceso continuará automáticamente.");
-  } catch (error) {
-    musicState.textContent = "No guardada";
-    showError(error.message);
-  } finally {
-    button.disabled = false;
-  }
-});
 
 async function refreshList() {
   const { drafts } = await request("/api/drafts");
@@ -953,10 +908,9 @@ dropZone.addEventListener("drop", (event) => {
 });
 
 async function initialize() {
-  const [publisherResponse, musicResponse] = await Promise.all([request("/api/settings"), request("/api/music")]);
+  const publisherResponse = await request("/api/settings");
   publisherSettings = publisherResponse.settings;
   applySettings(publisherSettings);
-  renderMusic(musicResponse.settings);
   setFields(null);
   await Promise.all([refreshList(), refreshNotifications()]);
   const requestedDraft = new URLSearchParams(window.location.search).get("draft");

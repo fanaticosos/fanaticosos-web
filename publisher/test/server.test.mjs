@@ -326,10 +326,11 @@ test("editor shell is served with private security headers", async (context) => 
   assert.doesNotMatch(html, /name="imageCaption"/);
   assert.match(html, /Crédito o pie de foto/);
   assert.match(html, /SEO y apariencia al compartir/);
-  assert.match(html, /id="music-form"/);
+  assert.doesNotMatch(html, /id="music-form"/);
+  assert.match(html, /href="\/music\.html"/);
   assert.match(html, /id="body-preview"/);
   assert.match(html, /data-markdown-action="heading"/);
-  assert.match(html, /Canción de la semana/);
+  assert.match(html, /Canción semanal/);
   assert.match(html, /Vista previa aproximada en redes y WhatsApp/);
   assert.match(html, /id="generate-audio" disabled hidden/);
   assert.match(html, /id="upload-spanish-audio"/);
@@ -357,8 +358,17 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /imagePath: ownerFields\.featuredImage\.path/);
   assert.match(app, /publishRelease\.disabled = true/);
   assert.match(app, /release\.status/);
-  assert.match(app, /\/api\/music/);
+  assert.doesNotMatch(app, /\/api\/music/);
   assert.match(app, /\/api\/markdown-preview/);
+
+  const musicResponse = await fetch(`${base}/music.html`);
+  assert.equal(musicResponse.status, 200);
+  const musicHtml = await musicResponse.text();
+  assert.match(musicHtml, /id="music-form"/);
+  assert.match(musicHtml, /Cambia la canción del inicio en un solo paso/);
+  const musicApp = await (await fetch(`${base}/music.js`)).text();
+  assert.match(musicApp, /\/api\/music/);
+  assert.match(musicApp, /Publicando… puedes salir de esta pantalla/);
 
   const seo = await (await fetch(`${base}/seo.js`)).text();
   assert.match(seo, /canonicalUrl/);
