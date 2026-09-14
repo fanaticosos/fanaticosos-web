@@ -4,8 +4,10 @@ readonly repository="/opt/fanaticosos-blog/repository"
 readonly publisher_root="/opt/fanaticosos-blog/publisher"
 readonly service_account="fanaticosos-blog"
 readonly ready="$publisher_root/game-center/deploy-ready"
+force="${1:-}"
+[[ -z "$force" || "$force" == "--force" ]] || { echo "STOP: invalid automation argument." >&2; exit 1; }
 
-runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
+runuser -u "$service_account" -- env FANATICOSOS_GAME_CENTER_FORCE="$([[ "$force" == "--force" ]] && echo 1 || echo 0)" /opt/nodejs/current/bin/node \
   "$repository/scripts/publisher/run_game_center_automation.mjs" \
   --repository "$repository" --publisher-root "$publisher_root"
 

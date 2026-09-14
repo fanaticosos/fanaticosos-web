@@ -155,6 +155,7 @@ Commands:
   publisher-status
   install-game-center-automation EXPECTED_COMMIT
   game-center-automation-status
+  run-game-center-update EXPECTED_COMMIT
   initialize-database EXPECTED_COMMIT
   database-status EXPECTED_COMMIT
   backup-database EXPECTED_COMMIT BACKUP_ID
@@ -1341,6 +1342,15 @@ PY
   fi
 }
 
+command_run_game_center_update() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  systemctl stop fanaticosos-game-center-update.service || true
+  systemctl reset-failed fanaticosos-game-center-update.service || true
+  "$game_center_runner_installed" --force
+  echo "PASS: Forced verified Game Center update completed."
+}
+
 command_initialize_database() {
   local expected="$1"
   require_repository_commit "$expected"
@@ -2365,6 +2375,10 @@ case "$command" in
   game-center-automation-status)
     [[ $# == 0 ]] || stop "game-center-automation-status takes no arguments."
     command_game_center_automation_status
+    ;;
+  run-game-center-update)
+    [[ $# == 1 ]] || stop "run-game-center-update requires EXPECTED_COMMIT."
+    command_run_game_center_update "$1"
     ;;
   initialize-database)
     [[ $# == 1 ]] || stop "initialize-database requires EXPECTED_COMMIT."

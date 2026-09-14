@@ -51,7 +51,7 @@ async function main() {
   await rm(join(temporary, "release-manifest.json"), { force: true });
   await execute("/opt/nodejs/current/bin/npm", ["run", "build"], {
     cwd: temporary,
-    env: { ...process.env, NODE_ENV: "production", FANATICOSOS_PRIVATE_RELEASE_BUILD: "1", FANATICOSOS_RELEASE_ARTICLE_ID: previousManifest.articleId },
+    env: { ...process.env, PATH: "/opt/nodejs/current/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin", NODE_ENV: "production", FANATICOSOS_PRIVATE_RELEASE_BUILD: "1", FANATICOSOS_RELEASE_ARTICLE_ID: previousManifest.articleId },
     maxBuffer: 10_000_000,
   });
   const homepage = await readFile(join(temporary, "dist/index.html"), "utf8");

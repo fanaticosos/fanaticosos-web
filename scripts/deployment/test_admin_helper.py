@@ -115,6 +115,7 @@ class AdminHelperTests(unittest.TestCase):
                 "publisher-status",
                 "install-game-center-automation",
                 "game-center-automation-status",
+                "run-game-center-update",
                 "initialize-database",
                 "database-status",
                 "backup-database",

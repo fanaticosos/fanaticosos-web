@@ -18,11 +18,12 @@ function argument(name) { const index = process.argv.indexOf(name); if (index < 
 async function optionalJson(path) { return readFile(path, "utf8").then(JSON.parse).catch((error) => { if (error.code === "ENOENT") return null; throw error; }); }
 async function atomicJson(path, value) { const temporary = `${path}.${randomUUID()}.saving`; await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600, flag: "wx" }); await rename(temporary, path); }
 function content(value) { const clone = structuredClone(value); delete clone.updatedAt; return JSON.stringify(clone); }
-function preserveVenues(candidate, current) {
-  for (const key of ["previousGame", "nextGame"]) {
-    if (candidate[key] && !candidate[key].venue) {
-      const prior = [current?.previousGame, current?.nextGame].find((game) => game?.id === candidate[key].id);
-      if (prior?.venue) candidate[key].venue = prior.venue;
+export function preserveVenues(candidate, current) {
+  const priorGames = [current?.previousGame, current?.nextGame, ...(current?.recentResults ?? [])].filter(Boolean);
+  for (const game of [candidate.previousGame, candidate.nextGame, ...(candidate.recentResults ?? [])].filter(Boolean)) {
+    if (!game.venue) {
+      const prior = priorGames.find((value) => value.id === game.id);
+      if (prior?.venue) game.venue = prior.venue;
     }
   }
   return candidate;
@@ -54,7 +55,9 @@ async function main() {
     const current = await optionalJson(currentPath) ?? JSON.parse(await readFile(join(repository, "src/data/game-center.json"), "utf8"));
     const state = await optionalJson(statePath) ?? { schemaVersion: 1, consecutiveFailures: 0 };
     const now = new Date();
-    const decision = gameCenterPollDecision({ current, state, now });
+    const decision = process.env.FANATICOSOS_GAME_CENTER_FORCE === "1"
+      ? { due: true, mode: "forced" }
+      : gameCenterPollDecision({ current, state, now });
     if (!decision.due) return;
     const candidatePath = join(automationRoot, `.candidate-${process.pid}.json`);
     const candidate = preserveVenues(await updateGameCenter({ outputPath: candidatePath, updatedAt: now }), current);
