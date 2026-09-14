@@ -302,7 +302,8 @@ test("editor shell is served with private security headers", async (context) => 
   const html = await response.text();
   assert.match(html, /Publicador privado/);
   assert.match(html, /id="article-title"/);
-  assert.match(html, />Crear traducción y ambos audios</);
+  assert.match(html, />Crear traducción al inglés</);
+  assert.match(html, /No se gastarán créditos hasta que pulses/);
   assert.match(html, /<details class="activity-panel">/);
   assert.match(html, /id="acknowledge-all"/);
   assert.doesNotMatch(html, /name="imageCaption"/);
@@ -333,7 +334,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /Esto no bloquea la traducción, el audio ni la publicación/);
   assert.doesNotMatch(app, /generateEnglish\.disabled = preflight\.status !== "ready"/);
-  assert.match(app, /workflow: "preview"/);
+  assert.match(app, /workflow: "manual"/);
+  assert.doesNotMatch(app, /preparando audios automáticamente/);
   assert.match(app, /generateSeoPreview/);
   assert.match(app, /imagePath: ownerFields\.featuredImage\.path/);
   assert.match(app, /publishRelease\.disabled = true/);
@@ -499,9 +501,16 @@ test("accepted English revision queues bilingual audio jobs", async (context) =>
     status: "completed", sourceRevision: "a".repeat(64),
     result: { title: "The Bears win", description: "Game summary.", body: "Complete article text." },
   }), { mode: 0o600 });
-  const response = await fetch(`${base}/api/drafts/${draft.articleId}/audio`, {
+  const unconfirmed = await fetch(`${base}/api/drafts/${draft.articleId}/audio`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ expectedRevision: draft.revision }),
+  });
+  assert.equal(unconfirmed.status, 400);
+  assert.match((await unconfirmed.json()).error, /review and confirm/);
+  assert.equal((await readdir(queueRoot)).filter((name) => name.startsWith("tts-")).length, 0);
+  const response = await fetch(`${base}/api/drafts/${draft.articleId}/audio`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: draft.revision, confirmReviewed: true }),
   });
   assert.equal(response.status, 202);
   const queued = (await readdir(queueRoot)).filter((name) => name.startsWith("tts-"));
@@ -523,7 +532,7 @@ test("an old upload-waiting draft can generate Spanish audio", async (context) =
   }), { mode: 0o600 });
   const initial = await fetch(`${base}/api/drafts/${draft.articleId}/audio`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ expectedRevision: draft.revision, workflow: "preview" }),
+    body: JSON.stringify({ expectedRevision: draft.revision, workflow: "preview", confirmReviewed: true }),
   });
   const state = (await initial.json()).audio;
   state.status = "awaiting-upload";

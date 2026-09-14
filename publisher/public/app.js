@@ -262,7 +262,7 @@ function setFields(draft) {
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
   generateEnglish.disabled = !draft;
-  workflowState.textContent = draft ? "Listo para preparar traducción, audios y vista previa con un solo clic." : "Guarda un borrador válido para comenzar.";
+  workflowState.textContent = draft ? "Listo para crear la traducción. Los audios requieren revisión y confirmación aparte." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
   audioResult.hidden = true;
   ttsPreflightPanel.hidden = !draft;
@@ -272,7 +272,7 @@ function setFields(draft) {
   openPreview.disabled = true;
   prepareRelease.disabled = true;
   publishRelease.disabled = true;
-  generateEnglish.textContent = "Crear traducción y ambos audios";
+  generateEnglish.textContent = "Crear traducción al inglés";
   document.querySelector("#english-title").value = "";
   document.querySelector("#english-description").value = "";
   document.querySelector("#english-body").value = "";
@@ -508,7 +508,7 @@ async function pollTranslation() {
     if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
       stopTranslationClock();
-      workflowState.textContent = "Inglés listo · preparando audios automáticamente…";
+      workflowState.textContent = "Traducción lista · revisa y guarda el inglés y ambos guiones antes de generar audio.";
       clearInterval(translationTimer);
       translationTimer = null;
       document.querySelector("#english-title").value = translation.result.title;
@@ -518,9 +518,10 @@ async function pollTranslation() {
       englishResult.hidden = false;
       audioResult.hidden = false;
       generateEnglish.disabled = true;
-      generateEnglish.textContent = "Traducción y audio creados";
+      generateEnglish.textContent = "Traducción creada";
       await refreshNotifications();
-      generateAudio.disabled = translation.workflow === "preview";
+      generateAudio.hidden = false;
+      generateAudio.disabled = false;
       const audioStatus = await pollAudio();
       if (!audioStatus) {
         generateAudio.hidden = false;
@@ -541,7 +542,7 @@ async function pollTranslation() {
       regenerateEnglishAudio.disabled = true;
       audiogramResult.hidden = true;
       generateEnglish.disabled = false;
-      generateEnglish.textContent = "Crear nueva traducción y ambos audios";
+      generateEnglish.textContent = "Crear nueva traducción al inglés";
       openPreview.disabled = true;
       publishRelease.disabled = true;
     } else if (translation.status === "failed") {
@@ -550,7 +551,7 @@ async function pollTranslation() {
       clearInterval(translationTimer);
       translationTimer = null;
       generateEnglish.disabled = false;
-      generateEnglish.textContent = "Reintentar traducción y ambos audios";
+      generateEnglish.textContent = "Reintentar traducción";
       showError(translation.error || "La traducción no pasó la validación.");
       await refreshNotifications();
     }
@@ -569,9 +570,9 @@ generateEnglish.addEventListener("click", async () => {
   try {
     await request(`/api/drafts/${current.articleId}/translation`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expectedRevision: current.revision, workflow: "preview" }),
+      body: JSON.stringify({ expectedRevision: current.revision, workflow: "manual" }),
     });
-    workflowState.textContent = "Preparación automática iniciada · no necesitas pulsar los pasos siguientes.";
+    workflowState.textContent = "Traducción iniciada. Al terminar podrás revisar el texto y confirmar los audios.";
     await refreshNotifications();
     const status = await pollTranslation();
     if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
@@ -717,7 +718,7 @@ generateAudio.addEventListener("click", async () => {
   try {
     await request(`/api/drafts/${current.articleId}/audio`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expectedRevision: current.revision }),
+      body: JSON.stringify({ expectedRevision: current.revision, confirmReviewed: true }),
     });
     await refreshNotifications();
     const audioStatus = await pollAudio();

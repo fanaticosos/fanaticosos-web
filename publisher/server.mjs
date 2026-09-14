@@ -265,19 +265,8 @@ export function createPublisherServer({
   async function translationCompleted(state) {
     await createNotification(notificationsRoot, {
       level: "success", event: "translation-completed", articleId: state.articleId,
-      message: state.workflow === "preview" ? "La versión en inglés está lista; los audios se preparan automáticamente." : "La versión en inglés está lista para revisión.",
+      message: "La versión en inglés está lista para revisar. Los audios solo se generarán cuando se soliciten explícitamente.",
     });
-    if (state.workflow !== "preview") return;
-    const draft = await draftStore.read(state.articleId);
-    const audio = await audioStore.queue({
-      draft, translation: state,
-      policyRevision: await currentTtsPolicyRevision(), workflow: "preview",
-    });
-    await createNotification(notificationsRoot, {
-      level: "info", event: "audio-started", articleId: state.articleId,
-      message: `Audio en inglés iniciado automáticamente. Sube tu MP3 en español para completar la publicación: ${draft.title}`,
-    });
-    return audio;
   }
   async function translationFailed(state) {
     await createNotification(notificationsRoot, {
@@ -533,11 +522,12 @@ export function createPublisherServer({
         const value = await requestJson(request);
         const draft = await draftStore.read(audioMatch[1]);
         if (value.expectedRevision !== draft.revision) throw new Error("save the current draft revision before audio generation");
+        if (value.confirmReviewed !== true) throw new Error("review and confirm the English version and both narration scripts before audio generation");
         const translation = await translationStore.read(draft.articleId);
         const audio = await audioStore.queue({ draft, translation, policyRevision: await currentTtsPolicyRevision(), workflow: value.workflow ?? "manual" });
         await createNotification(notificationsRoot, {
           level: "info", event: "audio-started", articleId: draft.articleId,
-          message: `Audio en inglés iniciado. Sube tu MP3 en español para completar la publicación: ${draft.title}`,
+          message: `Generación de audio en español e inglés iniciada después de la confirmación editorial: ${draft.title}`,
         });
         return json(response, 202, { audio });
       }
