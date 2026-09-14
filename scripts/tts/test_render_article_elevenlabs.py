@@ -74,15 +74,48 @@ class ElevenLabsProductionTests(unittest.TestCase):
         self.assertEqual(chunks, ["A" * 2000 + "\n\n" + "B" * 2000, "C" * 2000])
         self.assertTrue(all(len(chunk) <= 4500 for chunk in chunks))
 
-    def test_narration_chunks_preserve_explicit_pauses_and_neighbor_context(self):
+    def test_narration_chunks_render_native_breaks_inside_continuous_requests(self):
         request = {"title": "Título", "segments": [
             {"id": "script-001", "text": "Primera parte.", "pauseAfterMs": 700},
             {"id": "script-002", "text": "Segunda parte.", "pauseAfterMs": 0},
         ]}
         chunks = narration_chunks(request, 4500)
-        self.assertEqual([item["pauseAfterMs"] for item in chunks], [700, 700, 0])
-        self.assertEqual(chunks[1]["previousText"], "Título")
-        self.assertEqual(chunks[1]["nextText"], "Segunda parte.")
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(
+            chunks[0]["text"],
+            'Título\n\n<break time="0.7s" />\n\nPrimera parte.\n\n<break time="0.7s" />\n\nSegunda parte.',
+        )
+        self.assertIsNone(chunks[0]["previousText"])
+        self.assertIsNone(chunks[0]["nextText"])
+
+    def test_narration_chunks_only_split_at_the_provider_limit(self):
+        request = {"title": "Título", "segments": [
+            {"id": "script-001", "text": "A" * 2400, "pauseAfterMs": 700},
+            {"id": "script-002", "text": "B" * 2400, "pauseAfterMs": 0},
+        ]}
+        chunks = narration_chunks(request, 4500)
+        self.assertEqual(len(chunks), 2)
+        self.assertIn('<break time="0.7s" />', chunks[0]["text"])
+        self.assertEqual(chunks[0]["nextText"], chunks[1]["text"])
+        self.assertEqual(chunks[1]["previousText"], chunks[0]["text"])
+
+    def test_quote_attribution_and_following_paragraph_stay_in_one_generation(self):
+        request = {"title": "Título", "segments": [
+            {"id": "script-001", "text": "Su pase de touchdown cayó entre dos defensores.", "pauseAfterMs": 700},
+            {"id": "script-002", "text": "“Así es como queremos vernos cada semana”.\n\n— Caleb Williams", "pauseAfterMs": 700},
+            {"id": "script-003", "text": "La actuación no fue perfecta.", "pauseAfterMs": 0},
+        ]}
+        chunks = narration_chunks(request, 4500)
+        self.assertEqual(len(chunks), 1)
+        self.assertIn('— Caleb Williams\n\n<break time="0.7s" />\n\nLa actuación', chunks[0]["text"])
+
+    def test_narration_chunks_reject_invalid_provider_pause_lengths(self):
+        request = {"title": "Título", "segments": [
+            {"id": "script-001", "text": "Primera parte.", "pauseAfterMs": 3001},
+            {"id": "script-002", "text": "Segunda parte.", "pauseAfterMs": 0},
+        ]}
+        with self.assertRaisesRegex(ValueError, "between 1 and 3000"):
+            narration_chunks(request, 4500)
 
     def test_voice_resolution_requires_the_approved_exact_name(self):
         payload = b'{"voices":[{"name":"Other","voice_id":"bad"},{"name":"Will - Relaxed Optimist","voice_id":"approved"}]}'

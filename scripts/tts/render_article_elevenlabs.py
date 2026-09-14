@@ -115,11 +115,17 @@ def synthesize_chunk(text: str, voice_id: str, key: str, configuration: dict, re
 
 def narration_chunks(request: dict, maximum: int) -> list[dict]:
     units = [{"text": request["title"], "pauseAfterMs": 700}, *request["segments"]]
-    chunks = []
-    for unit in units:
-        pieces = split_text(unit["text"], maximum)
-        for index, piece in enumerate(pieces):
-            chunks.append({"text": piece, "pauseAfterMs": unit.get("pauseAfterMs", 0) if index == len(pieces) - 1 else 0})
+    paragraphs = []
+    for index, unit in enumerate(units):
+        pause_ms = unit.get("pauseAfterMs", 0)
+        if pause_ms and (not isinstance(pause_ms, int) or isinstance(pause_ms, bool) or not 1 <= pause_ms <= 3000):
+            raise ValueError("ElevenLabs pauses must be whole milliseconds between 1 and 3000")
+        break_tag = f'<break time="{pause_ms / 1000:g}s" />' if pause_ms and index + 1 < len(units) else ""
+        pieces = split_text(unit["text"], maximum - len(break_tag) - 2)
+        if break_tag:
+            pieces[-1] = f"{pieces[-1]}\n\n{break_tag}"
+        paragraphs.extend(pieces)
+    chunks = [{"text": text} for text in split_text("\n\n".join(paragraphs), maximum)]
     for index, chunk in enumerate(chunks):
         chunk["previousText"] = chunks[index - 1]["text"] if index else None
         chunk["nextText"] = chunks[index + 1]["text"] if index + 1 < len(chunks) else None
@@ -163,10 +169,6 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
                 path = temp / f"{index:03d}.mp3"
                 path.write_bytes(synthesize_chunk(chunk["text"], voice_id, key, configuration, previous_text=chunk["previousText"], next_text=chunk["nextText"]))
                 paths.append(path)
-                if chunk["pauseAfterMs"] and index < len(chunks):
-                    silence = temp / f"{index:03d}-pause.mp3"
-                    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", f"{chunk['pauseAfterMs'] / 1000:.3f}", "-b:a", "128k", str(silence)], check=True)
-                    paths.append(silence)
             concat = temp / "concat.txt"
             concat.write_text("".join(f"file '{path.as_posix()}'\n" for path in paths), encoding="utf-8")
             mp3_path = staging / file_name
