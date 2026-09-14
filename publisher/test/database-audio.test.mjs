@@ -57,6 +57,25 @@ test("bilingual audio admission is atomic and idempotent by source and policy", 
   } finally { closeDatabase(database); }
 });
 
+test("SQLite audio admission stores one policy revision per locale", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-audio-policy-test-"));
+  const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const article = draft.articleId.replaceAll("-", "");
+    const policyRevision = { es: "1".repeat(64), en: "2".repeat(64), legacy: "3".repeat(64) };
+    const state = queueDatabaseAudio(database, { draft, requests: { es: { sourceRevision: "a".repeat(64) }, en: { sourceRevision: "b".repeat(64) } }, policyRevision, jobIds: { es: `tts-es-${article}-r1-1234abcd`, en: `tts-en-${article}-r1-87654321` } });
+    assert.deepEqual(state.policyRevisions, { es: policyRevision.es, en: policyRevision.en });
+    assert.equal(state.jobs.es.policyRevision, policyRevision.es);
+    assert.equal(state.jobs.en.policyRevision, policyRevision.en);
+    assert.equal(state.jobs.es.uploaded, false);
+    assert.equal(typeof state.jobs.es.createdAt, "string");
+    const hashes = database.prepare("SELECT dependency_hash FROM jobs ORDER BY id").all().map(({ dependency_hash }) => dependency_hash);
+    assert.notEqual(hashes[0], hashes[1]);
+    assert.throws(() => queueDatabaseAudioLocale(database, { draft, request: { sourceRevision: "c".repeat(64) }, locale: "es", policyRevision: { es: "bad" }, jobId: `tts-es-${article}-r1-aaaaaaaa` }), /invalid/);
+  } finally { closeDatabase(database); }
+});
+
 test("audio lifecycle accepts verified artifacts and fails pending artifacts atomically", async () => {
   const root = await mkdtemp(join(tmpdir(), "database-audio-lifecycle-test-"));
   const database = await openDatabase(join(root, "publisher.sqlite"));

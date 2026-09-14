@@ -43,6 +43,32 @@ test("SQLite audio store owns state while filesystem carries only worker payload
   } finally { closeDatabase(database); }
 });
 
+test("SQLite audio state exposes sanitized worker progress for running jobs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "audio-store-progress-test-"));
+  const queueRoot = join(root, "queue"); const jobsRoot = join(root, "jobs"); const artifactsRoot = join(root, "artifacts");
+  await mkdir(jobsRoot); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const translation = { status: "completed", draftRevision: 1, sourceRevision: "a".repeat(64), result: { title: "Title", description: "Summary", body: "Article" } };
+    const store = databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoot });
+    const queued = await store.queue({ draft, translation, policyRevision: "b".repeat(64), workflow: "preview" });
+    const jobId = queued.jobs.es.jobId;
+    await rename(join(queueRoot, jobId), join(jobsRoot, jobId));
+    await writeFile(join(jobsRoot, jobId, "progress.json"), JSON.stringify({
+      schemaVersion: 1, stage: "preflight", totalChunks: 8, completedChunks: 0, cacheHits: 5, generatedChunks: 0,
+      quota: { requiredCharacters: 6_400, accountRemaining: 91_000, keyLimit: 40_000, keyUsedThisCycle: 12_000, secret: "no" },
+      narration: "texto privado",
+    }));
+    await store.reconcile({});
+    const state = await store.read(draft.articleId);
+    assert.equal(state.jobs.es.status, "running");
+    assert.deepEqual(state.jobs.es.progress.quota, { requiredCharacters: 6_400, accountRemaining: 91_000, keyLimit: 40_000, keyUsedThisCycle: 12_000 });
+    assert.equal(state.jobs.es.progress.stage, "preflight");
+    assert.equal("narration" in state.jobs.es.progress, false);
+    assert.equal(state.jobs.en.progress, undefined);
+  } finally { closeDatabase(database); }
+});
+
 test("SQLite audio reconciliation consumes bounded worker failure evidence", async () => {
   const root = await mkdtemp(join(tmpdir(), "audio-store-failure-test-"));
   const queueRoot = join(root, "queue"); const jobsRoot = join(root, "jobs"); const artifactsRoot = join(root, "artifacts");

@@ -85,11 +85,17 @@ function showSpanishAudioProgress(audio) {
   }
   const phase = job.status === "queued" ? "en cola" : "generando";
   const progress = job.progress;
-  const detail = progress?.stage === "assembling"
-    ? `ensamblando ${progress.totalChunks} bloques`
-    : Number.isInteger(progress?.completedChunks) && Number.isInteger(progress?.totalChunks)
-      ? `bloque ${progress.completedChunks} de ${progress.totalChunks}`
-      : null;
+  const quota = progress?.quota;
+  const quotaDetail = Number.isInteger(quota?.requiredCharacters)
+    ? `${quota.requiredCharacters.toLocaleString("es-MX")} caracteres por comprar${Number.isInteger(quota.accountRemaining) ? ` · ${quota.accountRemaining.toLocaleString("es-MX")} disponibles en la cuenta` : ""}`
+    : null;
+  const detail = progress?.stage === "preflight"
+    ? `verificando cuota de ElevenLabs${quotaDetail ? ` · ${quotaDetail}` : ""}`
+    : progress?.stage === "assembling"
+      ? `ensamblando ${progress.totalChunks} bloques`
+      : Number.isInteger(progress?.completedChunks) && Number.isInteger(progress?.totalChunks)
+        ? `bloque ${progress.completedChunks} de ${progress.totalChunks}`
+        : null;
   spanishAudioStatus.textContent = `Audio en español: ${phase}${detail ? ` · ${detail}` : ""} · ${formatElapsed(job.createdAt ?? audio.updatedAt ?? audio.createdAt)} transcurridos · puedes cerrar esta página.`;
 }
 

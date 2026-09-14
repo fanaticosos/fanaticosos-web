@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { narrationText, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsPolicyRevision, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { audioPolicyIsCurrent, narrationText, normalizePolicyRevisions, queueTts, queueTtsLocale, readTtsState, reconcileTts, sanitizeWorkerProgress, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -17,35 +17,102 @@ const translation = {
 };
 const policyRevision = "f".repeat(64);
 
-test("TTS policy revision changes when pronunciation policy changes", () => {
+test("legacy combined TTS policy revision is still computed for audio generated before the split", () => {
   const production = { configurationVersion: 5 };
   const first = ttsPolicyRevision(production, { version: 7 });
   const second = ttsPolicyRevision(production, { version: 8 });
   assert.match(first, /^[0-9a-f]{64}$/);
   assert.notEqual(first, second);
+  assert.notEqual(ttsPolicyRevision(production, { version: 7 }, { version: 4 }), ttsPolicyRevision(production, { version: 7 }, { version: 5 }));
 });
 
-test("TTS policy revision changes when Azure entity pronunciations change", () => {
-  const production = { configurationVersion: 5 };
-  const pronunciations = { version: 8 };
-  const first = ttsPolicyRevision(production, pronunciations, { version: 4 });
-  const second = ttsPolicyRevision(production, pronunciations, { version: 5 });
-  assert.notEqual(first, second);
+const approved = (entry) => ({ reason: "r", source: "s", sourceType: "owner-review", status: "approved", ...entry });
+const policyInputs = () => ({
+  production: { configurationVersion: 9, pronunciationVersion: 14, voices: { en: "af_heart" } },
+  elevenLabs: { version: 5, pronunciationVersion: 14, voiceName: "Will - Relaxed Optimist", voiceSettings: { stability: 0.5 } },
+  pronunciations: {
+    version: 14,
+    overrides: {
+      es: [approved({ category: "team", canonical: "Bears", aliases: [], synthesis: { profile: "latino-em_alex", type: "text-substitution", text: "Bers" } })],
+      en: [approved({ category: "player", canonical: "Coby Bryant", aliases: [], synthesis: { profile: "american-af-heart", type: "text-substitution", text: "Coe bee Bryant" } })],
+    },
+    providerOverrides: { elevenlabs: { es: [approved({ written: "Bears", synthesisText: "Bers" })], en: [] } },
+  },
 });
 
-test("TTS policy revision changes when the Spanish NFL reference changes", () => {
-  const production = { configurationVersion: 5 };
-  const pronunciations = { version: 8 };
-  const entities = { version: 5 };
-  const first = ttsPolicyRevision(production, pronunciations, entities, { version: 1 });
-  const second = ttsPolicyRevision(production, pronunciations, entities, { version: 2 });
-  assert.notEqual(first, second);
+test("per-locale TTS policy revisions are separate sha256 values", () => {
+  const revisions = ttsPolicyRevisions(policyInputs());
+  assert.match(revisions.es, /^[0-9a-f]{64}$/);
+  assert.match(revisions.en, /^[0-9a-f]{64}$/);
+  assert.notEqual(revisions.es, revisions.en);
+  assert.deepEqual(ttsPolicyRevisions(policyInputs()), revisions);
 });
 
-test("TTS policy revision changes when the Spanish provider configuration changes", () => {
-  const base = ttsPolicyRevision({}, {}, {}, {}, { voiceName: "Will", version: 1 });
-  const changed = ttsPolicyRevision({}, {}, {}, {}, { voiceName: "Will", version: 2 });
-  assert.notEqual(base, changed);
+test("preflight references and pronunciation version bumps never invalidate generated audio", () => {
+  const base = ttsPolicyRevisions(policyInputs());
+  const bumped = policyInputs();
+  bumped.pronunciations.version = 15;
+  bumped.production.pronunciationVersion = 15;
+  bumped.elevenLabs.pronunciationVersion = 15;
+  assert.deepEqual(ttsPolicyRevisions(bumped), base);
+  const reordered = policyInputs();
+  reordered.production = { voices: { en: "af_heart" }, pronunciationVersion: 14, configurationVersion: 9 };
+  assert.deepEqual(ttsPolicyRevisions(reordered), base);
+  const pending = policyInputs();
+  pending.pronunciations.providerOverrides.elevenlabs.es.push({ ...approved({ written: "Packers", synthesisText: "Pakers" }), status: "pending" });
+  assert.deepEqual(ttsPolicyRevisions(pending), base);
+});
+
+test("each locale's TTS policy only follows its own generation inputs", () => {
+  const base = ttsPolicyRevisions(policyInputs());
+  const spanishVoice = policyInputs();
+  spanishVoice.elevenLabs.voiceSettings.stability = 0.6;
+  assert.notEqual(ttsPolicyRevisions(spanishVoice).es, base.es);
+  assert.equal(ttsPolicyRevisions(spanishVoice).en, base.en);
+  const spanishPronunciation = policyInputs();
+  spanishPronunciation.pronunciations.providerOverrides.elevenlabs.es[0].synthesisText = "Beers";
+  assert.notEqual(ttsPolicyRevisions(spanishPronunciation).es, base.es);
+  assert.equal(ttsPolicyRevisions(spanishPronunciation).en, base.en);
+  const englishVoice = policyInputs();
+  englishVoice.production.voices.en = "am_adam";
+  assert.equal(ttsPolicyRevisions(englishVoice).es, base.es);
+  assert.notEqual(ttsPolicyRevisions(englishVoice).en, base.en);
+  const englishPronunciation = policyInputs();
+  englishPronunciation.pronunciations.overrides.en[0].synthesis.text = "Cobee Bryant";
+  assert.equal(ttsPolicyRevisions(englishPronunciation).es, base.es);
+  assert.notEqual(ttsPolicyRevisions(englishPronunciation).en, base.en);
+  const sharedSpanish = policyInputs();
+  sharedSpanish.pronunciations.overrides.es[0].synthesis.text = "Bears";
+  assert.deepEqual(ttsPolicyRevisions(sharedSpanish), base);
+});
+
+test("audio policy currency accepts per-locale, legacy, and string revisions and ignores uploads", () => {
+  const es = "1".repeat(64); const en = "2".repeat(64); const legacy = "3".repeat(64);
+  const current = { es, en, legacy };
+  assert.equal(audioPolicyIsCurrent({ jobs: { es: { policyRevision: es } } }, "es", current), true);
+  assert.equal(audioPolicyIsCurrent({ policyRevisions: { en } }, "en", current), true);
+  assert.equal(audioPolicyIsCurrent({ policyRevision: legacy }, "es", current), true);
+  assert.equal(audioPolicyIsCurrent({ policyRevision: legacy }, "en", current), true);
+  assert.equal(audioPolicyIsCurrent({ policyRevision: "4".repeat(64) }, "es", current), false);
+  assert.equal(audioPolicyIsCurrent({ jobs: { es: { policyRevision: en } } }, "es", current), false);
+  assert.equal(audioPolicyIsCurrent({ jobs: { es: { policyRevision: "old", uploaded: true } } }, "es", current), true);
+  assert.equal(audioPolicyIsCurrent({ policyRevision: "abc" }, "es", "abc"), true);
+  assert.equal(audioPolicyIsCurrent({}, "es", current), false);
+  assert.deepEqual(normalizePolicyRevisions(es), { es, en: es });
+  assert.deepEqual(normalizePolicyRevisions({ es, en, legacy }), { es, en });
+  assert.throws(() => normalizePolicyRevisions({ es }), /invalid/);
+  assert.throws(() => normalizePolicyRevisions("short"), /invalid/);
+});
+
+test("queued audio records the policy revision of each locale", async () => {
+  const queueRoot = await mkdtemp(join(tmpdir(), "tts-policy-queue-"));
+  const statesRoot = await mkdtemp(join(tmpdir(), "tts-policy-states-"));
+  const es = "5".repeat(64); const en = "6".repeat(64);
+  const state = await queueTts({ draft, translation, queueRoot, statesRoot, policyRevision: { es, en, legacy: "7".repeat(64) } });
+  assert.deepEqual(state.policyRevisions, { es, en });
+  assert.equal(state.policyRevision, undefined);
+  assert.equal(state.jobs.es.policyRevision, es);
+  assert.equal(state.jobs.en.policyRevision, en);
 });
 
 test("narration text removes Markdown without removing its spoken words", () => {
@@ -214,6 +281,16 @@ test("running Spanish audio exposes sanitized worker progress", async () => {
   assert.equal(reconciled.jobs.es.status, "running");
   assert.equal(reconciled.jobs.es.progress.completedChunks, 4);
   assert.equal(reconciled.jobs.es.progress.cacheHits, 3);
+});
+
+test("worker progress is sanitized to stage, counters, and quota numbers", () => {
+  const base = { schemaVersion: 1, stage: "preflight", totalChunks: 10, completedChunks: 0, cacheHits: 3, generatedChunks: 0, updatedAt: "2026-09-14T20:46:00Z" };
+  const sanitized = sanitizeWorkerProgress({ ...base, text: "narración privada", quota: { requiredCharacters: 12_345, accountRemaining: 68, keyLimit: null, keyUsedThisCycle: 7, apiKey: "secret" } });
+  assert.deepEqual(sanitized, { ...base, quota: { requiredCharacters: 12_345, accountRemaining: 68, keyUsedThisCycle: 7 } });
+  assert.equal(sanitizeWorkerProgress({ ...base, stage: "unknown" }), null);
+  assert.equal(sanitizeWorkerProgress({ ...base, completedChunks: 11 }), null);
+  assert.equal(sanitizeWorkerProgress({ ...base, quota: { requiredCharacters: "12" } }).quota, undefined);
+  assert.equal(sanitizeWorkerProgress(null), null);
 });
 
 test("English completion is reconciled after Spanish is uploaded first", async () => {

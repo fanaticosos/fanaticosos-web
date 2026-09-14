@@ -12,7 +12,7 @@ import { acknowledgeAllNotifications, acknowledgeNotification, createNotificatio
 import { databaseTranslationStore, filesystemTranslationStore } from "./lib/translation-store.mjs";
 import { databaseAudioStore, filesystemAudioStore } from "./lib/audio-store.mjs";
 import { translationSourceRevision } from "./lib/translation-jobs.mjs";
-import { ttsPolicyRevision, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
+import { audioPolicyIsCurrent, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { rebaseReusableArtifacts } from "./lib/artifact-revisions.mjs";
@@ -76,20 +76,21 @@ export function releaseWithFreshness(release, audio) {
   return current ? release : { ...release, status: "stale" };
 }
 
+export function staleAudioLocales(audio, requests, currentPolicyRevision) {
+  return ["es", "en"].filter((locale) =>
+    !audioPolicyIsCurrent(audio, locale, currentPolicyRevision)
+    || audio?.sourceRevisions?.[locale] !== requests?.[locale]?.sourceRevision,
+  );
+}
+
 export function audioWithFreshness(audio, requests, currentPolicyRevision) {
   if (!audio || audio.status !== "completed") return audio;
-  const policyIsCurrent = audio.policyRevision === currentPolicyRevision;
-  const staleLocales = ["es", "en"].filter((locale) =>
-    !policyIsCurrent || audio.sourceRevisions?.[locale] !== requests?.[locale]?.sourceRevision
-  );
+  const staleLocales = staleAudioLocales(audio, requests, currentPolicyRevision);
   return staleLocales.length ? { ...audio, status: "stale", staleLocales } : audio;
 }
 
 export function releaseArtifactsEligible({ draft, audio, requests, release, deployment, currentPolicyRevision }) {
-  const sourcesAreCurrent = audio?.status === "completed"
-    && audio.sourceRevisions?.es === requests.es.sourceRevision
-    && audio.sourceRevisions?.en === requests.en.sourceRevision;
-  if (sourcesAreCurrent && audio.policyRevision === currentPolicyRevision) return true;
+  if (audio?.status === "completed" && staleAudioLocales(audio, requests, currentPolicyRevision).length === 0) return true;
 
   const exactReleasedArtifact = audio?.status === "completed"
     && audio.draftRevision === draft.revision
@@ -253,7 +254,13 @@ export function createPublisherServer({
       readFile(ttsSpanishTermsPath, "utf8").then(JSON.parse),
       readFile(ttsElevenLabsPath, "utf8").then(JSON.parse),
     ]);
-    return ttsPolicyRevision(production, pronunciations, { azureEntities, entityDatabase }, spanishTerms, elevenLabs);
+    // Per-locale revisions decide freshness. The legacy combined revision is
+    // still returned so audio generated before the split stays current until
+    // one of its real generation inputs changes.
+    return {
+      ...ttsPolicyRevisions({ production, pronunciations, elevenLabs }),
+      legacy: ttsPolicyRevision(production, pronunciations, { azureEntities, entityDatabase }, spanishTerms, elevenLabs),
+    };
   }
   async function translationCompleted(state) {
     await createNotification(notificationsRoot, {
@@ -415,7 +422,7 @@ export function createPublisherServer({
             readFile(settingsPath, "utf8").then(JSON.parse),
           ]);
           const requests = ttsRequestsForDraft(draft, translation);
-          if (audio.policyRevision !== await currentTtsPolicyRevision() || audio.sourceRevisions?.es !== requests.es.sourceRevision || audio.sourceRevisions?.en !== requests.en.sourceRevision) throw new Error("preview audio is stale");
+          if (staleAudioLocales(audio, requests, await currentTtsPolicyRevision()).length) throw new Error("preview audio is stale");
           const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
           response.writeHead(200, {
             "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,

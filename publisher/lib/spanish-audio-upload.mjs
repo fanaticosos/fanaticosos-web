@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { ttsRequestsForDraft } from "./tts-jobs.mjs";
+import { normalizePolicyRevisions, ttsRequestsForDraft } from "./tts-jobs.mjs";
 
 const execFileAsync = promisify(execFile);
 export const MAX_SPANISH_AUDIO_BYTES = 100 * 1024 * 1024;
@@ -52,7 +52,8 @@ export async function saveSpanishAudio({ draft, translation, buffer, jobsRoot, s
   try { existing = JSON.parse(await readFile(statePath, "utf8")); } catch (error) { if (error.code !== "ENOENT") throw error; }
   const englishCurrent = existing.draftRevision === draft.revision && existing.sourceRevisions?.en === requests.en.sourceRevision && existing.jobs?.en ? existing.jobs.en : { status: "not-started" };
   const completed = englishCurrent.status === "completed";
-  const state = { ...existing, schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, status: completed ? "completed" : "awaiting-english", workflow: completed ? "spanish-upload" : (existing.workflow || "manual"), regeneratedLocale: "es", createdAt: existing.createdAt || now.toISOString(), updatedAt: now.toISOString(), policyRevision, sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision }, jobs: { es: { jobId, status: "completed", result }, en: englishCurrent } };
+  const policyRevisions = normalizePolicyRevisions(policyRevision);
+  const state = { ...existing, schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, status: completed ? "completed" : "awaiting-english", workflow: completed ? "spanish-upload" : (existing.workflow || "manual"), regeneratedLocale: "es", createdAt: existing.createdAt || now.toISOString(), updatedAt: now.toISOString(), ...(typeof policyRevision === "string" ? { policyRevision } : {}), policyRevisions: { ...(existing.policyRevisions ?? {}), es: policyRevisions.es }, sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision }, jobs: { es: { jobId, status: "completed", uploaded: true, policyRevision: policyRevisions.es, result }, en: englishCurrent } };
   await atomicJson(statePath, state);
   return state;
 }

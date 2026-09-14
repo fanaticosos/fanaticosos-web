@@ -134,6 +134,7 @@ Commands:
   install-elevenlabs-credential EXPECTED_COMMIT
   elevenlabs-credential-status
   elevenlabs-capacity-status EXPECTED_COMMIT
+  set-elevenlabs-key-limit EXPECTED_COMMIT CHARACTERS
   run-elevenlabs-pronunciation-diagnostic EXPECTED_COMMIT
   run-elevenlabs-tts-sample EXPECTED_COMMIT ARTICLE_ID
   run-elevenlabs-tts-full EXPECTED_COMMIT ARTICLE_ID
@@ -939,13 +940,41 @@ command_elevenlabs_credential_status() {
 }
 
 command_elevenlabs_capacity_status() {
-  local expected="$1" api_key
+  local expected="$1" api_key key_limit
   require_repository_commit "$expected"
   command_elevenlabs_credential_status >/dev/null
   api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
-  run_as_service env ELEVENLABS_API_KEY="$api_key" python3 \
-    "$repository/scripts/tts/check_elevenlabs_capacity.py"
+  key_limit="$(sed -n 's/^ELEVENLABS_KEY_CHARACTER_LIMIT=//p' "$elevenlabs_credential_file")"
+  run_as_service env ELEVENLABS_API_KEY="$api_key" ELEVENLABS_KEY_CHARACTER_LIMIT="$key_limit" python3 \
+    "$repository/scripts/tts/check_elevenlabs_capacity.py" \
+    --cache "$publisher_data/cache/tts/elevenlabs"
   unset api_key
+}
+
+# The per-key character limit configured in the ElevenLabs console is not
+# readable through the API. Recording it here lets the TTS worker refuse a job
+# before buying anything when the private ledger says the key would run out.
+command_set_elevenlabs_key_limit() {
+  local expected="$1" limit="$2" api_key temporary
+  require_repository_commit "$expected"
+  [[ "$limit" =~ ^[0-9]{1,9}$ ]] || stop "ElevenLabs key character limit must be a whole number (0 removes the limit)."
+  command_elevenlabs_credential_status >/dev/null
+  api_key="$(sed -n 's/^ELEVENLABS_API_KEY=//p' "$elevenlabs_credential_file")"
+  umask 0077
+  temporary="$(mktemp "$azure_credential_dir/.elevenlabs.env.XXXXXX")"
+  trap 'rm -f "$temporary"' ERR
+  printf 'ELEVENLABS_API_KEY=%s\n' "$api_key" > "$temporary"
+  [[ "$limit" == "0" ]] || printf 'ELEVENLABS_KEY_CHARACTER_LIMIT=%s\n' "$limit" >> "$temporary"
+  chown root:root "$temporary"
+  chmod 0600 "$temporary"
+  mv -f "$temporary" "$elevenlabs_credential_file"
+  trap - ERR
+  unset api_key
+  if [[ "$limit" == "0" ]]; then
+    echo "PASS: ElevenLabs key character limit removed; only the account balance is enforced."
+  else
+    echo "PASS: ElevenLabs key character limit recorded as $limit characters per cycle."
+  fi
 }
 
 command_run_elevenlabs_tts_sample() {
@@ -2325,6 +2354,10 @@ case "$command" in
   elevenlabs-capacity-status)
     [[ $# == 1 ]] || stop "elevenlabs-capacity-status requires EXPECTED_COMMIT."
     command_elevenlabs_capacity_status "$1"
+    ;;
+  set-elevenlabs-key-limit)
+    [[ $# == 2 ]] || stop "set-elevenlabs-key-limit requires EXPECTED_COMMIT CHARACTERS."
+    command_set_elevenlabs_key_limit "$1" "$2"
     ;;
   run-elevenlabs-pronunciation-diagnostic)
     [[ $# == 1 ]] || stop "run-elevenlabs-pronunciation-diagnostic requires EXPECTED_COMMIT."

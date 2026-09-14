@@ -10,13 +10,144 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_article_elevenlabs import api_request, cached_chunk, narration_chunks, prepare_spoken_request, render_production, resolve_voice_id, split_text, write_progress
+from elevenlabs_quota import QuotaError, ledger_path, read_ledger
+from render_article_elevenlabs import (
+    api_request, cached_chunk, chunk_identity, configured_voice_id, legacy_chunk_identity, narration_chunks,
+    prepare_spoken_request, quota_plan, render_production, resolve_voice_id, split_text, write_progress,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def http_error(code, status, message="rejected"):
+    return urllib.error.HTTPError(
+        "https://api.elevenlabs.io/v1/text-to-speech/voice", code, "Error", {},
+        BytesIO(json.dumps({"detail": {"status": status, "message": message}}).encode()),
+    )
+
+
 class ElevenLabsProductionTests(unittest.TestCase):
+    def test_transient_provider_errors_are_retried_with_backoff_but_client_errors_are_not(self):
+        sleeps = []
+        responses = [http_error(503, "server_error"), http_error(429, "too_many_requests")]
+        class Success:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return b"audio"
+        def urlopen(request, timeout):
+            if responses:
+                raise responses.pop(0)
+            return Success()
+        with patch("urllib.request.urlopen", side_effect=urlopen):
+            self.assertEqual(api_request("https://api.elevenlabs.io/v1/x", "key", {"text": "a"}, sleep=sleeps.append), b"audio")
+        self.assertEqual(sleeps, [2, 4])
+        with patch("urllib.request.urlopen", side_effect=[http_error(503, "server_error") for _ in range(3)]):
+            with self.assertRaisesRegex(RuntimeError, "503: server_error"):
+                api_request("https://api.elevenlabs.io/v1/x", "key", {"text": "a"}, sleep=lambda _: None)
+        calls = []
+        def unauthorized(request, timeout):
+            calls.append(1)
+            raise http_error(401, "quota_exceeded", "Insufficient quota")
+        with patch("urllib.request.urlopen", side_effect=unauthorized):
+            with self.assertRaisesRegex(RuntimeError, "401: quota_exceeded"):
+                api_request("https://api.elevenlabs.io/v1/x", "key", {"text": "a"}, sleep=lambda _: None)
+        self.assertEqual(len(calls), 1)
+
+    def test_pronunciation_version_bumps_reuse_paid_blocks_through_legacy_identity_migration(self):
+        configuration = json.loads((ROOT / "config/tts/elevenlabs-production.json").read_text(encoding="utf-8"))
+        bumped = {**configuration, "pronunciationVersion": configuration["pronunciationVersion"] + 1}
+        self.assertEqual(chunk_identity("Texto", "voice", configuration), chunk_identity("Texto", "voice", bumped))
+        self.assertNotEqual(legacy_chunk_identity("Texto", "voice", configuration), legacy_chunk_identity("Texto", "voice", bumped))
+        self.assertNotEqual(chunk_identity("Texto", "voice", configuration), chunk_identity("Otro", "voice", configuration))
+        calls = []
+        requester = lambda url, key, payload: calls.append(payload["text"]) or b"paid"
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            legacy = cache / f"{legacy_chunk_identity('Texto', 'voice', configuration)}.mp3"
+            legacy.write_bytes(b"paid-before-split")
+            audio, reused = cached_chunk("Texto", "voice", "key", configuration, cache, requester)
+            self.assertEqual((audio, reused), (b"paid-before-split", True))
+            self.assertEqual((cache / f"{chunk_identity('Texto', 'voice', configuration)}.mp3").read_bytes(), b"paid-before-split")
+            self.assertEqual(calls, [])
+            plan = quota_plan([
+                {"text": "Texto", "previousText": None, "nextText": None},
+                {"text": "Nuevo bloque", "previousText": None, "nextText": None},
+            ], "voice", configuration, cache)
+            self.assertEqual(plan, {"totalChunks": 2, "cachedChunks": 1, "pendingChunks": 1, "requiredCharacters": len("Nuevo bloque")})
+
+    def test_pinned_voice_id_avoids_the_network_lookup(self):
+        def requester(*args):
+            raise AssertionError("network lookup must not happen for a pinned voice")
+        self.assertEqual(configured_voice_id({"voiceId": "abc123DEF456", "voiceName": "Will"}, "key", requester), "abc123DEF456")
+        with self.assertRaisesRegex(ValueError, "voiceId is invalid"):
+            configured_voice_id({"voiceId": "../x", "voiceName": "Will"}, "key", requester)
+        payload = b'{"voices":[{"name":"Will","voice_id":"resolved"}]}'
+        self.assertEqual(configured_voice_id({"voiceName": "Will"}, "key", lambda url, key: payload), "resolved")
+
+    def _request(self):
+        return {
+            "schemaVersion": 1, "articleId": "00000000-0000-4000-8000-000000000001", "locale": "es",
+            "sourceRevision": "a" * 64, "title": "Los Bears",
+            "segments": [{"id": "script-001", "text": "Un bloque de prueba con costo real que supera los sesenta y ocho caracteres restantes de la cuenta limitada.", "pauseAfterMs": 0}],
+        }
+
+    def test_quota_preflight_refuses_before_buying_anything(self):
+        pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
+        configuration = {**json.loads((ROOT / "config/tts/elevenlabs-production.json").read_text(encoding="utf-8")), "voiceId": "pinnedVoice01"}
+        calls = []
+        requester = lambda url, key, payload: calls.append(payload["text"]) or b"paid"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(QuotaError, "quedan 68") as caught:
+                render_production(self._request(), configuration, pronunciations, root / "audio", root / "cache", "key",
+                                  requester=requester, subscription_fetcher=lambda key: {"character_limit": 40_000, "character_count": 39_932},
+                                  environment={})
+            self.assertEqual(calls, [])
+            self.assertFalse((root / "audio").exists())
+            self.assertFalse((root / "audio.generating").exists())
+            progress = json.loads((root / "progress.json").read_text(encoding="utf-8"))
+            self.assertEqual(progress["stage"], "preflight")
+            self.assertEqual(progress["quota"]["accountRemaining"], 68)
+            self.assertGreater(progress["quota"]["requiredCharacters"], 0)
+            self.assertNotIn("Un bloque", json.dumps(progress))
+            self.assertNotIn("key", progress.get("quota", {}))
+            self.assertNotIn("se consumió", "")  # message documents that nothing was billed
+            self.assertIn("No se consumió ningún crédito", str(caught.exception))
+            with self.assertRaisesRegex(QuotaError, "API key"):
+                render_production(self._request(), configuration, pronunciations, root / "audio", root / "cache", "key",
+                                  requester=requester, subscription_fetcher=lambda key: {"character_limit": 100_000, "character_count": 0},
+                                  environment={"ELEVENLABS_KEY_CHARACTER_LIMIT": "10"})
+            self.assertEqual(calls, [])
+            with self.assertRaisesRegex(QuotaError, "network_unavailable"):
+                render_production(self._request(), configuration, pronunciations, root / "audio", root / "cache", "key",
+                                  requester=requester, subscription_fetcher=lambda key: (_ for _ in ()).throw(QuotaError("ElevenLabs HTTP 0: network_unavailable: x")),
+                                  environment={})
+            self.assertEqual(calls, [])
+
+    def test_generated_blocks_are_recorded_in_the_key_ledger(self):
+        pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
+        configuration = {**json.loads((ROOT / "config/tts/elevenlabs-production.json").read_text(encoding="utf-8")), "voiceId": "pinnedVoice01"}
+        requester = lambda url, key, payload: b"paid"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # Assembly needs real audio; stop right after the paid block is cached and recorded.
+            with patch("render_article_elevenlabs.subprocess.run", side_effect=RuntimeError("stop before assembly")):
+                with self.assertRaisesRegex(RuntimeError, "stop before assembly"):
+                    render_production(self._request(), configuration, pronunciations, root / "audio", root / "cache", "key",
+                                      requester=requester, subscription_fetcher=lambda key: {"character_limit": 100_000, "character_count": 0, "next_character_count_reset_unix": 123},
+                                      environment={"ELEVENLABS_KEY_CHARACTER_LIMIT": "40000"})
+            ledger = read_ledger(root / "cache", "key", 123)
+            self.assertGreater(ledger["characters"], 0)
+            self.assertEqual(ledger["resetUnix"], 123)
+            self.assertTrue(ledger_path(root / "cache", "key").exists())
+            progress = json.loads((root / "progress.json").read_text(encoding="utf-8"))
+            self.assertEqual(progress["stage"], "assembling")
+            self.assertEqual(progress["quota"]["keyLimit"], 40_000)
+
     def test_progress_is_atomic_sanitized_and_private(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "progress.json"

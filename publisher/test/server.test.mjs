@@ -109,6 +109,26 @@ test("completed audio reports stale locales when narration sources or policy cha
   assert.equal(audioWithFreshness(audio, requests, "current-policy").status, "completed");
 });
 
+test("audio freshness follows each locale's own policy and keeps uploads and pre-split audio current", () => {
+  const requests = { es: { sourceRevision: "current-es" }, en: { sourceRevision: "current-en" } };
+  const current = { es: "es-policy", en: "en-policy", legacy: "legacy-policy" };
+  const generated = {
+    status: "completed", sourceRevisions: { es: "current-es", en: "current-en" },
+    policyRevisions: { es: "es-policy", en: "en-policy" },
+    jobs: { es: { policyRevision: "es-policy", uploaded: false }, en: { policyRevision: "en-policy", uploaded: false } },
+  };
+  assert.equal(audioWithFreshness(generated, requests, current).status, "completed");
+  assert.deepEqual(audioWithFreshness(generated, requests, { ...current, en: "en-changed" }).staleLocales, ["en"]);
+  assert.deepEqual(audioWithFreshness(generated, requests, { ...current, es: "es-changed" }).staleLocales, ["es"]);
+  const preSplit = { status: "completed", policyRevision: "legacy-policy", sourceRevisions: { es: "current-es", en: "current-en" }, jobs: { es: {}, en: {} } };
+  assert.equal(audioWithFreshness(preSplit, requests, current).status, "completed");
+  assert.deepEqual(audioWithFreshness(preSplit, requests, { ...current, legacy: "legacy-changed" }).staleLocales, ["es", "en"]);
+  const uploaded = { ...generated, jobs: { ...generated.jobs, es: { policyRevision: "whatever", uploaded: true } } };
+  assert.equal(audioWithFreshness(uploaded, requests, { ...current, es: "es-changed" }).status, "completed");
+  assert.equal(releaseArtifactsEligible({ draft: { revision: 1 }, audio: generated, requests, release: null, deployment: null, currentPolicyRevision: current }), true);
+  assert.equal(releaseArtifactsEligible({ draft: { revision: 1 }, audio: generated, requests, release: null, deployment: null, currentPolicyRevision: { ...current, es: "es-changed" } }), false);
+});
+
 test("release preparation accepts current audio policy or an exact previously published artifact", () => {
   const draft = { revision: 3 };
   const requests = { es: { sourceRevision: "es-current" }, en: { sourceRevision: "en-current" } };

@@ -94,6 +94,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-elevenlabs-credential",
                 "elevenlabs-credential-status",
                 "elevenlabs-capacity-status",
+                "set-elevenlabs-key-limit",
                 "run-elevenlabs-pronunciation-diagnostic",
                 "run-elevenlabs-tts-sample",
                 "run-elevenlabs-tts-full",
@@ -229,6 +230,17 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('install -o root -g root -m 0644 "$publisher_retention_timer_source"', installer)
         self.assertIn("systemctl enable fanaticosos-release-retention.timer", installer)
         self.assertNotIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
+
+    def test_elevenlabs_key_limit_is_validated_and_kept_beside_the_root_only_credential(self):
+        setter = self.helper.split("command_set_elevenlabs_key_limit()", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('[[ "$limit" =~ ^[0-9]{1,9}$ ]]', setter)
+        self.assertIn("printf 'ELEVENLABS_API_KEY=%s\\n' \"$api_key\"", setter)
+        self.assertIn("printf 'ELEVENLABS_KEY_CHARACTER_LIMIT=%s\\n' \"$limit\"", setter)
+        self.assertIn("chmod 0600", setter)
+        self.assertIn('mv -f "$temporary" "$elevenlabs_credential_file"', setter)
+        status = self.helper.split("command_elevenlabs_capacity_status()", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('ELEVENLABS_KEY_CHARACTER_LIMIT="$key_limit"', status)
+        self.assertIn('--cache "$publisher_data/cache/tts/elevenlabs"', status)
 
     def test_game_center_publication_requires_the_explicit_helper_command(self):
         runner = (ROOT / "deploy" / "publisher" / "fanaticosos-game-center-automation").read_text(encoding="utf-8")

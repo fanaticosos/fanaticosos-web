@@ -11,7 +11,9 @@ import json
 import os
 import shutil
 import subprocess
+import re
 import tempfile
+import time
 import uuid
 import urllib.parse
 import urllib.request
@@ -21,14 +23,18 @@ from typing import Callable
 
 from article_contract import text_hash, validate_request, validate_result
 from benchmark_kokoro import probe_audio, sha256_file
+from elevenlabs_quota import QuotaError, fetch_subscription, parse_key_limit, preflight, read_ledger, record_usage
 from pronunciations import apply_pronunciations, validate_pronunciations
 
 
 ENGINE = "ElevenLabs"
+VOICE_ID = re.compile(r"^[A-Za-z0-9]{8,64}$")
+RETRYABLE_HTTP = {429, 500, 502, 503, 504}
+REQUEST_ATTEMPTS = 3
 
 
 def write_progress(path: Path, *, stage: str, total_chunks: int, completed_chunks: int,
-                   cache_hits: int, generated_chunks: int) -> None:
+                   cache_hits: int, generated_chunks: int, quota: dict | None = None) -> None:
     """Publish sanitized, atomic progress without exposing narration or credentials."""
     value = {
         "schemaVersion": 1,
@@ -39,34 +45,55 @@ def write_progress(path: Path, *, stage: str, total_chunks: int, completed_chunk
         "generatedChunks": generated_chunks,
         "updatedAt": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
     }
+    if quota is not None:
+        value["quota"] = {
+            name: quota.get(name)
+            for name in ("requiredCharacters", "accountRemaining", "keyLimit", "keyUsedThisCycle")
+            if isinstance(quota.get(name), int) and not isinstance(quota.get(name), bool)
+        }
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.saving")
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary.chmod(0o600)
     os.replace(temporary, path)
 
 
-def api_request(url: str, key: str, payload: dict | None = None) -> bytes:
+def api_request(url: str, key: str, payload: dict | None = None, *, attempts: int = REQUEST_ATTEMPTS, sleep: Callable = time.sleep) -> bytes:
+    """Call ElevenLabs once; retry only transient failures (429/5xx/network) with backoff.
+
+    A rejected request never bills, so retrying a 429 or 5xx is safe. Client
+    errors such as 401/quota_exceeded are surfaced immediately and sanitized.
+    """
     request = urllib.request.Request(
         url,
         data=None if payload is None else json.dumps(payload).encode("utf-8"),
         headers={"xi-api-key": key, "Content-Type": "application/json"},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=240) as response:
-            return response.read()
-    except urllib.error.HTTPError as error:
-        raw = error.read()
+    for attempt in range(1, attempts + 1):
         try:
-            body = json.loads(raw)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            body = {}
-        detail = body.get("detail") if isinstance(body, dict) else None
-        detail = detail if isinstance(detail, dict) else {}
-        status = detail.get("status") or detail.get("code") or "provider_error"
-        message = detail.get("message") or "ElevenLabs rejected the request"
-        raise RuntimeError(
-            f"ElevenLabs HTTP {error.code}: {status}: {message}"
-        ) from None
+            with urllib.request.urlopen(request, timeout=240) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            raw = error.read()
+            try:
+                body = json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                body = {}
+            detail = body.get("detail") if isinstance(body, dict) else None
+            detail = detail if isinstance(detail, dict) else {}
+            status = detail.get("status") or detail.get("code") or "provider_error"
+            message = detail.get("message") or "ElevenLabs rejected the request"
+            if error.code in RETRYABLE_HTTP and attempt < attempts:
+                sleep(2 ** attempt)
+                continue
+            raise RuntimeError(
+                f"ElevenLabs HTTP {error.code}: {status}: {message}"
+            ) from None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            if attempt < attempts:
+                sleep(2 ** attempt)
+                continue
+            raise RuntimeError("ElevenLabs HTTP 0: network_unavailable: ElevenLabs did not respond") from None
+    raise RuntimeError("ElevenLabs HTTP 0: network_unavailable: ElevenLabs did not respond")
 
 
 def resolve_voice_id(key: str, voice_name: str, requester: Callable = api_request) -> str:
@@ -133,8 +160,33 @@ def synthesize_chunk(text: str, voice_id: str, key: str, configuration: dict, re
     return requester(url, key, payload)
 
 
-def cached_chunk(text: str, voice_id: str, key: str, configuration: dict, cache: Path, requester: Callable = api_request, previous_text: str | None = None, next_text: str | None = None) -> tuple[bytes, bool]:
-    identity = json.dumps({
+def _identity_digest(value: dict) -> str:
+    identity = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
+def chunk_identity(text: str, voice_id: str, configuration: dict, previous_text: str | None = None, next_text: str | None = None) -> str:
+    """Cache identity of one paid block.
+
+    The spoken text already carries every pronunciation substitution, so the
+    pronunciation version counter is deliberately excluded: bumping it for an
+    unrelated word must not re-bill blocks whose text did not change.
+    """
+    return _identity_digest({
+        "schemaVersion": 2,
+        "voiceId": voice_id,
+        "model": configuration["model"],
+        "outputFormat": configuration["outputFormat"],
+        "voiceSettings": configuration["voiceSettings"],
+        "text": text,
+        "previousText": previous_text,
+        "nextText": next_text,
+    })
+
+
+def legacy_chunk_identity(text: str, voice_id: str, configuration: dict, previous_text: str | None = None, next_text: str | None = None) -> str:
+    """Identity used before 2026-09-14; kept so already paid blocks are migrated, not re-bought."""
+    return _identity_digest({
         "schemaVersion": 1,
         "voiceId": voice_id,
         "model": configuration["model"],
@@ -144,24 +196,53 @@ def cached_chunk(text: str, voice_id: str, key: str, configuration: dict, cache:
         "text": text,
         "previousText": previous_text,
         "nextText": next_text,
-    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
-    target = cache / f"{digest}.mp3"
+    })
+
+
+def _read_cached(cache: Path, digest: str) -> bytes | None:
     try:
-        audio = target.read_bytes()
-        if not audio:
-            raise ValueError("cached ElevenLabs chunk is empty")
-        return audio, True
+        audio = (cache / f"{digest}.mp3").read_bytes()
     except FileNotFoundError:
-        pass
-    audio = synthesize_chunk(text, voice_id, key, configuration, requester, previous_text, next_text)
+        return None
     if not audio:
-        raise ValueError("ElevenLabs returned an empty audio chunk")
+        raise ValueError("cached ElevenLabs chunk is empty")
+    return audio
+
+
+def _store_cached(cache: Path, digest: str, audio: bytes) -> None:
     cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+    target = cache / f"{digest}.mp3"
     temporary = cache / f".{digest}.{uuid.uuid4().hex}.saving"
     temporary.write_bytes(audio)
     temporary.chmod(0o600)
     os.replace(temporary, target)
+
+
+def cached_audio(text: str, voice_id: str, configuration: dict, cache: Path, previous_text: str | None = None, next_text: str | None = None) -> bytes | None:
+    """Return the paid block if it is cached under the current or the legacy identity."""
+    digest = chunk_identity(text, voice_id, configuration, previous_text, next_text)
+    audio = _read_cached(cache, digest)
+    if audio is not None:
+        return audio
+    legacy = _read_cached(cache, legacy_chunk_identity(text, voice_id, configuration, previous_text, next_text))
+    if legacy is not None:
+        _store_cached(cache, digest, legacy)
+    return legacy
+
+
+def chunk_is_cached(text: str, voice_id: str, configuration: dict, cache: Path, previous_text: str | None = None, next_text: str | None = None) -> bool:
+    return cached_audio(text, voice_id, configuration, cache, previous_text, next_text) is not None
+
+
+def cached_chunk(text: str, voice_id: str, key: str, configuration: dict, cache: Path, requester: Callable = api_request, previous_text: str | None = None, next_text: str | None = None) -> tuple[bytes, bool]:
+    audio = cached_audio(text, voice_id, configuration, cache, previous_text, next_text)
+    if audio is not None:
+        return audio, True
+    digest = chunk_identity(text, voice_id, configuration, previous_text, next_text)
+    audio = synthesize_chunk(text, voice_id, key, configuration, requester, previous_text, next_text)
+    if not audio:
+        raise ValueError("ElevenLabs returned an empty audio chunk")
+    _store_cached(cache, digest, audio)
     return audio, False
 
 
@@ -200,7 +281,33 @@ def prepare_spoken_request(request: dict, pronunciations: dict) -> dict:
     return spoken
 
 
-def render_production(request: dict, configuration: dict, pronunciations: dict, output: Path, cache: Path, key: str) -> dict:
+def configured_voice_id(configuration: dict, key: str, requester: Callable = api_request) -> str:
+    """Use the pinned voice ID when the configuration carries one; otherwise resolve by exact name."""
+    pinned = configuration.get("voiceId")
+    if pinned is not None:
+        if not isinstance(pinned, str) or not VOICE_ID.fullmatch(pinned):
+            raise ValueError("ElevenLabs voiceId is invalid")
+        return pinned
+    return resolve_voice_id(key, configuration["voiceName"], requester)
+
+
+def quota_plan(chunks: list[dict], voice_id: str, configuration: dict, cache: Path) -> dict:
+    """Characters that still have to be bought, after honouring the block cache."""
+    pending = [
+        chunk for chunk in chunks
+        if not chunk_is_cached(chunk["text"], voice_id, configuration, cache, chunk["previousText"], chunk["nextText"])
+    ]
+    return {
+        "totalChunks": len(chunks),
+        "cachedChunks": len(chunks) - len(pending),
+        "pendingChunks": len(pending),
+        "requiredCharacters": sum(len(chunk["text"]) for chunk in pending),
+    }
+
+
+def render_production(request: dict, configuration: dict, pronunciations: dict, output: Path, cache: Path, key: str, *,
+                      requester: Callable = api_request, subscription_fetcher: Callable = fetch_subscription,
+                      environment: dict | None = None) -> dict:
     validate_request(request)
     if request["locale"] != "es":
         raise ValueError("ElevenLabs production worker accepts Spanish jobs only")
@@ -209,6 +316,7 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
     validate_pronunciations(pronunciations)
     if configuration.get("pronunciationVersion") != pronunciations["version"]:
         raise ValueError("ElevenLabs pronunciation configuration version is stale")
+    key_limit = parse_key_limit((os.environ if environment is None else environment).get("ELEVENLABS_KEY_CHARACTER_LIMIT"))
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
     staging = output.with_name(f"{output.name}.generating")
@@ -217,20 +325,36 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
     staging.mkdir(parents=True, mode=0o700)
     file_name = f"es-{request['articleId']}.mp3"
     try:
-        voice_id = resolve_voice_id(key, configuration["voiceName"])
+        voice_id = configured_voice_id(configuration, key, requester)
         spoken_request = prepare_spoken_request(request, pronunciations)
         chunks = narration_chunks(spoken_request, configuration["maximumCharactersPerRequest"])
         progress_path = output.parent / "progress.json"
-        write_progress(progress_path, stage="generating", total_chunks=len(chunks), completed_chunks=0, cache_hits=0, generated_chunks=0)
+        # Quota preflight: nothing is bought until the whole remaining cost is
+        # known to fit both the account balance and the key's configured limit.
+        plan = quota_plan(chunks, voice_id, configuration, cache)
+        quota = {"requiredCharacters": plan["requiredCharacters"], "accountRemaining": None, "keyLimit": key_limit, "keyUsedThisCycle": 0, "allowed": True, "reason": None}
+        reset_unix = None
+        write_progress(progress_path, stage="preflight", total_chunks=len(chunks), completed_chunks=0, cache_hits=plan["cachedChunks"], generated_chunks=0, quota=quota)
+        if plan["pendingChunks"]:
+            subscription = subscription_fetcher(key)
+            reset_unix = subscription.get("next_character_count_reset_unix")
+            ledger = read_ledger(cache, key, reset_unix)
+            quota = preflight(subscription=subscription, ledger=ledger, required_characters=plan["requiredCharacters"], key_limit=key_limit)
+            write_progress(progress_path, stage="preflight", total_chunks=len(chunks), completed_chunks=0, cache_hits=plan["cachedChunks"], generated_chunks=0, quota=quota)
+            if not quota["allowed"]:
+                raise QuotaError(quota["reason"])
+        write_progress(progress_path, stage="generating", total_chunks=len(chunks), completed_chunks=0, cache_hits=0, generated_chunks=0, quota=quota)
         with tempfile.TemporaryDirectory(prefix="elevenlabs-tts-", dir=staging) as temp_name:
             temp = Path(temp_name)
             paths = []
             cache_hits = 0
             for index, chunk in enumerate(chunks, start=1):
                 path = temp / f"{index:03d}.mp3"
-                audio, reused = cached_chunk(chunk["text"], voice_id, key, configuration, cache, previous_text=chunk["previousText"], next_text=chunk["nextText"])
+                audio, reused = cached_chunk(chunk["text"], voice_id, key, configuration, cache, requester, previous_text=chunk["previousText"], next_text=chunk["nextText"])
                 path.write_bytes(audio)
                 cache_hits += int(reused)
+                if not reused:
+                    record_usage(cache, key, len(chunk["text"]), reset_unix)
                 paths.append(path)
                 write_progress(
                     progress_path,
@@ -239,11 +363,12 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
                     completed_chunks=index,
                     cache_hits=cache_hits,
                     generated_chunks=index - cache_hits,
+                    quota=quota,
                 )
             concat = temp / "concat.txt"
             concat.write_text("".join(f"file '{path.as_posix()}'\n" for path in paths), encoding="utf-8")
             mp3_path = staging / file_name
-            write_progress(progress_path, stage="assembling", total_chunks=len(chunks), completed_chunks=len(chunks), cache_hits=cache_hits, generated_chunks=len(chunks) - cache_hits)
+            write_progress(progress_path, stage="assembling", total_chunks=len(chunks), completed_chunks=len(chunks), cache_hits=cache_hits, generated_chunks=len(chunks) - cache_hits, quota=quota)
             subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(concat), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-ac", "1", "-b:a", "128k", str(mp3_path)], check=True)
         probe = probe_audio(mp3_path)
         result = {
@@ -257,13 +382,19 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
             "sizeBytes": probe["sizeBytes"], "sha256": sha256_file(mp3_path),
             "generatedAt": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
             "chunks": len(chunks), "cacheHits": cache_hits, "generatedChunks": len(chunks) - cache_hits,
+            "quota": {
+                "requiredCharacters": plan["requiredCharacters"],
+                "accountRemainingBefore": quota.get("accountRemaining"),
+                "keyLimit": key_limit,
+                "keyUsedThisCycleBefore": quota.get("keyUsedThisCycle"),
+            },
         }
         validate_result(request, result, expected_voice=configuration["voiceName"], expected_configuration_version=configuration["version"])
         (staging / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         for path in staging.iterdir():
             path.chmod(0o600)
         os.replace(staging, output)
-        write_progress(progress_path, stage="completed", total_chunks=len(chunks), completed_chunks=len(chunks), cache_hits=cache_hits, generated_chunks=len(chunks) - cache_hits)
+        write_progress(progress_path, stage="completed", total_chunks=len(chunks), completed_chunks=len(chunks), cache_hits=cache_hits, generated_chunks=len(chunks) - cache_hits, quota=quota)
         return result
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
@@ -287,7 +418,7 @@ def main() -> None:
     except Exception as error:
         failure = args.output.parent / "failure.json"
         if not failure.exists():
-            message = str(error) if str(error).startswith("ElevenLabs HTTP ") else "La generación de audio no pudo completarse."
+            message = str(error) if isinstance(error, QuotaError) or str(error).startswith("ElevenLabs HTTP ") else "La generación de audio no pudo completarse."
             temporary = failure.with_name(f".{failure.name}.{uuid.uuid4().hex}.saving")
             temporary.write_text(json.dumps({
                 "schemaVersion": 1,

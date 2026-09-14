@@ -19,8 +19,110 @@ function digest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+const SHA256 = /^[0-9a-f]{64}$/;
+const LOCALES = ["es", "en"];
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function canonicalDigest(value) {
+  return createHash("sha256").update(canonicalJson(value)).digest("hex");
+}
+
+// Legacy combined revision. It hashed preflight references (NFL entity
+// database, Azure entities, Spanish terms) together with generation settings,
+// so a roster update marked every accepted audio stale. It is kept only so
+// audio generated before the split is still recognised as current.
 export function ttsPolicyRevision(production, pronunciations, azureEntities = {}, spanishTerms = {}, spanishProvider = {}) {
   return digest({ production, pronunciations, azureEntities, spanishTerms, spanishProvider });
+}
+
+function withoutPronunciationVersion(configuration) {
+  const { pronunciationVersion, ...rest } = configuration ?? {};
+  return rest;
+}
+
+function approvedProviderPronunciations(pronunciations, provider, locale) {
+  return (pronunciations?.providerOverrides?.[provider]?.[locale] ?? [])
+    .filter((entry) => entry?.status === "approved")
+    .map(({ written, synthesisText }) => ({ written, synthesisText }))
+    .sort((left, right) => left.written.localeCompare(right.written));
+}
+
+function approvedSharedPronunciations(pronunciations, locale) {
+  return (pronunciations?.overrides?.[locale] ?? [])
+    .filter((entry) => entry?.status === "approved")
+    .map(({ canonical, synthesis, aliases }) => ({
+      canonical, text: synthesis?.text ?? null,
+      aliases: (aliases ?? []).map(({ written, synthesisText }) => ({ written, synthesisText })),
+    }))
+    .sort((left, right) => left.canonical.localeCompare(right.canonical));
+}
+
+// Per-locale generation policy. Each locale's revision covers only what its
+// worker actually reads: the Spanish ElevenLabs worker uses the ElevenLabs
+// configuration and the approved ElevenLabs Spanish substitutions; the English
+// Kokoro worker uses the production configuration and the approved shared
+// English substitutions. Preflight references never enter, and the
+// pronunciation version counter is excluded because the substitutions
+// themselves are hashed.
+export function ttsPolicyRevisions({ production = {}, pronunciations = {}, elevenLabs = {} } = {}) {
+  return {
+    es: canonicalDigest({
+      provider: "elevenlabs",
+      configuration: withoutPronunciationVersion(elevenLabs),
+      pronunciations: approvedProviderPronunciations(pronunciations, "elevenlabs", "es"),
+    }),
+    en: canonicalDigest({
+      provider: "kokoro",
+      configuration: withoutPronunciationVersion(production),
+      pronunciations: approvedSharedPronunciations(pronunciations, "en"),
+    }),
+  };
+}
+
+// Accept the historical single string or the per-locale object everywhere a
+// policy revision is stored, so callers and tests written for either shape work.
+export function normalizePolicyRevisions(value) {
+  if (typeof value === "string") {
+    if (!SHA256.test(value)) throw new Error("TTS policy revision is invalid");
+    return { es: value, en: value };
+  }
+  if (value && typeof value === "object") {
+    const normalized = {};
+    for (const locale of LOCALES) {
+      if (!SHA256.test(value[locale] ?? "")) throw new Error("TTS policy revision is invalid");
+      normalized[locale] = value[locale];
+    }
+    return normalized;
+  }
+  throw new Error("TTS policy revision is invalid");
+}
+
+export function policyRevisionFor(value, locale) {
+  if (!LOCALES.includes(locale)) throw new Error("audio locale is invalid");
+  return normalizePolicyRevisions(value)[locale];
+}
+
+export function storedAudioPolicyRevision(audio, locale) {
+  return audio?.jobs?.[locale]?.policyRevision ?? audio?.policyRevisions?.[locale] ?? audio?.policyRevision;
+}
+
+// Owner-uploaded audio never depends on synthesis policy. Generated audio is
+// current when its stored revision equals the locale's current revision, or the
+// legacy combined revision that predates the per-locale split.
+export function audioPolicyIsCurrent(audio, locale, current) {
+  if (audio?.jobs?.[locale]?.uploaded) return true;
+  const stored = storedAudioPolicyRevision(audio, locale);
+  if (stored === undefined || stored === null) return false;
+  if (typeof current === "string") return stored === current;
+  if (!current || typeof current !== "object") return false;
+  return stored === current[locale] || (typeof current.legacy === "string" && stored === current.legacy);
 }
 
 export function narrationText(markdown) {
@@ -69,7 +171,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   ttsQueueBusy = true;
   try {
   if (!["manual", "preview"].includes(workflow)) throw new Error("audio workflow is invalid");
-  if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
+  const policyRevisions = normalizePolicyRevisions(policyRevision);
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
@@ -78,7 +180,8 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
   try {
     const existing = JSON.parse(await readFile(statePath, "utf8"));
     if (["queued", "running"].includes(existing.status)) throw new Error("audio generation is already running");
-    if (existing.status === "completed" && existing.draftRevision === draft.revision && existing.policyRevision === policyRevision && JSON.stringify(existing.sourceRevisions) === JSON.stringify(sourceRevisions)) throw new Error("this draft revision already has audio for the current TTS policy");
+    const policyUnchanged = LOCALES.every((locale) => storedAudioPolicyRevision(existing, locale) === policyRevisions[locale]);
+    if (existing.status === "completed" && existing.draftRevision === draft.revision && policyUnchanged && JSON.stringify(existing.sourceRevisions) === JSON.stringify(sourceRevisions)) throw new Error("this draft revision already has audio for the current TTS policy");
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -90,11 +193,12 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
     await mkdir(temporary, { mode: 0o700 });
     await atomicJson(join(temporary, "request.json"), requests[locale]);
     await rename(temporary, join(queueRoot, jobId));
-    jobs[locale] = { jobId, status: "queued", createdAt: now.toISOString() };
+    jobs[locale] = { jobId, status: "queued", createdAt: now.toISOString(), policyRevision: policyRevisions[locale] };
   }
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
-    status: "queued", workflow, createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions, policyRevision, jobs,
+    status: "queued", workflow, createdAt: now.toISOString(), updatedAt: now.toISOString(), sourceRevisions,
+    ...(typeof policyRevision === "string" ? { policyRevision } : {}), policyRevisions, jobs,
   };
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
@@ -109,7 +213,7 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   ttsQueueBusy = true;
   try {
   if (!["es", "en"].includes(locale)) throw new Error("audio locale is invalid");
-  if (!/^[0-9a-f]{64}$/.test(policyRevision ?? "")) throw new Error("TTS policy revision is invalid");
+  const policyRevisions = normalizePolicyRevisions(policyRevision);
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
@@ -129,15 +233,55 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   const state = {
     ...existing,
     status: "queued", workflow: existing.status === "awaiting-upload" && locale === "es" && existing.workflow === "preview" ? "preview" : "audio-regeneration", regeneratedLocale: locale,
-    createdAt: now.toISOString(), updatedAt: now.toISOString(), policyRevision,
+    createdAt: now.toISOString(), updatedAt: now.toISOString(),
+    ...(typeof policyRevision === "string" ? { policyRevision } : {}),
+    policyRevisions: { ...(existing.policyRevisions ?? {}), [locale]: policyRevisions[locale] },
     sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
-    jobs: { ...existing.jobs, [locale]: { jobId, status: "queued", createdAt: now.toISOString() } },
+    jobs: { ...existing.jobs, [locale]: { jobId, status: "queued", createdAt: now.toISOString(), policyRevision: policyRevisions[locale] } },
   };
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
   return state;
   } finally {
     ttsQueueBusy = false;
+  }
+}
+
+const PROGRESS_STAGES = ["preflight", "generating", "assembling", "completed"];
+const QUOTA_FIELDS = ["requiredCharacters", "accountRemaining", "keyLimit", "keyUsedThisCycle"];
+
+// Sanitized worker progress: only stage, block counters, and quota numbers.
+// Anything else the worker might write is dropped before it reaches the UI.
+export function sanitizeWorkerProgress(progress) {
+  if (
+    progress?.schemaVersion !== 1
+    || !PROGRESS_STAGES.includes(progress.stage)
+    || !Number.isInteger(progress.totalChunks)
+    || !Number.isInteger(progress.completedChunks)
+    || progress.totalChunks <= 0
+    || progress.completedChunks < 0
+    || progress.completedChunks > progress.totalChunks
+  ) return null;
+  const sanitized = {
+    schemaVersion: 1, stage: progress.stage,
+    totalChunks: progress.totalChunks, completedChunks: progress.completedChunks,
+    ...(Number.isInteger(progress.cacheHits) ? { cacheHits: progress.cacheHits } : {}),
+    ...(Number.isInteger(progress.generatedChunks) ? { generatedChunks: progress.generatedChunks } : {}),
+    ...(typeof progress.updatedAt === "string" ? { updatedAt: progress.updatedAt } : {}),
+  };
+  if (progress.quota && typeof progress.quota === "object") {
+    const quota = Object.fromEntries(QUOTA_FIELDS.filter((name) => Number.isInteger(progress.quota[name])).map((name) => [name, progress.quota[name]]));
+    if (Object.keys(quota).length) sanitized.quota = quota;
+  }
+  return sanitized;
+}
+
+export async function readWorkerProgress(jobsRoot, jobId) {
+  try {
+    return sanitizeWorkerProgress(JSON.parse(await readFile(join(jobsRoot, jobId, "progress.json"), "utf8")));
+  } catch (error) {
+    if (error.code !== "ENOENT" && error.name !== "SyntaxError") throw error;
+    return null;
   }
 }
 
@@ -170,20 +314,8 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
         try {
           await readFile(join(jobsRoot, job.jobId, "request.json"));
           job.status = "running";
-          try {
-            const progress = JSON.parse(await readFile(join(jobsRoot, job.jobId, "progress.json"), "utf8"));
-            if (
-              progress?.schemaVersion === 1
-              && ["generating", "assembling", "completed"].includes(progress.stage)
-              && Number.isInteger(progress.totalChunks)
-              && Number.isInteger(progress.completedChunks)
-              && progress.totalChunks > 0
-              && progress.completedChunks >= 0
-              && progress.completedChunks <= progress.totalChunks
-            ) job.progress = progress;
-          } catch (progressError) {
-            if (progressError.code !== "ENOENT" && progressError.name !== "SyntaxError") throw progressError;
-          }
+          const progress = await readWorkerProgress(jobsRoot, job.jobId);
+          if (progress) job.progress = progress;
         } catch (requestError) {
           if (requestError.code !== "ENOENT") throw requestError;
         }

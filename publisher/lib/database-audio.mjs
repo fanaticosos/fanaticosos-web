@@ -21,6 +21,7 @@ function localeState(row) {
     policyRevision: saved.policyRevision,
     uploaded: saved.uploaded === true,
     createdAt: row.created_at,
+    startedAt: row.started_at ?? null,
     updatedAt: row.finished_at ?? row.heartbeat_at ?? row.started_at ?? row.created_at,
     ...(saved.result ? { result: saved.result } : {}),
     ...(row.error_message ? { error: row.error_message } : {}),
@@ -71,9 +72,12 @@ export function readDatabaseAudioState(database, articleId) {
     createdAt: locales.map(({ createdAt }) => createdAt).sort()[0],
     updatedAt: locales.map(({ updatedAt }) => updatedAt).sort().at(-1),
     policyRevision: first.policyRevision,
+    policyRevisions: Object.fromEntries(locales.map((value) => [value.locale, value.policyRevision])),
     sourceRevisions: Object.fromEntries(locales.map((value) => [value.locale, value.sourceRevision])),
     jobs: Object.fromEntries(locales.map((value) => [value.locale, {
       jobId: value.jobId, status: value.status,
+      policyRevision: value.policyRevision, uploaded: value.uploaded,
+      createdAt: value.createdAt, ...(value.startedAt ? { startedAt: value.startedAt } : {}),
       ...(value.result ? { result: value.result } : {}),
       ...(value.error ? { error: value.error } : {}),
       artifact: value.artifact,
@@ -91,9 +95,10 @@ export function databaseAudioFile(state, locale) {
   return path;
 }
 
-function insertPending(connection, { draft, revisionId, locale, jobId, sourceRevision, policyRevision, workflow, uploaded = false, regeneratedLocale, now }) {
+function insertPending(connection, { draft, revisionId, locale, jobId, sourceRevision, policyRevision: requestedPolicy, workflow, uploaded = false, regeneratedLocale, now }) {
   if (!["es", "en"].includes(locale) || !JOB_ID.test(jobId ?? "")) throw new Error("audio job identity is invalid");
   if (!["manual", "preview", "audio-regeneration", "spanish-upload"].includes(workflow)) throw new Error("audio workflow is invalid");
+  const policyRevision = policyRevisionFor(requestedPolicy, locale);
   const dependencyHash = audioDependencyHash(sourceRevision, policyRevision, uploaded);
   const policyKey = uploaded ? "owner-upload" : policyRevision;
   const idempotencyKey = `audio:${locale}:${draft.articleId}:${sourceRevision}:${policyKey}`;
@@ -189,6 +194,7 @@ export function failDatabaseAudio(database, jobId, errorMessage, now = new Date(
 import { createHash, randomUUID } from "node:crypto";
 
 import { withTransaction } from "./database.mjs";
+import { policyRevisionFor } from "./tts-jobs.mjs";
 
 const JOB_ID = /^(?:tts-(?:es|en)|upload-es)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
 const SHA256 = /^[0-9a-f]{64}$/;

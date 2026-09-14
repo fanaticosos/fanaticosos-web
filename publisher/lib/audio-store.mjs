@@ -8,7 +8,7 @@ import {
   queueDatabaseAudio, queueDatabaseAudioLocale, readDatabaseAudioState, startDatabaseAudio,
 } from "./database-audio.mjs";
 import { saveSpanishAudio, writeSpanishAudioJob } from "./spanish-audio-upload.mjs";
-import { audioFileForState, queueTts, queueTtsLocale, readTtsState, reconcileTts, ttsRequestsForDraft } from "./tts-jobs.mjs";
+import { audioFileForState, queueTts, queueTtsLocale, readTtsState, readWorkerProgress, reconcileTts, ttsRequestsForDraft } from "./tts-jobs.mjs";
 
 const TIMEOUT_MS = 17 * 60 * 1000;
 
@@ -102,7 +102,19 @@ export function databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoo
       completeDatabaseAudio(database, { jobId: written.jobId, result: written.result, artifactPath, checksumSha256: written.result.sha256, now });
       return readDatabaseAudioState(database, draft.articleId);
     },
-    async read(articleId) { return readDatabaseAudioState(database, articleId); },
+    async read(articleId) {
+      const state = readDatabaseAudioState(database, articleId);
+      // Worker progress lives beside the job on disk; SQLite only records
+      // admission, lease, and terminal states. Attach it for running jobs so
+      // the editor can show block-by-block and quota progress.
+      for (const locale of ["es", "en"]) {
+        const job = state.jobs?.[locale];
+        if (!job || !["running", "queued"].includes(job.status)) continue;
+        const progress = await readWorkerProgress(jobsRoot, job.jobId);
+        if (progress) job.progress = progress;
+      }
+      return state;
+    },
     file(state, locale) { return databaseAudioFile(state, locale); },
     async reconcile({ onComplete, onFailure, now = new Date() }) {
       for (const active of listActiveDatabaseAudio(database)) {
