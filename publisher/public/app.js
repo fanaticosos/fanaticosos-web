@@ -178,7 +178,11 @@ function narrationScriptFromMarkdown(markdown) {
     .replace(/(\*\*|__)(.*?)\1/g, "$2")
     .replace(/(\*|_)(.*?)\1/g, "$2")
     .replace(/~~(.*?)~~/g, "$1")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    .replace(/^\s{0,3}(?:[-*+]|\d+[.)])\s+/gm, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
     .replace(/\\([\\`*{}\[\]()#+.!_>-])/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
   const blocks = String(markdown ?? "").split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
   while (blocks.length && blocks[0].split(/\n/).every((line) => /^\*{0,2}(?:por|fecha|ubicaci[oó]n|by|date|location)\s*:/i.test(line.replace(/\\$/, "")))) blocks.shift();

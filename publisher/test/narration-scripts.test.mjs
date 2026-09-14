@@ -27,3 +27,10 @@ test("plain bilingual scripts accept bounded pauses and reject Markdown", () => 
   assert.throws(() => normalizeNarrationScript("**No Markdown**"), /without Markdown/);
   assert.throws(() => normalizeNarrationScript("Texto. <pause=9s>"), /invalid pause/);
 });
+
+test("generated narration removes quote and list syntax without losing spoken text", () => {
+  const body = "> “Así queremos vernos.”\n>\n> — **Caleb Williams**\n\n1. Primera posesión.\n2. Segunda posesión.";
+  const script = markdownToNarrationScript(body, plainNarrationText);
+  assert.equal(script, "“Así queremos vernos.”\n— Caleb Williams\n<pause=0.7s>\nPrimera posesión.\nSegunda posesión.");
+  assert.doesNotThrow(() => normalizeNarrationScript(script));
+});

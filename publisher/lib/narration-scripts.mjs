@@ -38,7 +38,11 @@ export function plainNarrationText(markdown) {
     .replace(/(\*\*|__)(.*?)\1/g, "$2")
     .replace(/(\*|_)(.*?)\1/g, "$2")
     .replace(/~~(.*?)~~/g, "$1")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    .replace(/^\s{0,3}(?:[-*+]|\d+[.)])\s+/gm, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
     .replace(/\\([\\`*{}\[\]()#+.!_>-])/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
