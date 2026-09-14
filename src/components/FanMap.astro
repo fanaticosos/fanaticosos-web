@@ -1,4 +1,5 @@
 ---
+import SiteNavigation from "./SiteNavigation.astro";
 interface Props { locale?: "es" | "en"; }
 const { locale = "es" } = Astro.props;
 const copy = locale === "es" ? {
@@ -10,7 +11,6 @@ const copy = locale === "es" ? {
   success: "¡Ya formas parte de Bears Nation!", failure: "No pudimos guardar tu ubicación. Inténtalo de nuevo.",
   invalidLand: "Elige un punto en tierra, cerca de la ciudad indicada.", invalidCity: "El punto no coincide aproximadamente con la ciudad y el país indicados.", validationUnavailable: "No pudimos validar el punto en este momento. Inténtalo de nuevo.",
   countPrefix: "Fanaticosos:", countSuffix: "en el mundo",
-  home: "Inicio",
 } : {
   title: "Bear Nation map", kicker: "FanaticOSOS worldwide",
   intro: "Tell us where you support the Bears from. Your marker is rounded so it only shows an approximate location.",
@@ -20,17 +20,10 @@ const copy = locale === "es" ? {
   success: "You're now part of Bear Nation!", failure: "We couldn't save your location. Please try again.",
   invalidLand: "Choose a point on land near the city you entered.", invalidCity: "The point does not approximately match the city and country entered.", validationUnavailable: "We couldn't validate that point right now. Please try again.",
   countPrefix: "FanaticOSOS:", countSuffix: "worldwide",
-  home: "Home",
 };
 ---
+<SiteNavigation locale={locale} alternatePath={locale === "es" ? "/en/map/" : "/mapa/"} />
 <main class="map-shell">
-  <header class="map-topbar">
-    <a class="map-brand" href="/"><img src="/logo.png" alt="FanaticOSOS" /> FanaticOSOS</a>
-    <nav class="map-nav" aria-label={locale === "es" ? "Navegación" : "Navigation"}>
-      <a class="home-link" href="/">{copy.home}</a>
-      <a class="language-link" href={locale === "es" ? "/en/map/" : "/mapa/"}>{locale === "es" ? "English" : "Español"}</a>
-    </nav>
-  </header>
   <section class="map-intro">
     <p class="map-kicker">{copy.kicker}</p><h1>{copy.title}</h1><p>{copy.intro}</p><p class="map-count" id="fan-count" aria-live="polite">{copy.countPrefix} — {copy.countSuffix}</p>
   </section>

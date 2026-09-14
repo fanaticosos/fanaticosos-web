@@ -1,0 +1,64 @@
+---
+interface Props {
+  locale?: "es" | "en";
+  alternatePath: string;
+}
+
+const { locale = "es", alternatePath } = Astro.props;
+const alternateLocale = locale === "es" ? "en" : "es";
+---
+
+<header class="site-navigation">
+  <a class="site-brand" href="/" aria-label={locale === "es" ? "Inicio de FanaticOSOS" : "FanaticOSOS home"}>
+    <img src="/logo.png" alt="" />
+    <span>FanaticOSOS</span>
+  </a>
+  <nav aria-label={locale === "es" ? "Navegación principal" : "Main navigation"}>
+    <a class="site-home" href="/">{locale === "es" ? "Inicio" : "Home"}</a>
+    <a class="site-language" href={alternatePath} lang={alternateLocale} hreflang={alternateLocale}>
+      {locale === "es" ? "Read in English" : "Leer en español"}
+    </a>
+  </nav>
+</header>
+
+<style>
+  .site-navigation {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin: 0 auto;
+    max-width: 1120px;
+    padding: 24px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .site-brand,
+  nav { align-items: center; display: flex; }
+  .site-brand { color: var(--white); gap: 12px; text-decoration: none; }
+  .site-brand img { display: block; height: 64px; object-fit: contain; width: 64px; }
+  .site-brand span { font-family: "Bebas Neue", sans-serif; font-size: 24px; letter-spacing: .06em; }
+  nav { gap: 20px; }
+  nav a { font-size: 14px; font-weight: 700; text-decoration: none; }
+  .site-home { color: var(--gray-light); text-underline-offset: 5px; }
+  .site-home:hover,
+  .site-home:focus-visible { color: var(--orange); text-decoration: underline; }
+  .site-language {
+    border: 1px solid var(--orange);
+    border-radius: 999px;
+    color: var(--white);
+    padding: 8px 16px;
+  }
+  .site-language:hover,
+  .site-language:focus-visible { background: var(--orange); color: var(--navy); }
+
+  @media (max-width: 560px) {
+    .site-navigation { align-items: flex-start; padding: 18px 16px; }
+    .site-brand { gap: 8px; }
+    .site-brand img { height: 48px; width: 48px; }
+    .site-brand span { font-size: 19px; }
+    nav { align-items: flex-end; flex-direction: column; gap: 8px; }
+    nav a { font-size: 12px; }
+    .site-language { padding: 7px 11px; }
+  }
+</style>

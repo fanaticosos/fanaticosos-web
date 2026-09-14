@@ -3,6 +3,7 @@ import type { Article, ArticleLocale } from "../lib/articles";
 import { articlePath, categoryPath } from "../lib/articles";
 import BaseLayout from "./BaseLayout.astro";
 import SiteFooter from "../components/SiteFooter.astro";
+import SiteNavigation from "../components/SiteNavigation.astro";
 import "../styles/article.css";
 
 interface Props {
@@ -28,17 +29,7 @@ const englishPath = locale === "en" ? canonicalPath : alternatePath;
   bodyClass="article-page"
   alternatePaths={{ es: spanishPath, en: englishPath, "x-default": spanishPath }}
 >
-  <header class="article-header">
-    <div class="brand-navigation">
-      <a class="brand-link" href="/" aria-label={locale === "es" ? "Inicio de FanaticOSOS" : "FanaticOSOS home"}>
-        <img src="/logo.png" alt="FanaticOSOS" />
-      </a>
-      <a class="home-link" href="/">{locale === "es" ? "Inicio" : "Home"}</a>
-    </div>
-    <a class="language-switch" href={alternatePath} lang={alternateLocale} hreflang={alternateLocale}>
-      {locale === "es" ? "Read in English" : "Leer en español"}
-    </a>
-  </header>
+  <SiteNavigation locale={locale} alternatePath={alternatePath} />
   <main class="article-shell blog-index">
     <p class="article-category">{locale === "es" ? "Categoría" : "Category"}</p>
     <h1>{category}</h1>
