@@ -156,6 +156,7 @@ Commands:
   install-game-center-automation EXPECTED_COMMIT
   game-center-automation-status
   run-game-center-update EXPECTED_COMMIT
+  publish-game-center EXPECTED_COMMIT
   initialize-database EXPECTED_COMMIT
   database-status EXPECTED_COMMIT
   backup-database EXPECTED_COMMIT BACKUP_ID
@@ -1340,6 +1341,7 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 allowed = {key: value.get(key) for key in (
     "lastSuccessfulCheckAt", "lastMode", "lastDeploymentAt",
     "lastDeploymentJobId", "lastFailureAt", "backoffUntil", "consecutiveFailures",
+    "pendingJobId", "pendingSince",
 )}
 print(json.dumps(allowed, indent=2))
 PY
@@ -1352,7 +1354,35 @@ command_run_game_center_update() {
   systemctl stop fanaticosos-game-center-update.service || true
   systemctl reset-failed fanaticosos-game-center-update.service || true
   "$game_center_runner_installed" --force
-  echo "PASS: Forced verified Game Center update completed."
+  echo "PASS: Forced Game Center refresh completed; any validated proposal awaits publish-game-center."
+}
+
+command_publish_game_center() {
+  local expected="$1" ready="$publisher_data/game-center/deploy-ready" job_id
+  require_repository_commit "$expected"
+  [[ -x "$cloudflare_production_script" ]] || stop "Versioned Cloudflare production script is missing."
+  [[ -f "$ready" && ! -L "$ready" ]] || stop "No validated Game Center release is awaiting publication."
+  job_id="$(tr -d '\n' < "$ready")"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || stop "Invalid Game Center release proposal."
+  [[ -f "$publisher_data/releases/$job_id/release/release-manifest.json" ]] || stop "Game Center release bundle is missing."
+  run_as_service python3 - "$publisher_data/releases/$job_id/release/release-manifest.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    manifest = json.load(handle)
+if manifest.get("releaseKind") != "game-center" or manifest.get("deployment") != "disabled":
+    raise SystemExit("release is not a validated Game Center proposal")
+print(f"Game Center data through {manifest.get('gameCenterUpdatedAt')} from commit {manifest.get('commit', '')[:7]}")
+PY
+  systemctl stop fanaticosos-game-center-update.service || true
+  if "$cloudflare_production_script" "$repository" "$data_root" "$job_id"; then
+    run_as_service /opt/nodejs/current/bin/node "$repository/scripts/publisher/record_game_center_deployment.mjs" \
+      --publisher-root "$publisher_data" --job-id "$job_id" --result success
+    echo "PASS: Game Center release $job_id published with explicit authorization."
+  else
+    run_as_service /opt/nodejs/current/bin/node "$repository/scripts/publisher/record_game_center_deployment.mjs" \
+      --publisher-root "$publisher_data" --job-id "$job_id" --result failed
+    stop "Game Center publication failed; production was preserved or restored."
+  fi
 }
 
 command_initialize_database() {
@@ -2383,6 +2413,10 @@ case "$command" in
   run-game-center-update)
     [[ $# == 1 ]] || stop "run-game-center-update requires EXPECTED_COMMIT."
     command_run_game_center_update "$1"
+    ;;
+  publish-game-center)
+    [[ $# == 1 ]] || stop "publish-game-center requires EXPECTED_COMMIT."
+    command_publish_game_center "$1"
     ;;
   initialize-database)
     [[ $# == 1 ]] || stop "initialize-database requires EXPECTED_COMMIT."

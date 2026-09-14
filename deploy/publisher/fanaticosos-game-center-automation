@@ -7,20 +7,15 @@ readonly ready="$publisher_root/game-center/deploy-ready"
 force="${1:-}"
 [[ -z "$force" || "$force" == "--force" ]] || { echo "STOP: invalid automation argument." >&2; exit 1; }
 
+# This runner only refreshes Game Center data and builds a validated private
+# release proposal. It never uploads to Cloudflare. Production changes only
+# through the explicit administrative command:
+#   sudo /usr/local/sbin/fanaticosos-blog-admin publish-game-center EXPECTED_COMMIT
 runuser -u "$service_account" -- env FANATICOSOS_GAME_CENTER_FORCE="$([[ "$force" == "--force" ]] && echo 1 || echo 0)" /opt/nodejs/current/bin/node \
   "$repository/scripts/publisher/run_game_center_automation.mjs" \
   --repository "$repository" --publisher-root "$publisher_root"
 
 [[ -f "$ready" ]] || exit 0
 job_id="$(tr -d '\n' < "$ready")"
-[[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || { echo "STOP: invalid Game Center deployment job." >&2; exit 1; }
-if "$repository/scripts/deployment/deploy_cloudflare_production.sh" "$repository" /opt/fanaticosos-blog "$job_id"; then
-  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
-    "$repository/scripts/publisher/record_game_center_deployment.mjs" \
-    --publisher-root "$publisher_root" --job-id "$job_id" --result success
-else
-  runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
-    "$repository/scripts/publisher/record_game_center_deployment.mjs" \
-    --publisher-root "$publisher_root" --job-id "$job_id" --result failed
-  exit 1
-fi
+[[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || { echo "STOP: invalid Game Center release proposal." >&2; exit 1; }
+echo "PASS: Game Center release $job_id is validated and awaiting manual publication."

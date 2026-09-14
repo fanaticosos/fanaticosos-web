@@ -116,6 +116,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-game-center-automation",
                 "game-center-automation-status",
                 "run-game-center-update",
+                "publish-game-center",
                 "initialize-database",
                 "database-status",
                 "backup-database",
@@ -228,6 +229,18 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('install -o root -g root -m 0644 "$publisher_retention_timer_source"', installer)
         self.assertIn("systemctl enable fanaticosos-release-retention.timer", installer)
         self.assertNotIn("systemctl enable --now fanaticosos-release-retention.timer", installer)
+
+    def test_game_center_publication_requires_the_explicit_helper_command(self):
+        runner = (ROOT / "deploy" / "publisher" / "fanaticosos-game-center-automation").read_text(encoding="utf-8")
+        self.assertNotIn("deploy_cloudflare_production", runner)
+        self.assertNotIn("record_game_center_deployment", runner)
+        publisher = self.helper.split("command_publish_game_center()", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('require_repository_commit "$expected"', publisher)
+        self.assertIn('[[ -f "$ready" && ! -L "$ready" ]]', publisher)
+        self.assertIn('manifest.get("releaseKind") != "game-center"', publisher)
+        self.assertIn('"$cloudflare_production_script" "$repository" "$data_root" "$job_id"', publisher)
+        self.assertIn("--result success", publisher)
+        self.assertIn("--result failed", publisher)
 
     def test_game_center_installer_places_runner_before_unit_verification(self):
         installer = self.helper.split("command_install_game_center_automation()", 1)[1].split("\n}\n", 1)[0]

@@ -38,6 +38,15 @@ export function gameCenterPollDecision({ current, state, now = new Date() }) {
   return { due: !Number.isFinite(last) || now.getTime() - last >= interval, mode: inGameWindow ? "game" : "daily" };
 }
 
+export async function pendingProposal({ releasesRoot, state, candidate }) {
+  const jobId = state?.pendingJobId;
+  if (!/^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/.test(jobId ?? "")) return null;
+  const proposal = await optionalJson(join(releasesRoot, jobId, "game-center.json"));
+  const manifest = await optionalJson(join(releasesRoot, jobId, "release", "release-manifest.json"));
+  if (!proposal || manifest?.releaseKind !== "game-center") return null;
+  return content(proposal) === content(candidate) ? jobId : null;
+}
+
 async function main() {
   const repository = argument("--repository");
   const publisherRoot = argument("--publisher-root");
@@ -51,7 +60,6 @@ async function main() {
   const lock = await open(join(automationRoot, "run.lock"), "wx", 0o600).catch((error) => { if (error.code === "EEXIST") return null; throw error; });
   if (!lock) return;
   try {
-    await rm(readyPath, { force: true });
     const current = await optionalJson(currentPath) ?? JSON.parse(await readFile(join(repository, "src/data/game-center.json"), "utf8"));
     const state = await optionalJson(statePath) ?? { schemaVersion: 1, consecutiveFailures: 0 };
     const now = new Date();
@@ -63,10 +71,22 @@ async function main() {
     const candidate = preserveVenues(await updateGameCenter({ outputPath: candidatePath, updatedAt: now }), current);
     await atomicJson(candidatePath, candidate);
     if (content(candidate) === content(current)) {
-      await atomicJson(statePath, { ...state, lastSuccessfulCheckAt: now.toISOString(), lastMode: decision.mode, consecutiveFailures: 0, backoffUntil: null });
+      await rm(readyPath, { force: true });
+      await atomicJson(statePath, { ...state, lastSuccessfulCheckAt: now.toISOString(), lastMode: decision.mode, consecutiveFailures: 0, backoffUntil: null, pendingJobId: null });
       await rm(candidatePath, { force: true });
       return;
     }
+    // A validated proposal that still matches the sources is kept; the owner
+    // publishes it explicitly. Nothing here uploads to Cloudflare.
+    const pending = await pendingProposal({ releasesRoot, state, candidate });
+    if (pending) {
+      await rm(candidatePath, { force: true });
+      await rm(readyPath, { force: true });
+      await writeFile(readyPath, `${pending}\n`, { mode: 0o600, flag: "wx" });
+      await atomicJson(statePath, { ...state, lastSuccessfulCheckAt: now.toISOString(), lastMode: decision.mode, consecutiveFailures: 0, backoffUntil: null, pendingJobId: pending });
+      return;
+    }
+    await rm(readyPath, { force: true });
     const articleId = randomUUID();
     const jobId = `release-${articleId.replaceAll("-", "")}-r1-${randomUUID().slice(0, 8)}`;
     const jobRoot = join(releasesRoot, jobId);
@@ -75,7 +95,12 @@ async function main() {
     await atomicJson(join(jobRoot, "request.json"), { schemaVersion: 1, releaseKind: "game-center", jobId, requestedAt: now.toISOString(), candidateSha256: createHash("sha256").update(content(candidate)).digest("hex") });
     await execute("/opt/nodejs/current/bin/node", [join(repository, "scripts/publisher/build_game_center_release.mjs"), "--repository", repository, "--releases-root", releasesRoot, "--candidate", join(jobRoot, "game-center.json"), "--output", join(jobRoot, "release")], { maxBuffer: 10_000_000 });
     await writeFile(readyPath, `${jobId}\n`, { mode: 0o600, flag: "wx" });
-    await atomicJson(statePath, { ...state, lastSuccessfulCheckAt: now.toISOString(), lastMode: decision.mode, consecutiveFailures: 0, backoffUntil: null, pendingJobId: jobId });
+    await atomicJson(statePath, { ...state, lastSuccessfulCheckAt: now.toISOString(), lastMode: decision.mode, consecutiveFailures: 0, backoffUntil: null, pendingJobId: jobId, pendingSince: now.toISOString() });
+    await createNotification(notificationsRoot, {
+      level: "info", event: "game-center-ready",
+      message: `Game Center tiene una actualización validada pendiente de publicación manual (${jobId}). Producción no cambia hasta ejecutar publish-game-center.`,
+      replacePending: true,
+    });
   } catch (error) {
     const state = await optionalJson(statePath) ?? { schemaVersion: 1, consecutiveFailures: 0 };
     const failures = Math.min((state.consecutiveFailures ?? 0) + 1, 6);

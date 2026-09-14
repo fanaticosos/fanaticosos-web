@@ -160,9 +160,37 @@ test("Game Center automation is adaptive, bounded, and production-safe", async (
   assert.match(timer, /Persistent=true/);
   assert.match(service, /ProtectSystem=strict/);
   assert.match(service, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
-  assert.match(runner, /deploy_cloudflare_production\.sh/);
+  assert.doesNotMatch(runner, /deploy_cloudflare_production\.sh/);
+  assert.doesNotMatch(runner, /record_game_center_deployment/);
   assert.match(runner, /\[\[ -f "\$ready" \]\] \|\| exit 0/);
+  assert.match(runner, /awaiting manual publication/);
   assert.match(automation, /GAME_INTERVAL_MS = 10 \* 60 \* 1000/);
   assert.match(automation, /DAILY_INTERVAL_MS = 24 \* 60 \* 60 \* 1000/);
   assert.match(automation, /Producción permanece intacta/);
+  assert.doesNotMatch(automation, /deploy_cloudflare_production/);
+  assert.match(automation, /event: "game-center-ready"/);
+  const helper = await readFile(new URL("../../deploy/admin/fanaticosos-blog-admin", import.meta.url), "utf8");
+  assert.match(helper, /command_publish_game_center\(\)/);
+  assert.match(helper, /publish-game-center EXPECTED_COMMIT/);
+});
+
+test("Game Center automation reuses a matching validated proposal instead of rebuilding", async () => {
+  const { pendingProposal } = await import("../../scripts/publisher/run_game_center_automation.mjs");
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const releasesRoot = await mkdtemp(join(tmpdir(), "fanaticosos-gc-"));
+  try {
+    const jobId = `release-${"a".repeat(32)}-r1-deadbeef`;
+    await mkdir(join(releasesRoot, jobId, "release"), { recursive: true });
+    const candidate = { schemaVersion: 1, updatedAt: "2026-09-14T00:00:00Z", nextGame: { id: "next" } };
+    await writeFile(join(releasesRoot, jobId, "game-center.json"), JSON.stringify({ ...candidate, updatedAt: "2026-09-13T00:00:00Z" }));
+    await writeFile(join(releasesRoot, jobId, "release", "release-manifest.json"), JSON.stringify({ releaseKind: "game-center", deployment: "disabled" }));
+    assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: jobId }, candidate }), jobId);
+    assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: jobId }, candidate: { ...candidate, nextGame: { id: "other" } } }), null);
+    assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: "release-bad" }, candidate }), null);
+    assert.equal(await pendingProposal({ releasesRoot, state: {}, candidate }), null);
+  } finally {
+    await rm(releasesRoot, { recursive: true, force: true });
+  }
 });

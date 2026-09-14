@@ -147,7 +147,36 @@ export function audioByteRange(value, size) {
   return { start, end: Math.min(requestedEnd, size - 1) };
 }
 
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+// The publisher is reachable only over NetBird, but the owner's browser is
+// also on that network. A page from any other site could otherwise submit a
+// cross-site form to it. Every state-changing request must therefore prove it
+// came from the publisher's own origin (or from a non-browser client that
+// sends no browser provenance headers at all).
+export function crossSiteRejection(request) {
+  if (READ_METHODS.has(request.method)) return null;
+  const site = request.headers["sec-fetch-site"];
+  if (site && !["same-origin", "none"].includes(site)) return "cross-site requests are not allowed";
+  const origin = request.headers.origin;
+  if (origin === undefined) return null;
+  if (origin === "null") return "cross-site requests are not allowed";
+  let originHost;
+  try { originHost = new URL(origin).host; } catch { return "request origin is invalid"; }
+  const host = String(request.headers.host ?? "");
+  if (!host || originHost.toLowerCase() !== host.toLowerCase()) return "request origin does not match the publisher";
+  return null;
+}
+
+export function isJsonContentType(value) {
+  const type = String(value ?? "").split(";", 1)[0].trim().toLowerCase();
+  return type === "application/json";
+}
+
 async function requestJson(request) {
+  if (!isJsonContentType(request.headers["content-type"])) {
+    throw new Error("request body must be sent as application/json");
+  }
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
@@ -324,6 +353,8 @@ export function createPublisherServer({
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://publisher.local");
+      const rejection = crossSiteRejection(request);
+      if (rejection) return json(response, 403, { error: rejection });
       if (request.method === "GET" && url.pathname === "/health") {
         return json(response, 200, { status: "ok" });
       }

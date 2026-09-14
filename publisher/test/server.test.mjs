@@ -7,7 +7,7 @@ import test from "node:test";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 import { databaseDraftStore } from "../lib/draft-store.mjs";
 import { translationSourceRevision } from "../lib/translation-jobs.mjs";
-import { audiogramWithFreshness, audioByteRange, audioWithFreshness, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
+import { audiogramWithFreshness, audioByteRange, audioWithFreshness, createPublisherServer, crossSiteRejection, isJsonContentType, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -19,6 +19,53 @@ const fields = {
   status: "draft",
   featuredImage: {},
 };
+
+test("state-changing requests must come from the publisher origin or a non-browser client", () => {
+  const request = (method, headers = {}) => ({ method, headers: { host: "100.121.48.92:4310", ...headers } });
+  assert.equal(crossSiteRejection(request("GET", { origin: "https://evil.example" })), null);
+  assert.equal(crossSiteRejection(request("POST")), null);
+  assert.equal(crossSiteRejection(request("POST", { origin: "http://100.121.48.92:4310", "sec-fetch-site": "same-origin" })), null);
+  assert.equal(crossSiteRejection(request("PUT", { "sec-fetch-site": "none" })), null);
+  assert.match(crossSiteRejection(request("POST", { origin: "https://evil.example" })), /origin does not match/);
+  assert.match(crossSiteRejection(request("POST", { origin: "http://100.121.48.92:4311" })), /origin does not match/);
+  assert.match(crossSiteRejection(request("POST", { origin: "null" })), /cross-site/);
+  assert.match(crossSiteRejection(request("POST", { origin: "not a url" })), /invalid/);
+  assert.match(crossSiteRejection(request("PUT", { origin: "http://100.121.48.92:4310", "sec-fetch-site": "cross-site" })), /cross-site/);
+  assert.match(crossSiteRejection(request("POST", { "sec-fetch-site": "same-site" })), /cross-site/);
+  assert.equal(isJsonContentType("application/json"), true);
+  assert.equal(isJsonContentType("Application/JSON; charset=utf-8"), true);
+  assert.equal(isJsonContentType("text/plain"), false);
+  assert.equal(isJsonContentType(undefined), false);
+});
+
+test("cross-site form submissions cannot change publisher state", async (context) => {
+  const { server, base, siteSettingsPath } = await fixture();
+  context.after(() => server.close());
+  const before = await readFile(siteSettingsPath, "utf8").catch(() => null);
+  const body = JSON.stringify({ weeklySongUrl: "https://music.fanaticosos.com/share/new-song" });
+  const crossSite = await fetch(`${base}/api/music`, {
+    method: "PUT", headers: { "Content-Type": "application/json", Origin: "https://evil.example" }, body,
+  });
+  assert.equal(crossSite.status, 403);
+  const fetchMetadata = await fetch(`${base}/api/music`, {
+    method: "PUT", headers: { "Content-Type": "application/json", "Sec-Fetch-Site": "cross-site" }, body,
+  });
+  assert.equal(fetchMetadata.status, 403);
+  const plainTextForm = await fetch(`${base}/api/music`, {
+    method: "PUT", headers: { "Content-Type": "text/plain" }, body,
+  });
+  assert.equal(plainTextForm.status, 400);
+  assert.match((await plainTextForm.json()).error, /application\/json/);
+  const acknowledge = await fetch(`${base}/api/notifications/acknowledge-all`, {
+    method: "POST", headers: { Origin: "https://evil.example" },
+  });
+  assert.equal(acknowledge.status, 403);
+  assert.equal(await readFile(siteSettingsPath, "utf8").catch(() => null), before);
+  const sameOrigin = await fetch(`${base}/api/music`, {
+    method: "PUT", headers: { "Content-Type": "application/json", Origin: base, "Sec-Fetch-Site": "same-origin" }, body,
+  });
+  assert.equal(sameOrigin.status, 202);
+});
 
 test("audio byte ranges support browser metadata and seeking requests", () => {
   assert.deepEqual(audioByteRange("bytes=0-", 1000), { start: 0, end: 999 });
