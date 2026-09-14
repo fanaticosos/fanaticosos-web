@@ -64,12 +64,22 @@ test("TTS requests bind approved Spanish and English text to one revision", () =
   assert.match(requests.en.sourceRevision, /^[0-9a-f]{64}$/);
   assert.notEqual(requests.en.sourceRevision, translation.sourceRevision);
   assert.equal(requests.es.segments[0].text, "Primer cuarto");
-  assert.equal(requests.es.segments[0].kind, "heading");
-  assert.equal(requests.es.segments[1].kind, "paragraph");
+  assert.equal(requests.es.segments[0].kind, "narrative");
+  assert.equal(requests.es.segments[1].kind, "narrative");
   assert.equal(requests.en.segments[1].text, "Caleb Williams threw a touchdown.");
   const corrected = structuredClone(translation);
   corrected.result.body += " Correction.";
   assert.notEqual(ttsRequestsForDraft(draft, corrected).en.sourceRevision, requests.en.sourceRevision);
+});
+
+test("explicit narration scripts isolate audio from editorial article changes", () => {
+  const scriptedDraft = { ...draft, narrationEs: "Guion español.\n<pause=0.7s>\nFinal." , narrationEn: "English script.\n<pause=0.9s>\nEnd." };
+  const first = ttsRequestsForDraft(scriptedDraft, translation);
+  const edited = ttsRequestsForDraft({ ...scriptedDraft, revision: 5, body: "Artículo editorial completamente modificado." }, { ...translation, draftRevision: 5 });
+  assert.equal(edited.es.sourceRevision, first.es.sourceRevision);
+  assert.equal(edited.en.sourceRevision, first.en.sourceRevision);
+  assert.equal(first.es.segments[0].pauseAfterMs, 700);
+  assert.equal(first.en.segments[0].pauseAfterMs, 900);
 });
 
 test("SEO and social summaries are never narrated or included in TTS source revisions", () => {

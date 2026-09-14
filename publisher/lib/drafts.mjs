@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { normalizeNarrationScript } from "./narration-scripts.mjs";
+
 const draftUpdates = new Map();
 
 async function exclusively(articleId, operation) {
@@ -67,6 +69,8 @@ export function validateOwnerFields(value) {
     season: value.season,
     tags: normalizedTags,
     status,
+    narrationEs: normalizeNarrationScript(value.narrationEs ?? "", "Spanish narration script"),
+    narrationEn: normalizeNarrationScript(value.narrationEn ?? "", "English narration script"),
     featuredImage: {
       path: imagePath,
       alt: imageAlt,

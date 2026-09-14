@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { markdownToNarrationScript, normalizeNarrationScript, plainNarrationText, stripEditorialMasthead } from "./narration-scripts.mjs";
+
 const JOB_ID = /^translation-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
 // The systemd worker has a 60-minute hard stop. Allow reconciliation two
 // additional minutes so systemd can record the authoritative result first.
@@ -17,6 +19,7 @@ async function atomicJson(path, value) {
 }
 
 function bodySegments(body) {
+  body = stripEditorialMasthead(body);
   const parts = body.split(/(\n\s*\n)/);
   const segments = [];
   const layout = [];
@@ -128,16 +131,23 @@ function correctedText(value, field, maximum) {
   return selected;
 }
 
-export async function updateTranslationResult(statesRoot, articleId, draftRevision, result, now = new Date()) {
+export async function updateTranslationResult(statesRoot, articleId, draft, result, now = new Date()) {
   const path = join(statesRoot, `${articleId}.json`);
   const state = JSON.parse(await readFile(path, "utf8"));
   if (state.articleId !== articleId || state.status !== "completed") throw new Error("accepted English translation is required");
-  if (state.draftRevision !== draftRevision) throw new Error("English translation is stale for this draft");
+  if (draft.articleId !== articleId) throw new Error("English translation draft identity is invalid");
   state.result = {
     title: correctedText(result?.title, "English title", 300),
     description: correctedText(result?.description, "English description", 500),
     body: correctedText(result?.body, "English body", 100_000),
+    narrationScript: normalizeNarrationScript(
+      typeof result?.narrationScript === "string" ? result.narrationScript : state.result?.narrationScript ?? "",
+      "English narration script",
+    ),
   };
+  state.draftRevision = draft.revision;
+  state.sourceRevision = translationSourceRevision(draft);
+  state.bodyLayout = translationRequestForDraft(draft).bodyLayout;
   state.ownerRevision = (state.ownerRevision ?? 0) + 1;
   state.ownerReviewedAt = now.toISOString();
   state.updatedAt = now.toISOString();
@@ -149,7 +159,7 @@ export function renderEnglish(result, state) {
   const values = new Map(result.segments.map((segment) => [segment.id, segment.translation]));
   if (!values.has("title") || !values.has("description")) throw new Error("translation result is incomplete");
   const body = state.bodyLayout.map((entry) => entry.separator ?? `${entry.prefix}${values.get(entry.id) ?? ""}`).join("");
-  return { title: values.get("title"), description: values.get("description"), body };
+  return { title: values.get("title"), description: values.get("description"), body, narrationScript: markdownToNarrationScript(body, plainNarrationText) };
 }
 
 export async function reconcileTranslations({ statesRoot, jobsRoot, onComplete, onFailure, now = new Date() }) {

@@ -1,0 +1,2 @@
+ALTER TABLE revisions ADD COLUMN narration_es TEXT NOT NULL DEFAULT '';
+ALTER TABLE revisions ADD COLUMN narration_en TEXT NOT NULL DEFAULT '';

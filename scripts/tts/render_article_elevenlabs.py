@@ -17,7 +17,7 @@ import urllib.error
 from pathlib import Path
 from typing import Callable
 
-from article_contract import canonical_text, text_hash, validate_request, validate_result
+from article_contract import text_hash, validate_request, validate_result
 from benchmark_kokoro import probe_audio, sha256_file
 from pronunciations import apply_pronunciations, validate_pronunciations
 
@@ -96,16 +96,34 @@ def split_text(text: str, maximum: int) -> list[str]:
     return chunks
 
 
-def synthesize_chunk(text: str, voice_id: str, key: str, configuration: dict, requester: Callable = api_request) -> bytes:
+def synthesize_chunk(text: str, voice_id: str, key: str, configuration: dict, requester: Callable = api_request, previous_text: str | None = None, next_text: str | None = None) -> bytes:
     url = (
         f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         f"?output_format={configuration['outputFormat']}"
     )
-    return requester(url, key, {
+    payload = {
         "text": text,
         "model_id": configuration["model"],
         "voice_settings": configuration["voiceSettings"],
-    })
+    }
+    if previous_text:
+        payload["previous_text"] = previous_text
+    if next_text:
+        payload["next_text"] = next_text
+    return requester(url, key, payload)
+
+
+def narration_chunks(request: dict, maximum: int) -> list[dict]:
+    units = [{"text": request["title"], "pauseAfterMs": 700}, *request["segments"]]
+    chunks = []
+    for unit in units:
+        pieces = split_text(unit["text"], maximum)
+        for index, piece in enumerate(pieces):
+            chunks.append({"text": piece, "pauseAfterMs": unit.get("pauseAfterMs", 0) if index == len(pieces) - 1 else 0})
+    for index, chunk in enumerate(chunks):
+        chunk["previousText"] = chunks[index - 1]["text"] if index else None
+        chunk["nextText"] = chunks[index + 1]["text"] if index + 1 < len(chunks) else None
+    return chunks
 
 
 def prepare_spoken_request(request: dict, pronunciations: dict) -> dict:
@@ -137,14 +155,18 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
     try:
         voice_id = resolve_voice_id(key, configuration["voiceName"])
         spoken_request = prepare_spoken_request(request, pronunciations)
-        chunks = split_text(canonical_text(spoken_request), configuration["maximumCharactersPerRequest"])
+        chunks = narration_chunks(spoken_request, configuration["maximumCharactersPerRequest"])
         with tempfile.TemporaryDirectory(prefix="elevenlabs-tts-", dir=staging) as temp_name:
             temp = Path(temp_name)
             paths = []
             for index, chunk in enumerate(chunks, start=1):
                 path = temp / f"{index:03d}.mp3"
-                path.write_bytes(synthesize_chunk(chunk, voice_id, key, configuration))
+                path.write_bytes(synthesize_chunk(chunk["text"], voice_id, key, configuration, previous_text=chunk["previousText"], next_text=chunk["nextText"]))
                 paths.append(path)
+                if chunk["pauseAfterMs"] and index < len(chunks):
+                    silence = temp / f"{index:03d}-pause.mp3"
+                    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", f"{chunk['pauseAfterMs'] / 1000:.3f}", "-b:a", "128k", str(silence)], check=True)
+                    paths.append(silence)
             concat = temp / "concat.txt"
             concat.write_text("".join(f"file '{path.as_posix()}'\n" for path in paths), encoding="utf-8")
             joined = temp / "joined.mp3"

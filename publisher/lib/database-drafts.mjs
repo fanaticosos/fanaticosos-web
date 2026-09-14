@@ -7,7 +7,8 @@ import { slugify } from "./release.mjs";
 const SELECT_DRAFT = `
   SELECT a.id AS article_id, a.created_at AS article_created_at, a.updated_at,
          r.revision_number, r.status, r.title, r.description, r.body,
-         r.category, r.season, r.tags_json, r.featured_image_json
+         r.category, r.season, r.tags_json, r.featured_image_json,
+         r.narration_es, r.narration_en
   FROM articles a
   JOIN revisions r ON r.id = a.current_revision_id
 `;
@@ -27,6 +28,8 @@ function storedDraft(row) {
     season: row.season,
     tags: JSON.parse(row.tags_json),
     status: row.status,
+    narrationEs: row.narration_es ?? "",
+    narrationEn: row.narration_en ?? "",
     featuredImage: JSON.parse(row.featured_image_json),
   };
 }
@@ -36,12 +39,12 @@ function insertRevision(database, articleId, revision, owner, createdAt) {
   database.prepare(`
     INSERT INTO revisions (
       id, article_id, revision_number, status, title, description, body,
-      category, season, tags_json, featured_image_json, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      category, season, tags_json, featured_image_json, narration_es, narration_en, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     revisionId, articleId, revision, owner.status, owner.title, owner.description,
     owner.body, owner.category, owner.season, JSON.stringify(owner.tags),
-    JSON.stringify(owner.featuredImage), createdAt,
+    JSON.stringify(owner.featuredImage), owner.narrationEs, owner.narrationEn, createdAt,
   );
   return revisionId;
 }

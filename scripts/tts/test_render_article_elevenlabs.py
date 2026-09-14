@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_article_elevenlabs import api_request, prepare_spoken_request, render_production, resolve_voice_id, split_text
+from render_article_elevenlabs import api_request, narration_chunks, prepare_spoken_request, render_production, resolve_voice_id, split_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +53,16 @@ class ElevenLabsProductionTests(unittest.TestCase):
         chunks = split_text(text, 4500)
         self.assertEqual(chunks, ["A" * 2000 + "\n\n" + "B" * 2000, "C" * 2000])
         self.assertTrue(all(len(chunk) <= 4500 for chunk in chunks))
+
+    def test_narration_chunks_preserve_explicit_pauses_and_neighbor_context(self):
+        request = {"title": "Título", "segments": [
+            {"id": "script-001", "text": "Primera parte.", "pauseAfterMs": 700},
+            {"id": "script-002", "text": "Segunda parte.", "pauseAfterMs": 0},
+        ]}
+        chunks = narration_chunks(request, 4500)
+        self.assertEqual([item["pauseAfterMs"] for item in chunks], [700, 700, 0])
+        self.assertEqual(chunks[1]["previousText"], "Título")
+        self.assertEqual(chunks[1]["nextText"], "Segunda parte.")
 
     def test_voice_resolution_requires_the_approved_exact_name(self):
         payload = b'{"voices":[{"name":"Other","voice_id":"bad"},{"name":"Will - Relaxed Optimist","voice_id":"approved"}]}'

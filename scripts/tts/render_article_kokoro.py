@@ -135,12 +135,13 @@ def synthesize_kokoro(
         )
         if result.audio is not None
     ]
-    silence = torch.zeros(round(SAMPLE_RATE * pause_seconds))
     chunks = []
+    units = [{"pauseAfterMs": round(pause_seconds * 1000)}, *request["segments"]]
     for index, chunk in enumerate(generated):
-        if index:
-            chunks.append(silence)
         chunks.append(chunk)
+        if index < len(generated) - 1:
+            selected_pause = units[index].get("pauseAfterMs", round(pause_seconds * 1000))
+            chunks.append(torch.zeros(round(SAMPLE_RATE * selected_pause / 1000)))
     audio = concatenate_audio(chunks, torch)
     generation_seconds = time.monotonic() - started
     soundfile.write(wav_path, audio.numpy(), SAMPLE_RATE, subtype="PCM_16")

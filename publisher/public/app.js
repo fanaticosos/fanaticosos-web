@@ -159,6 +159,8 @@ function fields() {
     season: Number(data.get("season")),
     tags: data.get("tags").split(",").map((tag) => tag.trim()).filter(Boolean),
     status: "draft",
+    narrationEs: data.get("narrationEs"),
+    narrationEn: data.get("narrationEn"),
     featuredImage: {
       path: data.get("imagePath"),
       alt: data.get("imageAlt"),
@@ -166,6 +168,27 @@ function fields() {
       credit: data.get("imageCredit"),
     },
   };
+}
+
+function narrationScriptFromMarkdown(markdown) {
+  const clean = (value) => value
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(\*|_)(.*?)\1/g, "$2")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/\\([\\`*{}\[\]()#+.!_>-])/g, "$1")
+    .trim();
+  const blocks = String(markdown ?? "").split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+  while (blocks.length && blocks[0].split(/\n/).every((line) => /^\*{0,2}(?:por|fecha|ubicaci[oó]n|by|date|location)\s*:/i.test(line.replace(/\\$/, "")))) blocks.shift();
+  return blocks.map((block, index) => {
+    const marker = /^(#{1,6}\s+|>\s*|(?:[-*+]\s+)|(?:\d+[.)]\s+))/.exec(block);
+    const heading = marker?.[0]?.startsWith("#");
+    let text = clean(block.slice(marker?.[0]?.length ?? 0));
+    if (heading) text = text.replace(/^(?:[IVXLCDM]+|\d+)[.)]\s+/i, "");
+    return `${text}${index === blocks.length - 1 ? "" : `\n<pause=${heading ? "0.9" : "0.7"}s>`}`;
+  }).join("\n");
 }
 
 function setFields(draft) {
@@ -189,6 +212,8 @@ function setFields(draft) {
   form.elements.imagePath.value = draft?.featuredImage?.path ?? "";
   form.elements.imageAlt.value = draft?.featuredImage?.alt ?? "";
   form.elements.imageCredit.value = draft?.featuredImage?.caption || draft?.featuredImage?.credit || "";
+  form.elements.narrationEs.value = draft?.narrationEs || narrationScriptFromMarkdown(draft?.body ?? "");
+  form.elements.narrationEn.value = draft?.narrationEn ?? "";
   imagePreview.src = draft?.featuredImage?.path ?? "";
   imagePreview.hidden = !draft?.featuredImage?.path;
   removeImage.hidden = !draft?.featuredImage?.path;
@@ -446,6 +471,7 @@ async function pollTranslation() {
       document.querySelector("#english-title").value = translation.result.title;
       document.querySelector("#english-description").value = translation.result.description;
       document.querySelector("#english-body").value = translation.result.body;
+      if (!form.elements.narrationEn.value) form.elements.narrationEn.value = translation.result.narrationScript ?? "";
       englishResult.hidden = false;
       generateEnglish.disabled = true;
       generateEnglish.textContent = "Traducción y audio creados";
@@ -455,9 +481,16 @@ async function pollTranslation() {
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
       stopTranslationClock();
-      workflowState.textContent = "El texto cambió · crea una nueva traducción y ambos audios.";
-      englishResult.hidden = true;
-      audioResult.hidden = true;
+      workflowState.textContent = "El artículo cambió · conserva o corrige la traducción existente, o crea una nueva.";
+      document.querySelector("#english-title").value = translation.result?.title ?? "";
+      document.querySelector("#english-description").value = translation.result?.description ?? "";
+      document.querySelector("#english-body").value = translation.result?.body ?? "";
+      if (!form.elements.narrationEn.value) form.elements.narrationEn.value = translation.result?.narrationScript ?? narrationScriptFromMarkdown(translation.result?.body ?? "");
+      englishResult.hidden = false;
+      saveEnglish.textContent = "Conservar o guardar esta versión en inglés";
+      audioResult.hidden = false;
+      generateSpanishAudio.disabled = true;
+      regenerateEnglishAudio.disabled = true;
       audiogramResult.hidden = true;
       generateEnglish.disabled = false;
       generateEnglish.textContent = "Crear nueva traducción y ambos audios";
@@ -700,6 +733,7 @@ saveEnglish.addEventListener("click", async () => {
         title: document.querySelector("#english-title").value,
         description: document.querySelector("#english-description").value,
         body: document.querySelector("#english-body").value,
+        narrationScript: form.elements.narrationEn.value,
       } }),
     });
     workflowState.textContent = "Corrección en inglés guardada · regenera los audios.";

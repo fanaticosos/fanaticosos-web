@@ -78,7 +78,6 @@ export function releaseWithFreshness(release, audio) {
 
 export function releaseArtifactsEligible({ draft, audio, requests, release, deployment, currentPolicyRevision }) {
   const sourcesAreCurrent = audio?.status === "completed"
-    && audio.draftRevision === draft.revision
     && audio.sourceRevisions?.es === requests.es.sourceRevision
     && audio.sourceRevisions?.en === requests.en.sourceRevision;
   if (sourcesAreCurrent && audio.policyRevision === currentPolicyRevision) return true;

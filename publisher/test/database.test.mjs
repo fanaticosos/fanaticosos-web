@@ -27,7 +27,7 @@ test("initial migration creates the contracted schema with foreign keys and WAL"
       "jobs", "release_artifacts", "releases", "revisions", "schema_migrations",
       "site_settings_revisions",
     ]);
-    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 2);
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 3);
     const triggers = database.prepare("SELECT name FROM sqlite_schema WHERE type = 'trigger' ORDER BY name").all().map(({ name }) => name);
     assert.deepEqual(triggers, ["accepted_artifact_cannot_be_deleted", "accepted_artifact_content_is_immutable"]);
   } finally {
@@ -40,7 +40,7 @@ test("migration history is idempotent and rejects edited applied migrations", as
   const path = join(root, "publisher.sqlite");
   let database = await openDatabase(path);
   await migrateDatabase(database);
-  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 2);
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 3);
   closeDatabase(database);
 
   const migrationsRoot = join(root, "migrations");
@@ -80,7 +80,7 @@ test("read-only connections never change database permissions or contents", asyn
 
   const database = await openDatabase(path, { readOnly: true, migrate: false });
   try {
-    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 2);
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 3);
     assert.throws(() => database.prepare("DELETE FROM schema_migrations").run(), /read-only|readonly/i);
   } finally {
     closeDatabase(database);

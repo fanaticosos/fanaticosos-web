@@ -59,7 +59,7 @@ export function previewErrorPage() {
 
 export function previewPage({ draft, translation, audio, locale, settings }) {
   if (translation.status !== "completed" || audio.status !== "completed") throw new Error("preview requires accepted translation and audio");
-  if (translation.draftRevision !== draft.revision || audio.draftRevision !== draft.revision) throw new Error("preview outputs are stale");
+  if (translation.draftRevision !== draft.revision) throw new Error("preview translation is stale");
   const english = locale === "en";
   const content = english ? translation.result : draft;
   const alternate = english ? "es" : "en";

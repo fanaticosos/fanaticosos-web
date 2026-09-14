@@ -194,9 +194,7 @@ export function correctDatabaseTranslation(database, {
   return withTransaction(database, (connection) => {
     const previous = readDatabaseTranslationState(connection, draft.articleId);
     const dependencyHash = translationSourceRevision(draft);
-    if (previous.status !== "completed" || previous.sourceRevision !== dependencyHash) {
-      throw new Error("English translation is stale for this draft");
-    }
+    if (previous.status !== "completed") throw new Error("accepted English translation is required");
     const revisionId = currentRevision(connection, draft);
     const artifactId = randomUUID();
     const jobId = `translation-review-${randomUUID()}`;

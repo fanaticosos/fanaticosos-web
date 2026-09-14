@@ -11,7 +11,7 @@ function frontmatter(data) {
 
 export function serializeArticlePair({ draft, translation, audio, settings, publishedAt }) {
   if (translation.status !== "completed" || audio.status !== "completed") throw new Error("release requires accepted translation and audio");
-  if (translation.draftRevision !== draft.revision || audio.draftRevision !== draft.revision) throw new Error("release outputs are stale");
+  if (translation.draftRevision !== draft.revision) throw new Error("release translation is stale");
   if (!translation.provenance || !translation.sourceRevision) throw new Error("translation provenance is incomplete");
   const categoryId = slugify(draft.category);
   const imageExtension = draft.featuredImage.path ? extname(draft.featuredImage.path).toLowerCase() : "";

@@ -52,7 +52,7 @@ test("translation queue and completed result remain private and reconstruct Mark
   assert.equal(result.result.body, "## EN:Primer cuarto\n\nEN:Caleb Williams lanzó un touchdown.\n\n- EN:La defensa respondió.");
   await reconcileTranslations({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
   assert.equal(completed, 1);
-  const corrected = await updateTranslationResult(statesRoot, draft.articleId, draft.revision, {
+  const corrected = await updateTranslationResult(statesRoot, draft.articleId, draft, {
     title: "Owner title", description: "Owner description", body: "Owner body",
   });
   assert.equal(corrected.result.title, "Owner title");

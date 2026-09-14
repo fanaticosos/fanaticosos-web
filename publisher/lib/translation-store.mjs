@@ -8,9 +8,10 @@ import {
   startDatabaseTranslation,
 } from "./database-translations.mjs";
 import { writeTranslationArtifact } from "./translation-artifacts.mjs";
+import { normalizeNarrationScript } from "./narration-scripts.mjs";
 import {
   queueTranslation, readTranslationState, reconcileTranslations, renderEnglish,
-  translationRequestForDraft, updateTranslationResult, writeTranslationRequest,
+  translationRequestForDraft, translationSourceRevision, updateTranslationResult, writeTranslationRequest,
 } from "./translation-jobs.mjs";
 
 const TIMEOUT_MS = 62 * 60 * 1000;
@@ -19,7 +20,7 @@ export function filesystemTranslationStore({ queueRoot, statesRoot, jobsRoot }) 
   return {
     queue: ({ draft, workflow }) => queueTranslation({ draft, queueRoot, statesRoot, workflow }),
     read: (articleId) => readTranslationState(statesRoot, articleId),
-    update: (articleId, revision, result) => updateTranslationResult(statesRoot, articleId, revision, result),
+    update: (articleId, _revision, result, draft) => updateTranslationResult(statesRoot, articleId, draft, result),
     reconcile: ({ onComplete, onFailure }) => reconcileTranslations({ statesRoot, jobsRoot, onComplete, onFailure }),
   };
 }
@@ -54,9 +55,15 @@ export function databaseTranslationStore({ database, queueRoot, jobsRoot, artifa
       const previous = readDatabaseTranslationState(database, articleId);
       const now = new Date();
       const ownerRevision = (previous.ownerRevision ?? 0) + 1;
-      const value = artifactValue(previous, result, previous.provenance, now, { ownerRevision, ownerReviewedAt: now.toISOString() });
+      const { bodyLayout } = translationRequestForDraft(draft);
+      const rebound = { ...previous, draftRevision: draft.revision, sourceRevision: translationSourceRevision(draft), bodyLayout };
+      const corrected = {
+        ...result,
+        narrationScript: normalizeNarrationScript(result?.narrationScript ?? previous.result?.narrationScript ?? "", "English narration script"),
+      };
+      const value = artifactValue(rebound, corrected, previous.provenance, now, { ownerRevision, ownerReviewedAt: now.toISOString() });
       const artifact = await writeTranslationArtifact(artifactsRoot, value);
-      return correctDatabaseTranslation(database, { draft, result, artifactPath: artifact.path, checksumSha256: artifact.checksumSha256, now });
+      return correctDatabaseTranslation(database, { draft, result: corrected, artifactPath: artifact.path, checksumSha256: artifact.checksumSha256, now });
     },
     async reconcile({ onComplete, onFailure, now = new Date() }) {
       for (const state of listActiveDatabaseTranslations(database)) {

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import uuid
 from typing import Any
@@ -61,6 +62,9 @@ def validate_request(value: Any) -> dict[str, Any]:
             MAX_SEGMENT_CHARACTERS,
         )
         total += len(text)
+        pause_after_ms = segment.get("pauseAfterMs", 0)
+        if not isinstance(pause_after_ms, int) or isinstance(pause_after_ms, bool) or not 0 <= pause_after_ms <= 3000:
+            raise ValueError(f"segments[{index}].pauseAfterMs must be an integer from 0 to 3000")
     if total > MAX_ARTICLE_CHARACTERS:
         raise ValueError("article exceeds maximum character count")
     return value
@@ -73,7 +77,14 @@ def canonical_text(request: dict[str, Any]) -> str:
 
 
 def text_hash(request: dict[str, Any]) -> str:
-    return hashlib.sha256(canonical_text(request).encode("utf-8")).hexdigest()
+    payload = {
+        "title": request["title"],
+        "segments": [
+            {"text": segment["text"], "pauseAfterMs": segment.get("pauseAfterMs", 0)}
+            for segment in request["segments"]
+        ],
+    }
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def validate_result(

@@ -17,7 +17,7 @@ export async function queueAudiogram({ draft, audio, queueRoot, statesRoot, now 
   if (audiogramQueueBusy) throw new Error("Ya hay un video preparándose.");
   audiogramQueueBusy = true;
   try {
-  if (audio.status !== "completed" || audio.draftRevision !== draft.revision || audio.jobs?.es?.status !== "completed") {
+  if (audio.status !== "completed" || audio.jobs?.es?.status !== "completed") {
     throw new Error("completed current Spanish audio is required for the audiogram");
   }
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
@@ -45,7 +45,7 @@ export async function queueAudiogram({ draft, audio, queueRoot, statesRoot, now 
 }
 
 export function audiogramRequestForDraft(draft, audio) {
-  if (audio.status !== "completed" || audio.draftRevision !== draft.revision || audio.jobs?.es?.status !== "completed") {
+  if (audio.status !== "completed" || audio.jobs?.es?.status !== "completed") {
     throw new Error("completed current Spanish audio is required for the audiogram");
   }
   const canonicalUrl = `https://fanaticosos.com/blog/${slugify(draft.title)}/`;

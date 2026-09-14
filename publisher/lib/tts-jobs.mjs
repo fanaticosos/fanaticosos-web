@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promi
 import { basename, join } from "node:path";
 
 import { translationSourceRevision } from "./translation-jobs.mjs";
+import { markdownToNarrationScript, narrationSegmentsFromScript, normalizeNarrationScript, plainNarrationText } from "./narration-scripts.mjs";
 
 const JOB_TIMEOUT_MS = 17 * 60 * 1000;
 const JOB_ID = /^tts-(es|en)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
@@ -23,23 +24,7 @@ export function ttsPolicyRevision(production, pronunciations, azureEntities = {}
 }
 
 export function narrationText(markdown) {
-  return markdown
-    .replace(/🐻(?:\uFE0F)?⬇(?:\uFE0F)?/gu, "Bear Down")
-    // Emoji are visual decoration. Narrating their Unicode names creates a
-    // second, synthetic-sounding voice and duplicates a written “Bear Down.”
-    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/(\*\*|__)(.*?)\1/g, "$2")
-    .replace(/(\*|_)(.*?)\1/g, "$2")
-    .replace(/~~(.*?)~~/g, "$1")
-    .replace(/\\([\\`*{}\[\]()#+.!_>-])/g, "$1")
-    .trim();
-}
-
-function narrationHeading(markdown) {
-  return narrationText(markdown).replace(/^(?:[IVXLCDM]+|\d+)[.)]\s+/i, "");
+  return plainNarrationText(markdown);
 }
 
 function englishNameSuffixes(text) {
@@ -50,50 +35,31 @@ function englishNameSuffixes(text) {
   );
 }
 
-function narrationSegments(body) {
-  const spoken = (text) => englishNameSuffixes(text);
-  const segments = [];
-  let sequence = 0;
-  for (const part of body.split(/\n\s*\n/)) {
-    if (!part.trim()) continue;
-    sequence += 1;
-    const marker = /^(#{1,6}\s+|>\s*|(?:[-*+]\s+)|(?:\d+[.)]\s+))/.exec(part);
-    const kind = marker?.[0]?.startsWith("#") ? "heading" : "paragraph";
-    const content = part.slice(marker?.[0]?.length ?? 0);
-    segments.push({
-      id: `body-${String(sequence).padStart(3, "0")}`,
-      kind,
-      text: spoken(kind === "heading" ? narrationHeading(content) : narrationText(content)),
-    });
-  }
-  if (segments.length > 250) throw new Error("the article has too many audio segments");
-  if (segments.some((segment) => segment.text.length > 8_000)) throw new Error("an article paragraph is too long for audio generation");
-  if (segments.reduce((total, segment) => total + segment.text.length, 0) > 100_000) throw new Error("the article is too long for audio generation");
-  return segments;
-}
-
 export function ttsRequestsForDraft(draft, translation) {
   const translationMatchesDraft = translation.draftRevision === draft.revision
     || translation.sourceRevision === translationSourceRevision(draft);
   if (translation.status !== "completed" || !translationMatchesDraft) {
     throw new Error("the current draft revision needs an accepted English translation");
   }
-  const source = { articleId: draft.articleId, revision: draft.revision, title: draft.title, body: draft.body };
-  const englishSource = {
-    articleId: draft.articleId,
-    revision: draft.revision,
-    title: translation.result.title,
-    body: translation.result.body,
-  };
+  const spanishScript = normalizeNarrationScript(draft.narrationEs ?? "")
+    || markdownToNarrationScript(draft.body, narrationText);
+  const englishScript = normalizeNarrationScript(draft.narrationEn ?? "")
+    || normalizeNarrationScript(translation.result.narrationScript ?? "")
+    || markdownToNarrationScript(translation.result.body, narrationText);
+  const spanishSegments = narrationSegmentsFromScript(spanishScript);
+  const englishSegments = narrationSegmentsFromScript(englishScript)
+    .map((segment) => ({ ...segment, text: englishNameSuffixes(segment.text) }));
+  const source = { articleId: draft.articleId, title: draft.title, narrationScript: spanishScript };
+  const englishSource = { articleId: draft.articleId, title: translation.result.title, narrationScript: englishScript };
   return {
     es: {
       schemaVersion: 1, articleId: draft.articleId, locale: "es", sourceRevision: digest(source),
-      title: draft.title, segments: narrationSegments(draft.body),
+      title: draft.title, narrationScript: spanishScript, segments: spanishSegments,
     },
     en: {
       schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: digest(englishSource),
       title: translation.result.title,
-      segments: narrationSegments(translation.result.body),
+      narrationScript: englishScript, segments: englishSegments,
     },
   };
 }
@@ -148,7 +114,6 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
   const existing = JSON.parse(await readFile(statePath, "utf8"));
-  if (existing.draftRevision !== draft.revision) throw new Error("the saved audio belongs to an older draft revision");
   const requests = ttsRequestsForDraft(draft, translation);
   const preservedLocale = locale === "es" ? "en" : "es";
   if (existing.jobs?.[preservedLocale]?.status !== "completed") throw new Error(`completed ${preservedLocale} audio is required`);
