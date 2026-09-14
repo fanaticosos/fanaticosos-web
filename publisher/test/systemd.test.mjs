@@ -149,3 +149,20 @@ test("release retention is fixed, private, and bounded by the approved policy", 
   assert.match(timer, /OnCalendar=daily/);
   assert.match(timer, /Persistent=true/);
 });
+
+test("Game Center automation is adaptive, bounded, and production-safe", async () => {
+  const service = await readFile(new URL("../../deploy/systemd/fanaticosos-game-center-update.service", import.meta.url), "utf8");
+  const timer = await readFile(new URL("../../deploy/systemd/fanaticosos-game-center-update.timer", import.meta.url), "utf8");
+  const runner = await readFile(new URL("../../deploy/publisher/fanaticosos-game-center-automation", import.meta.url), "utf8");
+  const automation = await readFile(new URL("../../scripts/publisher/run_game_center_automation.mjs", import.meta.url), "utf8");
+  assert.match(timer, /OnUnitActiveSec=10min/);
+  assert.match(timer, /RandomizedDelaySec=45s/);
+  assert.match(timer, /Persistent=true/);
+  assert.match(service, /ProtectSystem=strict/);
+  assert.match(service, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
+  assert.match(runner, /deploy_cloudflare_production\.sh/);
+  assert.match(runner, /\[\[ -f "\$ready" \]\] \|\| exit 0/);
+  assert.match(automation, /GAME_INTERVAL_MS = 10 \* 60 \* 1000/);
+  assert.match(automation, /DAILY_INTERVAL_MS = 24 \* 60 \* 60 \* 1000/);
+  assert.match(automation, /Producción permanece intacta/);
+});

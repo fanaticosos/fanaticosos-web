@@ -1,0 +1,13 @@
+[Unit]
+Description=Check whether FanaticOSOS Game Center is due for refresh
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+RandomizedDelaySec=45s
+AccuracySec=15s
+Persistent=true
+Unit=fanaticosos-game-center-update.service
+
+[Install]
+WantedBy=timers.target

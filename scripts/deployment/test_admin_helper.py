@@ -113,6 +113,8 @@ class AdminHelperTests(unittest.TestCase):
                 "cloudflare-production-failure",
                 "install-publisher",
                 "publisher-status",
+                "install-game-center-automation",
+                "game-center-automation-status",
                 "initialize-database",
                 "database-status",
                 "backup-database",

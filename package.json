@@ -20,7 +20,7 @@
     "test:espn-game-center": "node scripts/test-espn-game-center.mjs",
     "test:bears-schedule-verification": "node scripts/test-bears-schedule-verification.mjs",
     "update:game-center": "node scripts/update-game-center.mjs",
-    "test:game-center-update": "node scripts/test-game-center-update.mjs",
+    "test:game-center-update": "node scripts/test-game-center-update.mjs && node --test scripts/test-game-center-schedule.mjs",
     "validate:participation-slots": "node scripts/validate-participation-slots.mjs",
     "test:participation-slots": "node scripts/test-participation-slots.mjs",
     "test:participation-backend": "node scripts/test-participation-backend.mjs",
