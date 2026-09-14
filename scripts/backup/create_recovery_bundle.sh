@@ -28,38 +28,43 @@ set -a
 source "$credential_file"
 set +a
 export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID
-python3 - "$staging/payload/fanaticosos-participa.sql" <<'PY'
+python3 - "$staging/payload" <<'PY'
 import json, os, sys, time, urllib.request
 
-database_id = "6bbd7721-7b4e-4280-ba01-3ef35ca82d53"
-endpoint = f"https://api.cloudflare.com/client/v4/accounts/{os.environ['CLOUDFLARE_ACCOUNT_ID']}/d1/database/{database_id}/export"
 headers = {"Authorization": f"Bearer {os.environ['CLOUDFLARE_API_TOKEN']}", "Content-Type": "application/json"}
-bookmark = None
-for _ in range(60):
-    body = {"output_format": "polling"}
-    if bookmark:
-        body["current_bookmark"] = bookmark
-    request = urllib.request.Request(endpoint, data=json.dumps(body).encode(), headers=headers, method="POST")
-    with urllib.request.urlopen(request, timeout=30) as response:
-        value = json.load(response)
-    result = value.get("result") or {}
-    if not value.get("success") or result.get("error"):
-        raise RuntimeError("Cloudflare D1 export failed without exposing credentials")
-    if result.get("status") == "complete":
-        signed_url = (result.get("result") or {}).get("signed_url")
-        if not signed_url:
-            raise RuntimeError("Cloudflare D1 export completed without a download URL")
-        with urllib.request.urlopen(signed_url, timeout=60) as response, open(sys.argv[1], "wb") as output:
-            output.write(response.read())
-        break
-    bookmark = result.get("at_bookmark")
-    if not bookmark:
-        raise RuntimeError("Cloudflare D1 export did not return a polling bookmark")
-    time.sleep(2)
-else:
-    raise RuntimeError("Cloudflare D1 export timed out")
-if os.path.getsize(sys.argv[1]) == 0:
-    raise RuntimeError("Cloudflare D1 export was empty")
+databases = {
+    "fanaticosos-bears-nation": "d42195be-4ff3-42cf-854d-f681536a244f",
+    "fanaticosos-participa": "6bbd7721-7b4e-4280-ba01-3ef35ca82d53",
+}
+for name, database_id in databases.items():
+    endpoint = f"https://api.cloudflare.com/client/v4/accounts/{os.environ['CLOUDFLARE_ACCOUNT_ID']}/d1/database/{database_id}/export"
+    bookmark = None
+    for _ in range(60):
+        body = {"output_format": "polling"}
+        if bookmark:
+            body["current_bookmark"] = bookmark
+        request = urllib.request.Request(endpoint, data=json.dumps(body).encode(), headers=headers, method="POST")
+        with urllib.request.urlopen(request, timeout=30) as response:
+            value = json.load(response)
+        result = value.get("result") or {}
+        if not value.get("success") or result.get("error"):
+            raise RuntimeError(f"Cloudflare D1 export failed for {name} without exposing credentials")
+        if result.get("status") == "complete":
+            signed_url = (result.get("result") or {}).get("signed_url")
+            if not signed_url:
+                raise RuntimeError(f"Cloudflare D1 export completed without a download URL for {name}")
+            output_path = os.path.join(sys.argv[1], f"{name}.sql")
+            with urllib.request.urlopen(signed_url, timeout=60) as response, open(output_path, "wb") as output:
+                output.write(response.read())
+            if os.path.getsize(output_path) == 0:
+                raise RuntimeError(f"Cloudflare D1 export was empty for {name}")
+            break
+        bookmark = result.get("at_bookmark")
+        if not bookmark:
+            raise RuntimeError(f"Cloudflare D1 export did not return a polling bookmark for {name}")
+        time.sleep(2)
+    else:
+        raise RuntimeError(f"Cloudflare D1 export timed out for {name}")
 PY
 unset CLOUDFLARE_API_TOKEN
 
@@ -74,7 +79,10 @@ print(json.dumps({
   "backupId": sys.argv[1],
   "sourceCommit": sys.argv[2],
   "createdAt": datetime.now(timezone.utc).isoformat(),
-  "d1": {"name": "fanaticosos-participa", "id": "6bbd7721-7b4e-4280-ba01-3ef35ca82d53"},
+  "d1": [
+    {"name": "fanaticosos-bears-nation", "id": "d42195be-4ff3-42cf-854d-f681536a244f"},
+    {"name": "fanaticosos-participa", "id": "6bbd7721-7b4e-4280-ba01-3ef35ca82d53"},
+  ],
   "contents": ["SQLite", "accepted bilingual audio", "ElevenLabs block cache", "Cloudflare D1 SQL export"],
 }, indent=2))
 PY

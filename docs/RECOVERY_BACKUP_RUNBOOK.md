@@ -1,8 +1,8 @@
 # Respaldo externo y restauración de Fanaticosos
 
 El paquete de recuperación cubre la base SQLite del publicador, los audios
-aceptados, la caché pagada de bloques ElevenLabs y una exportación SQL de la D1
-`fanaticosos-participa`. No incluye credenciales.
+aceptados, la caché pagada de bloques ElevenLabs y exportaciones SQL de las D1
+`fanaticosos-bears-nation` y `fanaticosos-participa`. No incluye credenciales.
 
 ## Crear y sacar el paquete de Papabear
 

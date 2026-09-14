@@ -283,11 +283,14 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('scripts/backup/create_recovery_bundle.sh', command)
         self.assertIn('/d1/database/{database_id}/export', creator)
         self.assertIn('"output_format": "polling"', creator)
+        self.assertIn('"fanaticosos-bears-nation": "d42195be-4ff3-42cf-854d-f681536a244f"', creator)
+        self.assertIn('"fanaticosos-participa": "6bbd7721-7b4e-4280-ba01-3ef35ca82d53"', creator)
         self.assertIn('publisher/artifacts/audio', creator)
         self.assertIn('publisher/cache/tts/elevenlabs', creator)
         self.assertNotIn('cp "$credential_file"', creator)
         self.assertIn('sha256sum -c SHA256SUMS', verifier)
         self.assertIn('PRAGMA integrity_check;', verifier)
+        self.assertIn('for name in fanaticosos-bears-nation fanaticosos-participa', verifier)
 
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(
