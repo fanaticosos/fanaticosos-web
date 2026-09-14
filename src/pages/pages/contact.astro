@@ -1,5 +1,5 @@
 ---
-import BackLink from "../../components/BackLink.astro";
+import InfoPageNavigation from "../../components/InfoPageNavigation.astro";
 import SiteFooter from "../../components/SiteFooter.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import "../../styles/info-page.css";
@@ -13,8 +13,7 @@ import "../../styles/info-page.css";
   alternatePaths={{ es: "/pages/contact", en: "/en/pages/contact", "x-default": "/pages/contact" }}
 >
   <div class="page-wrap">
-    <BackLink />
-    <a class="back-link" href="/en/pages/contact" lang="en" hreflang="en">Read in English</a>
+    <InfoPageNavigation alternatePath="/en/pages/contact" />
     <p class="page-eyebrow">Fanaticosos</p>
     <h1 class="page-title">Contacto</h1>
     <div class="contact-card">

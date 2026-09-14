@@ -1,5 +1,5 @@
 ---
-import BackLink from "../../../components/BackLink.astro";
+import InfoPageNavigation from "../../../components/InfoPageNavigation.astro";
 import SiteFooter from "../../../components/SiteFooter.astro";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import "../../../styles/info-page.css";
@@ -7,8 +7,7 @@ import "../../../styles/info-page.css";
 
 <BaseLayout title="Terms of Use — FanaticOSOS" lang="en" description="Terms of use for the FanaticOSOS website." canonicalPath="/en/pages/terms" bodyClass="info-page terms-page" alternatePaths={{ es: "/pages/terms", en: "/en/pages/terms", "x-default": "/pages/terms" }}>
   <div class="page-wrap">
-    <BackLink locale="en" />
-    <a class="back-link" href="/pages/terms" lang="es" hreflang="es">Leer en español</a>
+    <InfoPageNavigation locale="en" alternatePath="/pages/terms" />
     <p class="page-eyebrow">FanaticOSOS</p>
     <h1 class="page-title">Terms of Use</h1>
     <p class="page-date">Last updated: September 2026</p>

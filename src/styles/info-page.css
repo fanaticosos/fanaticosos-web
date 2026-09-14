@@ -8,6 +8,35 @@
 .contact-page .page-wrap { max-width: 640px; }
 .terms-page .page-wrap { max-width: 720px; }
 
+.info-navigation {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.info-navigation .back-link { margin-bottom: 0; }
+
+.info-language-link {
+  border: 1px solid var(--orange);
+  border-radius: 999px;
+  color: var(--white);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 16px;
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.info-language-link:hover,
+.info-language-link:focus-visible {
+  background: var(--orange);
+  color: var(--navy);
+}
+
 .back-link {
   align-items: center;
   color: var(--gray);
@@ -150,5 +179,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .back-link,
+  .info-language-link,
   .contact-value a { transition: none; }
+}
+
+@media (max-width: 480px) {
+  .info-page .page-wrap { padding-inline: 18px; }
+  .info-navigation { gap: 14px; }
+  .info-language-link { font-size: 12px; padding: 8px 12px; }
 }

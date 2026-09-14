@@ -1,0 +1,17 @@
+---
+import BackLink from "./BackLink.astro";
+
+interface Props {
+  locale?: "es" | "en";
+  alternatePath: string;
+}
+
+const { locale = "es", alternatePath } = Astro.props;
+const alternateLocale = locale === "es" ? "en" : "es";
+---
+<nav class="info-navigation" aria-label={locale === "es" ? "Navegación de página" : "Page navigation"}>
+  <BackLink locale={locale} />
+  <a class="info-language-link" href={alternatePath} lang={alternateLocale} hreflang={alternateLocale}>
+    {locale === "es" ? "Read in English" : "Leer en español"}
+  </a>
+</nav>
