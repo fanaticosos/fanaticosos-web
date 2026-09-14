@@ -588,12 +588,12 @@ async function pollAudio() {
       const staleLocales = audio.staleLocales ?? ["es", "en"];
       const bothStale = staleLocales.includes("es") && staleLocales.includes("en");
       workflowState.textContent = bothStale
-        ? "Los guiones cambiaron · regenera ambos audios."
+        ? "La política o los guiones cambiaron · regenera cada idioma afectado o ambos audios."
         : `El audio en ${staleLocales[0] === "es" ? "español" : "inglés"} cambió · regenera solamente ese audio.`;
       generateAudio.hidden = !bothStale;
       generateAudio.disabled = !bothStale;
-      generateSpanishAudio.disabled = bothStale || !staleLocales.includes("es");
-      regenerateEnglishAudio.disabled = bothStale || !staleLocales.includes("en");
+      generateSpanishAudio.disabled = !staleLocales.includes("es");
+      regenerateEnglishAudio.disabled = !staleLocales.includes("en");
       openPreview.disabled = true;
       prepareRelease.disabled = true;
       publishRelease.disabled = true;
