@@ -162,6 +162,7 @@ Commands:
   database-status EXPECTED_COMMIT
   backup-database EXPECTED_COMMIT BACKUP_ID
   restore-database-drill EXPECTED_COMMIT BACKUP_ID
+  create-recovery-bundle EXPECTED_COMMIT BACKUP_ID
   database-draft-import-preview EXPECTED_COMMIT
   import-drafts EXPECTED_COMMIT
   database-translation-import-preview EXPECTED_COMMIT
@@ -1451,6 +1452,19 @@ command_restore_database_drill() {
     restore-drill --backup-root "$publisher_database_backup_root" --backup-id "$backup_id"
 }
 
+command_create_recovery_bundle() {
+  local expected="$1" backup_id="$2" resolved invoker script
+  require_repository_commit "$expected"
+  validate_database_backup_id "$backup_id"
+  invoker="${SUDO_USER:-}"
+  [[ -n "$invoker" && "$invoker" != "root" ]] || stop "Recovery export requires an invoking administrative user."
+  resolved="$(git -C "$repository" rev-parse HEAD)"
+  script="$repository/scripts/backup/create_recovery_bundle.sh"
+  [[ -x "$script" && ! -L "$script" ]] || stop "Versioned recovery bundle script is missing."
+  command_backup_database "$expected" "$backup_id"
+  "$script" "$repository" "$data_root" "$cloudflare_credential_file" "$backup_id" "$resolved" "$invoker"
+}
+
 command_database_draft_import_preview() {
   local expected="$1"
   require_repository_commit "$expected"
@@ -2466,6 +2480,10 @@ case "$command" in
   restore-database-drill)
     [[ $# == 2 ]] || stop "restore-database-drill requires EXPECTED_COMMIT BACKUP_ID."
     command_restore_database_drill "$1" "$2"
+    ;;
+  create-recovery-bundle)
+    [[ $# == 2 ]] || stop "create-recovery-bundle requires EXPECTED_COMMIT BACKUP_ID."
+    command_create_recovery_bundle "$1" "$2"
     ;;
   database-draft-import-preview)
     [[ $# == 1 ]] || stop "database-draft-import-preview requires EXPECTED_COMMIT."

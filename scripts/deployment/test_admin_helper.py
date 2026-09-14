@@ -39,6 +39,8 @@ class AdminHelperTests(unittest.TestCase):
             HELPER,
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_preview.sh",
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh",
+            ROOT / "scripts" / "backup" / "create_recovery_bundle.sh",
+            ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh",
         ):
             subprocess.run(["bash", "-n", str(path)], check=True)
 
@@ -122,6 +124,7 @@ class AdminHelperTests(unittest.TestCase):
                 "database-status",
                 "backup-database",
                 "restore-database-drill",
+                "create-recovery-bundle",
                 "database-draft-import-preview",
                 "import-drafts",
                 "database-translation-import-preview",
@@ -270,6 +273,19 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('restore-drill --backup-root "$publisher_database_backup_root"', self.helper)
         self.assertIn('draft-import-preview --database "$publisher_database"', self.helper)
         self.assertIn('draft-import-apply --database "$publisher_database"', self.helper)
+
+    def test_recovery_bundle_is_fixed_versioned_and_excludes_credentials(self):
+        creator = (ROOT / "scripts" / "backup" / "create_recovery_bundle.sh").read_text(encoding="utf-8")
+        verifier = (ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh").read_text(encoding="utf-8")
+        command = self.helper.split("command_create_recovery_bundle()", 1)[1].split("\n}\n", 1)[0]
+        self.assertIn('command_backup_database "$expected" "$backup_id"', command)
+        self.assertIn('scripts/backup/create_recovery_bundle.sh', command)
+        self.assertIn('d1 export fanaticosos-participa', creator)
+        self.assertIn('publisher/artifacts/audio', creator)
+        self.assertIn('publisher/cache/tts/elevenlabs', creator)
+        self.assertNotIn('cp "$credential_file"', creator)
+        self.assertIn('sha256sum -c SHA256SUMS', verifier)
+        self.assertIn('PRAGMA integrity_check;', verifier)
 
     def test_cloudflare_credential_installer_is_stdin_only_and_root_scoped(self):
         installer = self.helper.split(
