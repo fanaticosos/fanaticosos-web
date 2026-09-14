@@ -57,7 +57,7 @@ test("TTS worker failures become private reconciliation evidence", async () => {
   const ttsUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-tts@.service", import.meta.url), "utf8");
   const recorder = await readFile(new URL("../../scripts/publisher/record_tts_exit.mjs", import.meta.url), "utf8");
   assert.match(ttsUnit, /ExecStopPost=.*record_tts_exit\.mjs/);
-  assert.match(ttsUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/jobs\/%i/);
+  assert.match(ttsUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/jobs\/%i \/opt\/fanaticosos-blog\/publisher\/cache\/tts\/elevenlabs/);
   assert.match(recorder, /La generación de audio no pudo completarse/);
 });
 

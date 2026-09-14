@@ -26,6 +26,7 @@ def worker_arguments(request: dict, repository: Path, output: Path) -> list[str]
             "--configuration", str(repository / "config/tts/elevenlabs-production.json"),
             "--pronunciations", str(repository / "config/tts/pronunciations.json"),
             "--output", str(output),
+            "--cache", "/opt/fanaticosos-blog/publisher/cache/tts/elevenlabs",
         ]
     return [
         sys.executable,

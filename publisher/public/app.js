@@ -80,7 +80,7 @@ function showSpanishAudioProgress(audio) {
     return;
   }
   if (job.status === "failed") {
-    spanishAudioStatus.textContent = `Audio en español: falló · ${job.error ?? audio.error ?? "revisa Actividad para ver el detalle"}.`;
+    spanishAudioStatus.textContent = `Audio en español: falló · ${job.error ?? audio.error ?? "revisa Actividad para ver el detalle"}`;
     return;
   }
   const phase = job.status === "queued" ? "en cola" : "generando";

@@ -23,6 +23,12 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
+try {
+  await readFile(`${root}/failure.json`);
+  process.exit(0);
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
 const target = `${root}/failure.json`;
 const temporary = `${target}.${randomUUID()}.saving`;
 const failure = {

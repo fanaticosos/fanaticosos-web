@@ -26,7 +26,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/opt/fanaticosos-blog/jobs/%i
+ReadWritePaths=/opt/fanaticosos-blog/jobs/%i /opt/fanaticosos-blog/publisher/cache/tts/elevenlabs
 UMask=0077
 
 [Install]

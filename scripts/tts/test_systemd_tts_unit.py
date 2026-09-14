@@ -37,7 +37,7 @@ class TtsSystemdUnitTests(unittest.TestCase):
             "ProtectSystem=strict",
             "ProtectHome=yes",
             "NoNewPrivileges=yes",
-            "ReadWritePaths=/opt/fanaticosos-blog/jobs/%i",
+            "ReadWritePaths=/opt/fanaticosos-blog/jobs/%i /opt/fanaticosos-blog/publisher/cache/tts/elevenlabs",
             "UMask=0077",
         ):
             self.assertIn(directive, self.unit)

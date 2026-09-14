@@ -6,11 +6,13 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime as dt
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import tempfile
+import uuid
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -113,23 +115,61 @@ def synthesize_chunk(text: str, voice_id: str, key: str, configuration: dict, re
     return requester(url, key, payload)
 
 
+def cached_chunk(text: str, voice_id: str, key: str, configuration: dict, cache: Path, requester: Callable = api_request, previous_text: str | None = None, next_text: str | None = None) -> tuple[bytes, bool]:
+    identity = json.dumps({
+        "schemaVersion": 1,
+        "voiceId": voice_id,
+        "model": configuration["model"],
+        "outputFormat": configuration["outputFormat"],
+        "voiceSettings": configuration["voiceSettings"],
+        "pronunciationVersion": configuration["pronunciationVersion"],
+        "text": text,
+        "previousText": previous_text,
+        "nextText": next_text,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    target = cache / f"{digest}.mp3"
+    try:
+        audio = target.read_bytes()
+        if not audio:
+            raise ValueError("cached ElevenLabs chunk is empty")
+        return audio, True
+    except FileNotFoundError:
+        pass
+    audio = synthesize_chunk(text, voice_id, key, configuration, requester, previous_text, next_text)
+    if not audio:
+        raise ValueError("ElevenLabs returned an empty audio chunk")
+    cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = cache / f".{digest}.{uuid.uuid4().hex}.saving"
+    temporary.write_bytes(audio)
+    temporary.chmod(0o600)
+    os.replace(temporary, target)
+    return audio, False
+
+
 def narration_chunks(request: dict, maximum: int) -> list[dict]:
     units = [{"text": request["title"], "pauseAfterMs": 700}, *request["segments"]]
-    paragraphs = []
+    sections = []
+    section = []
     for index, unit in enumerate(units):
         pause_ms = unit.get("pauseAfterMs", 0)
         if pause_ms and (not isinstance(pause_ms, int) or isinstance(pause_ms, bool) or not 1 <= pause_ms <= 3000):
             raise ValueError("ElevenLabs pauses must be whole milliseconds between 1 and 3000")
+        if index and pause_ms == 900 and section:
+            sections.append("\n\n".join(section))
+            section = []
         break_tag = f'<break time="{pause_ms / 1000:g}s" />' if pause_ms and index + 1 < len(units) else ""
         pieces = split_text(unit["text"], maximum - len(break_tag) - 2)
         if break_tag:
             pieces[-1] = f"{pieces[-1]}\n\n{break_tag}"
-        paragraphs.extend(pieces)
-    chunks = [{"text": text} for text in split_text("\n\n".join(paragraphs), maximum)]
-    for index, chunk in enumerate(chunks):
-        chunk["previousText"] = chunks[index - 1]["text"] if index else None
-        chunk["nextText"] = chunks[index + 1]["text"] if index + 1 < len(chunks) else None
-    return chunks
+        section.extend(pieces)
+    if section:
+        sections.append("\n\n".join(section))
+    return [
+        {"text": text, "previousText": None, "nextText": None}
+        for section_text in sections
+        for text in split_text(section_text, maximum)
+    ]
 
 
 def prepare_spoken_request(request: dict, pronunciations: dict) -> dict:
@@ -142,7 +182,7 @@ def prepare_spoken_request(request: dict, pronunciations: dict) -> dict:
     return spoken
 
 
-def render_production(request: dict, configuration: dict, pronunciations: dict, output: Path, key: str) -> dict:
+def render_production(request: dict, configuration: dict, pronunciations: dict, output: Path, cache: Path, key: str) -> dict:
     validate_request(request)
     if request["locale"] != "es":
         raise ValueError("ElevenLabs production worker accepts Spanish jobs only")
@@ -165,9 +205,12 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
         with tempfile.TemporaryDirectory(prefix="elevenlabs-tts-", dir=staging) as temp_name:
             temp = Path(temp_name)
             paths = []
+            cache_hits = 0
             for index, chunk in enumerate(chunks, start=1):
                 path = temp / f"{index:03d}.mp3"
-                path.write_bytes(synthesize_chunk(chunk["text"], voice_id, key, configuration, previous_text=chunk["previousText"], next_text=chunk["nextText"]))
+                audio, reused = cached_chunk(chunk["text"], voice_id, key, configuration, cache, previous_text=chunk["previousText"], next_text=chunk["nextText"])
+                path.write_bytes(audio)
+                cache_hits += int(reused)
                 paths.append(path)
             concat = temp / "concat.txt"
             concat.write_text("".join(f"file '{path.as_posix()}'\n" for path in paths), encoding="utf-8")
@@ -184,7 +227,7 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
             "bitRate": probe["bitRate"], "durationSeconds": probe["durationSeconds"],
             "sizeBytes": probe["sizeBytes"], "sha256": sha256_file(mp3_path),
             "generatedAt": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
-            "chunks": len(chunks),
+            "chunks": len(chunks), "cacheHits": cache_hits, "generatedChunks": len(chunks) - cache_hits,
         }
         validate_result(request, result, expected_voice=configuration["voiceName"], expected_configuration_version=configuration["version"])
         (staging / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -203,12 +246,27 @@ def main() -> None:
     parser.add_argument("--configuration", type=Path, required=True)
     parser.add_argument("--pronunciations", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--cache", type=Path, required=True)
     args = parser.parse_args()
     request = json.loads(args.request.read_text(encoding="utf-8"))
     configuration = json.loads(args.configuration.read_text(encoding="utf-8"))
     pronunciations = json.loads(args.pronunciations.read_text(encoding="utf-8"))
-    result = render_production(request, configuration, pronunciations, args.output, os.environ.get("ELEVENLABS_API_KEY", ""))
-    print(json.dumps(result, indent=2))
+    try:
+        result = render_production(request, configuration, pronunciations, args.output, args.cache, os.environ.get("ELEVENLABS_API_KEY", ""))
+        print(json.dumps(result, indent=2))
+    except Exception as error:
+        failure = args.output.parent / "failure.json"
+        if not failure.exists():
+            message = str(error) if str(error).startswith("ElevenLabs HTTP ") else "La generación de audio no pudo completarse."
+            temporary = failure.with_name(f".{failure.name}.{uuid.uuid4().hex}.saving")
+            temporary.write_text(json.dumps({
+                "schemaVersion": 1,
+                "error": message,
+                "failedAt": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
+            }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            temporary.chmod(0o600)
+            os.replace(temporary, failure)
+        raise
 
 
 if __name__ == "__main__":
