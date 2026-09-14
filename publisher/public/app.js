@@ -61,6 +61,32 @@ function formatElapsed(startedAt) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+function formatLocalTime(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "hora desconocida";
+}
+
+function showSpanishAudioProgress(audio) {
+  const job = audio.jobs?.es;
+  if (!job) {
+    spanishAudioStatus.textContent = "Audio en español: pendiente.";
+    return;
+  }
+  if (job.status === "completed") {
+    const finishedAt = job.result?.generatedAt ?? audio.updatedAt;
+    spanishAudioStatus.textContent = `Audio en español: terminado a las ${formatLocalTime(finishedAt)} · nuevo audio listo para escuchar.`;
+    return;
+  }
+  if (job.status === "failed") {
+    spanishAudioStatus.textContent = `Audio en español: falló · ${job.error ?? audio.error ?? "revisa Actividad para ver el detalle"}.`;
+    return;
+  }
+  const phase = job.status === "queued" ? "en cola" : "generando";
+  spanishAudioStatus.textContent = `Audio en español: ${phase} · ${formatElapsed(audio.createdAt)} transcurridos · puedes cerrar esta página.`;
+}
+
 function showTranslationProgress(translation) {
   stopTranslationClock();
   const update = () => {
@@ -552,6 +578,7 @@ async function pollAudio() {
     if (current?.articleId !== articleId) return null;
     if (!audio) return null;
     audioResult.hidden = false;
+    showSpanishAudioProgress(audio);
     const spanishReady = audio.jobs?.es?.status === "completed";
     const englishReady = audio.jobs?.en?.status === "completed";
     const spanishPlayer = document.querySelector("#audio-es");
@@ -559,7 +586,7 @@ async function pollAudio() {
     if (spanishReady) {
       const source = `/api/drafts/${articleId}/audio/es?v=${encodeURIComponent(audio.jobs.es.jobId)}`;
       if (spanishPlayer.getAttribute("src") !== source) spanishPlayer.src = source;
-      spanishAudioStatus.textContent = audio.jobs.es.result?.engine === "ElevenLabs" ? "Audio en español generado con ElevenLabs." : "MP3 en español cargado y validado.";
+      if (audio.jobs.es.result?.engine !== "ElevenLabs") spanishAudioStatus.textContent = `Audio en español: MP3 cargado y validado a las ${formatLocalTime(audio.updatedAt)}.`;
     }
     if (englishReady) {
       const source = `/api/drafts/${articleId}/audio/en?v=${encodeURIComponent(audio.jobs.en.jobId)}`;
@@ -613,7 +640,8 @@ async function pollAudio() {
       showError(audio.error || "La generación de audio no pasó la validación.");
       await refreshNotifications();
     } else {
-      workflowState.textContent = audio.status === "queued" ? "Audios en cola…" : "Generando audios…";
+      const activeLocale = audio.regeneratedLocale === "es" ? "el audio en español" : audio.regeneratedLocale === "en" ? "el audio en inglés" : "los audios";
+      workflowState.textContent = audio.status === "queued" ? `${activeLocale} en cola…` : `Generando ${activeLocale}…`;
       uploadSpanishAudio.disabled = false;
       generateSpanishAudio.disabled = true;
       regenerateEnglishAudio.disabled = true;
@@ -696,6 +724,7 @@ async function regenerateLocaleAudio(locale) {
   button.disabled = true;
   message.hidden = true;
   workflowState.textContent = `Regenerando únicamente el audio en ${language}…`;
+  if (locale === "es") spanishAudioStatus.textContent = "Audio en español: enviando solicitud…";
   try {
     await request(`/api/drafts/${current.articleId}/audio/${locale}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
