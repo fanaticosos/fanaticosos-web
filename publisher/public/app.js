@@ -230,6 +230,7 @@ function setFields(draft) {
   ttsPreflightPanel.hidden = !draft;
   audiogramResult.hidden = true;
   generateAudio.disabled = true;
+  generateAudio.hidden = true;
   openPreview.disabled = true;
   prepareRelease.disabled = true;
   publishRelease.disabled = true;
@@ -477,11 +478,16 @@ async function pollTranslation() {
       document.querySelector("#english-body").value = translation.result.body;
       if (!form.elements.narrationEn.value) form.elements.narrationEn.value = translation.result.narrationScript ?? "";
       englishResult.hidden = false;
+      audioResult.hidden = false;
       generateEnglish.disabled = true;
       generateEnglish.textContent = "Traducción y audio creados";
       await refreshNotifications();
       generateAudio.disabled = translation.workflow === "preview";
       const audioStatus = await pollAudio();
+      if (!audioStatus) {
+        generateAudio.hidden = false;
+        generateAudio.disabled = false;
+      }
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
       stopTranslationClock();
@@ -568,6 +574,7 @@ async function pollAudio() {
       generateSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
       generateAudio.disabled = false;
+      generateAudio.hidden = true;
       openPreview.disabled = false;
       prepareRelease.disabled = false;
       publishRelease.disabled = true;
@@ -587,6 +594,7 @@ async function pollAudio() {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
       generateAudio.disabled = false;
+      generateAudio.hidden = false;
       showError(audio.error || "La generación de audio no pasó la validación.");
       await refreshNotifications();
     } else {
@@ -594,6 +602,8 @@ async function pollAudio() {
       uploadSpanishAudio.disabled = false;
       generateSpanishAudio.disabled = true;
       regenerateEnglishAudio.disabled = true;
+      generateAudio.hidden = false;
+      generateAudio.disabled = true;
     }
     return audio.status;
   } catch (error) {
@@ -741,11 +751,10 @@ saveEnglish.addEventListener("click", async () => {
       } }),
     });
     workflowState.textContent = "Corrección en inglés guardada · regenera los audios.";
-    generateAudio.disabled = false;
     openPreview.disabled = true;
     prepareRelease.disabled = true;
-    audioResult.hidden = true;
     audiogramResult.hidden = true;
+    await pollTranslation();
     await refreshNotifications();
   } catch (error) {
     showError(error.message);
