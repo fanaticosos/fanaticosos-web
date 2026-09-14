@@ -582,6 +582,21 @@ async function pollAudio() {
       await refreshNotifications();
       const releaseStatus = await pollRelease();
       if (["queued", "running"].includes(releaseStatus) && !releaseTimer) releaseTimer = setInterval(pollRelease, 5000);
+    } else if (audio.status === "stale") {
+      if (audioTimer) clearInterval(audioTimer);
+      audioTimer = null;
+      const staleLocales = audio.staleLocales ?? ["es", "en"];
+      const bothStale = staleLocales.includes("es") && staleLocales.includes("en");
+      workflowState.textContent = bothStale
+        ? "Los guiones cambiaron · regenera ambos audios."
+        : `El audio en ${staleLocales[0] === "es" ? "español" : "inglés"} cambió · regenera solamente ese audio.`;
+      generateAudio.hidden = !bothStale;
+      generateAudio.disabled = !bothStale;
+      generateSpanishAudio.disabled = bothStale || !staleLocales.includes("es");
+      regenerateEnglishAudio.disabled = bothStale || !staleLocales.includes("en");
+      openPreview.disabled = true;
+      prepareRelease.disabled = true;
+      publishRelease.disabled = true;
     } else if (audio.status === "awaiting-upload") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;

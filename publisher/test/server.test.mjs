@@ -7,7 +7,7 @@ import test from "node:test";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 import { databaseDraftStore } from "../lib/draft-store.mjs";
 import { translationSourceRevision } from "../lib/translation-jobs.mjs";
-import { audiogramWithFreshness, audioByteRange, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
+import { audiogramWithFreshness, audioByteRange, audioWithFreshness, createPublisherServer, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -47,6 +47,19 @@ test("completed preview becomes stale when either accepted audio changes", () =>
   delete release.manifest.assets.esAudio;
   audio.jobs.es.result.sha256 = "ignored-es";
   assert.equal(releaseWithFreshness(release, audio).status, "completed");
+});
+
+test("completed audio reports stale locales when narration sources or policy change", () => {
+  const audio = {
+    status: "completed",
+    policyRevision: "current-policy",
+    sourceRevisions: { es: "old-es", en: "current-en" },
+  };
+  const requests = { es: { sourceRevision: "current-es" }, en: { sourceRevision: "current-en" } };
+  assert.deepEqual(audioWithFreshness(audio, requests, "current-policy").staleLocales, ["es"]);
+  assert.deepEqual(audioWithFreshness(audio, requests, "new-policy").staleLocales, ["es", "en"]);
+  audio.sourceRevisions.es = "current-es";
+  assert.equal(audioWithFreshness(audio, requests, "current-policy").status, "completed");
 });
 
 test("release preparation accepts current audio policy or an exact previously published artifact", () => {

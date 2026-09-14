@@ -76,6 +76,15 @@ export function releaseWithFreshness(release, audio) {
   return current ? release : { ...release, status: "stale" };
 }
 
+export function audioWithFreshness(audio, requests, currentPolicyRevision) {
+  if (!audio || audio.status !== "completed") return audio;
+  const policyIsCurrent = audio.policyRevision === currentPolicyRevision;
+  const staleLocales = ["es", "en"].filter((locale) =>
+    !policyIsCurrent || audio.sourceRevisions?.[locale] !== requests?.[locale]?.sourceRevision
+  );
+  return staleLocales.length ? { ...audio, status: "stale", staleLocales } : audio;
+}
+
 export function releaseArtifactsEligible({ draft, audio, requests, release, deployment, currentPolicyRevision }) {
   const sourcesAreCurrent = audio?.status === "completed"
     && audio.sourceRevisions?.es === requests.es.sourceRevision
@@ -496,7 +505,14 @@ export function createPublisherServer({
       }
       if (audioMatch && request.method === "GET" && !audioMatch[2]) {
         await audioStore.reconcile({ onComplete: audioCompleted, onFailure: audioFailed });
-        return json(response, 200, { audio: await readOptionalState(() => audioStore.read(audioMatch[1])) });
+        const draft = await draftStore.read(audioMatch[1]);
+        const audio = await readOptionalState(() => audioStore.read(draft.articleId));
+        if (!audio) return json(response, 200, { audio: null });
+        const [translation, policyRevision] = await Promise.all([
+          translationStore.read(draft.articleId), currentTtsPolicyRevision(),
+        ]);
+        const requests = ttsRequestsForDraft(draft, translation);
+        return json(response, 200, { audio: audioWithFreshness(audio, requests, policyRevision) });
       }
       if (audioMatch && request.method === "GET" && audioMatch[2]) {
         const state = await audioStore.read(audioMatch[1]);
