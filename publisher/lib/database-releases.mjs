@@ -25,6 +25,7 @@ function state(row) {
   const statuses = { queued: "queued", leased: "running", retry_wait: "queued", completed: "completed", failed: "failed", cancelled: "failed" };
   return { schemaVersion: 1, articleId: row.article_id, draftRevision: row.revision_number,
     jobId: row.job_id, status: statuses[row.job_status], createdAt: row.created_at,
+    startedAt: row.started_at ?? null,
     updatedAt: row.finished_at ?? row.heartbeat_at ?? row.started_at ?? row.created_at,
     ...(saved.manifest ? { manifest: saved.manifest } : {}),
     ...(row.error_message ? { error: row.error_message } : {}) };

@@ -89,7 +89,7 @@ export function databaseTranslationStore({ database, queueRoot, jobsRoot, artifa
         if (state.status === "queued" && await optionalJson(join(root, "request.json"))) {
           startDatabaseTranslation(database, state.jobId, "systemd", new Date(now.getTime() + TIMEOUT_MS), now);
         }
-        if (now.getTime() - new Date(state.createdAt).getTime() > TIMEOUT_MS) {
+        if (state.status === "running" && state.startedAt && now.getTime() - new Date(state.startedAt).getTime() > TIMEOUT_MS) {
           const failed = failDatabaseTranslation(database, state.jobId, "La traducción excedió su límite automático y fue detenida.", now);
           await onFailure?.(failed);
         }

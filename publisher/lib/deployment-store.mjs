@@ -53,7 +53,7 @@ export function databaseDeploymentStore({ database, queueRoot, releasesRoot }) {
       }
       if (failure) return failDatabaseDeployment(database, active.jobId, failure.error || "deployment failed", now);
       if (active.status === "queued" && await optionalJson(join(root, "production-request.json"))) startDatabaseDeployment(database, active.jobId, now);
-      if (now.getTime() - Date.parse(active.createdAt) > TIMEOUT_MS) return failDatabaseDeployment(database, active.jobId, "La publicación excedió su límite automático y fue liberada.", now);
+      if (active.status === "running" && active.startedAt && now.getTime() - Date.parse(active.startedAt) > TIMEOUT_MS) return failDatabaseDeployment(database, active.jobId, "La publicación excedió su límite automático y fue liberada.", now);
       return readDatabaseDeploymentState(database, articleId);
     },
   };

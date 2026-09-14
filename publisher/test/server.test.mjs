@@ -190,7 +190,7 @@ test("audiogram freshness follows the draft image and Spanish audio", () => {
   assert.equal(audiogramWithFreshness({ ...audiogram, audioSha256: "old" }, draft, audio).status, "stale");
 });
 
-async function fixture({ draftStore } = {}) {
+async function fixture({ draftStore, ...overrides } = {}) {
   const draftsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-publisher-"));
   const uploadsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-uploads-"));
   const notificationsRoot = await mkdtemp(join(tmpdir(), "fanaticosos-notifications-"));
@@ -206,11 +206,28 @@ async function fixture({ draftStore } = {}) {
     coverUrl: "https://music.fanaticosos.com/share/img/cover-token",
     streamUrl: "https://music.fanaticosos.com/share/s/stream-token",
   });
-  const server = createPublisherServer({ draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver });
+  const server = createPublisherServer({ draftsRoot, draftStore, uploadsRoot, notificationsRoot, queueRoot, statesRoot, jobsRoot, siteSettingsPath, musicResolver, ...overrides });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   return { server, base: `http://127.0.0.1:${port}`, draftsRoot, queueRoot, statesRoot, siteSettingsPath };
 }
+
+test("concurrent publisher reconciliation shares one in-flight pass", async (context) => {
+  let calls = 0;
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const translationStore = { reconcile: async () => { calls += 1; await gate; } };
+  const { server } = await fixture({ translationStore });
+  context.after(() => server.close());
+  const first = server.reconcilePublisherJobs();
+  const second = server.reconcilePublisherJobs();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 1);
+  release();
+  assert.deepEqual(await Promise.all([first, second]), [[], []]);
+  await server.reconcilePublisherJobs();
+  assert.equal(calls, 2);
+});
 
 test("health endpoint is available without touching drafts", async (context) => {
   const { server, base } = await fixture();

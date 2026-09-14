@@ -38,6 +38,7 @@ function storedState(row) {
     status: statuses[row.job_status],
     workflow: checkpoint.workflow,
     createdAt: row.created_at,
+    startedAt: row.started_at ?? null,
     updatedAt: row.finished_at ?? row.heartbeat_at ?? row.started_at ?? row.created_at,
     bodyLayout: checkpoint.bodyLayout,
     sourceRevision: row.dependency_hash,

@@ -24,6 +24,7 @@ function state(row) {
     schemaVersion: 1, articleId: row.article_id, draftRevision: row.revision_number,
     releaseJobId: row.release_id, jobId: row.deployment_id,
     status: statuses[row.deployment_status], createdAt: row.deployment_created_at,
+    startedAt: row.started_at ?? null,
     updatedAt: row.deployment_finished_at ?? row.heartbeat_at ?? row.started_at ?? row.deployment_created_at,
     ...(row.verification_json ? { receipt: JSON.parse(row.verification_json) } : {}),
     ...(row.deployment_error ? { error: row.deployment_error } : {}),

@@ -328,7 +328,10 @@ export function createPublisherServer({
       message: `La preparación privada se detuvo: ${state.error}`,
     });
   }
+  let reconciliationPromise = null;
   async function reconcilePublisherJobs() {
+    if (reconciliationPromise) return reconciliationPromise;
+    reconciliationPromise = (async () => {
     const operations = [
       ["translations", () => translationStore.reconcile({ onComplete: translationCompleted, onFailure: translationFailed })],
       ["audio", () => audioStore.reconcile({ onComplete: audioCompleted, onFailure: audioFailed })],
@@ -345,6 +348,9 @@ export function createPublisherServer({
       }
     }
     return failures;
+    })();
+    try { return await reconciliationPromise; }
+    finally { reconciliationPromise = null; }
   }
   const server = createServer(async (request, response) => {
     try {

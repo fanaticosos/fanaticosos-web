@@ -86,7 +86,7 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot, upload
         const failure = await optionalJson(join(root, "failure.json"));
         if (failure) { const failed = failDatabaseRelease(database, active.jobId, failure.error || "release failed", now); await onFailure?.(failed); continue; }
         if (active.status === "queued" && await optionalJson(join(root, "request.json"))) startDatabaseRelease(database, active.jobId, new Date(now.getTime() + TIMEOUT_MS), now);
-        if (now.getTime() - new Date(active.createdAt).getTime() > TIMEOUT_MS) { const failed = failDatabaseRelease(database, active.jobId, "La preparación privada excedió su límite automático y fue detenida.", now); await onFailure?.(failed); }
+        if (active.status === "running" && active.startedAt && now.getTime() - new Date(active.startedAt).getTime() > TIMEOUT_MS) { const failed = failDatabaseRelease(database, active.jobId, "La preparación privada excedió su límite automático y fue detenida.", now); await onFailure?.(failed); }
       }
     },
   };

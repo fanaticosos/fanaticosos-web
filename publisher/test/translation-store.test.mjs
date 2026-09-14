@@ -49,3 +49,25 @@ test("SQLite translation store owns state while filesystem carries only worker p
     closeDatabase(database);
   }
 });
+
+test("translation timeout starts at the lease rather than queue admission", async () => {
+  const root = await mkdtemp(join(tmpdir(), "translation-lease-timeout-test-"));
+  const queueRoot = join(root, "queue"); const jobsRoot = join(root, "jobs"); const artifactsRoot = join(root, "artifacts");
+  await mkdir(jobsRoot); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, owner);
+    const store = databaseTranslationStore({ database, queueRoot, jobsRoot, artifactsRoot });
+    const queued = await store.queue({ draft });
+    database.prepare("UPDATE jobs SET created_at = ?, available_at = ? WHERE id = ?")
+      .run("2026-09-09T00:00:00.000Z", "2026-09-09T00:00:00.000Z", queued.jobId);
+    await store.reconcile({ now: new Date("2026-09-09T02:00:00Z") });
+    assert.equal((await store.read(draft.articleId)).status, "queued");
+    await rename(join(queueRoot, queued.jobId), join(jobsRoot, queued.jobId));
+    await store.reconcile({ now: new Date("2026-09-09T03:00:00Z") });
+    const running = await store.read(draft.articleId);
+    assert.equal(running.status, "running");
+    assert.equal(running.startedAt, "2026-09-09T03:00:00.000Z");
+    await store.reconcile({ now: new Date("2026-09-09T04:03:00Z") });
+    assert.equal((await store.read(draft.articleId)).status, "failed");
+  } finally { closeDatabase(database); }
+});
