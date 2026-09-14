@@ -279,6 +279,7 @@ class AdminHelperTests(unittest.TestCase):
         verifier = (ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh").read_text(encoding="utf-8")
         command = self.helper.split("command_create_recovery_bundle()", 1)[1].split("\n}\n", 1)[0]
         self.assertIn('command_backup_database "$expected" "$backup_id"', command)
+        self.assertIn('run_as_service git -C "$repository" rev-parse HEAD', command)
         self.assertIn('scripts/backup/create_recovery_bundle.sh', command)
         self.assertIn('d1 export fanaticosos-participa', creator)
         self.assertIn('publisher/artifacts/audio', creator)

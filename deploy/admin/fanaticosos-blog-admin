@@ -1458,7 +1458,7 @@ command_create_recovery_bundle() {
   validate_database_backup_id "$backup_id"
   invoker="${SUDO_USER:-}"
   [[ -n "$invoker" && "$invoker" != "root" ]] || stop "Recovery export requires an invoking administrative user."
-  resolved="$(git -C "$repository" rev-parse HEAD)"
+  resolved="$(run_as_service git -C "$repository" rev-parse HEAD)"
   script="$repository/scripts/backup/create_recovery_bundle.sh"
   [[ -x "$script" && ! -L "$script" ]] || stop "Versioned recovery bundle script is missing."
   command_backup_database "$expected" "$backup_id"
