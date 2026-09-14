@@ -92,6 +92,10 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /The previous validated deployment was restored/);
   assert.match(articleBuild, /homepageSha256: await sha256\(join\(temporary, "dist", "index\.html"\)\)/);
   assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases(?:\n|$)/);
+  assert.match(productionUnit, /TimeoutStartSec=35min/);
+  assert.match(productionUnit, /TimeoutStopSec=2min/);
+  assert.match(production, /trap 'rollback_on_signal SIGTERM' TERM/);
+  assert.match(production, /readonly validation_deadline=\$\(\(SECONDS \+ 20 \* 60\)\)/);
   assert.match(failureRecorder, /await chown\(temporary, owner\.uid, owner\.gid\)/);
   assert.doesNotMatch(music, /select_release\.mjs/);
   assert.match(musicBuild, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);

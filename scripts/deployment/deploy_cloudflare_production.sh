@@ -142,6 +142,27 @@ shopt -u nullglob
 deployment_url=""
 rollback_id="${deployment_state[0]}"
 rollback_url="${deployment_state[1]}"
+production_changed=false
+rollback_production() {
+  local rollback_response
+  rollback_response="$(curl --fail --silent --show-error --max-time 30 \
+    --request POST --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    --header "Content-Type: application/json" --data '{}' \
+    "$api/deployments/$rollback_id/rollback")" || return 1
+  python3 -c 'import json,sys; value=json.load(sys.stdin); assert value.get("success") is True; assert (value.get("result") or {}).get("id")' \
+    <<<"$rollback_response"
+}
+rollback_on_signal() {
+  local signal="$1"
+  trap - TERM INT
+  if [[ "$production_changed" == true ]]; then
+    rollback_production || echo "STOP: Received $signal after upload and rollback failed." >&2
+  fi
+  unset CLOUDFLARE_API_TOKEN
+  exit 143
+}
+trap 'rollback_on_signal SIGTERM' TERM
+trap 'rollback_on_signal SIGINT' INT
 if [[ ${#temporary_logs[@]} == 1 ]]; then
   temporary_log="${temporary_logs[0]}"
   uploaded_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"
@@ -150,6 +171,7 @@ if [[ ${#temporary_logs[@]} == 1 ]]; then
     deployment_url="${deployment_state[1]}"
     rollback_id="${deployment_state[3]}"
     rollback_url="${deployment_state[4]}"
+    production_changed=true
   elif [[ "$uploaded_url" == "${deployment_state[4]}" ]]; then
     # A previous validation restored the old deployment, so production aliases
     # no longer point at the uploaded candidate. Preserve its diagnostics and
@@ -181,22 +203,15 @@ if [[ -z "$deployment_url" ]]; then
     stop "Wrangler production upload failed; private diagnostics were preserved."
   fi
   deployment_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$temporary_log" | tail -n 1)"
+  [[ -n "$deployment_url" ]] && production_changed=true
 fi
 
 [[ "$deployment_url" =~ ^https://[a-zA-Z0-9.-]+\.pages\.dev$ ]] || stop "Wrangler did not return a valid deployment URL."
-rollback_production() {
-  local rollback_response
-  rollback_response="$(curl --fail --silent --show-error --max-time 30 \
-    --request POST --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-    --header "Content-Type: application/json" --data '{}' \
-    "$api/deployments/$rollback_id/rollback")" || return 1
-  python3 -c 'import json,sys; value=json.load(sys.stdin); assert value.get("success") is True; assert (value.get("result") or {}).get("id")' \
-    <<<"$rollback_response"
-}
 # Cloudflare Access protects immutable *.pages.dev deployment URLs, including
 # production uploads. Validate the public production aliases after the upload;
 # the immutable URL is still retained in the receipt for audit and rollback.
 readonly domains=("https://fanaticosos.com" "https://www.fanaticosos.com" "https://fanaticosos-web.pages.dev")
+readonly validation_deadline=$((SECONDS + 20 * 60))
 for domain in "${domains[@]}"; do
   for item in "${manifest_values[@]:1}"; do
     IFS=$'\t' read -r path checksum <<<"$item"
@@ -205,6 +220,7 @@ for domain in "${domains[@]}"; do
     # Wait up to two minutes per required artifact instead of accepting a
     # partially propagated production deployment.
     for attempt in $(seq 1 40); do
+      (( SECONDS < validation_deadline )) || break
       temporary_body="$job_root/.cloudflare-body.$$"
       if curl --fail --silent --show-error --max-time 30 --output "$temporary_body" "$domain$path"; then
         if [[ -s "$temporary_body" && ( -z "$checksum" || "$(sha256sum "$temporary_body" | cut -d' ' -f1)" == "$checksum" ) ]]; then passed=true; fi
@@ -221,6 +237,8 @@ for domain in "${domains[@]}"; do
   done
 done
 unset CLOUDFLARE_API_TOKEN
+production_changed=false
+trap - TERM INT
 
 # The locally selected release is the source for later music-only builds. Keep it
 # aligned with the production bundle that just passed validation, regardless of

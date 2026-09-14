@@ -341,6 +341,9 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('items = [("/", ""), (routes.get("es"), ""), (routes.get("en"), "")]', script)
         self.assertIn('scripts/publisher/select_release.mjs', script)
         self.assertIn('--releases-root "$data_root/publisher/releases" --job-id "$job_id"', script)
+        self.assertIn("trap 'rollback_on_signal SIGTERM' TERM", script)
+        self.assertIn('production_changed=true', script)
+        self.assertIn('readonly validation_deadline=$((SECONDS + 20 * 60))', script)
         self.assertNotIn("eval ", script)
 
         self.assertNotIn('readonly release_root="$job_root/release" dist_root=', script)
