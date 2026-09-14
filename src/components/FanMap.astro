@@ -4,7 +4,7 @@ const { locale = "es" } = Astro.props;
 const copy = locale === "es" ? {
   title: "El mapa de Bears Nation", kicker: "FanaticOSOS por el mundo",
   intro: "¿Desde dónde apoyas a los Bears? Elige una ubicación aproximada y súmate a Bears Nation.",
-  panel: "Pon tu huella", help: "Haz clic en el mapa para elegir una zona aproximada.", city: "Ciudad", country: "País",
+  panel: "Pon tu huella", help: "Haz clic en el mapa o arrastra el pin para elegir una zona aproximada.", city: "Ciudad", country: "País",
   point: "Aún no has elegido un punto.", chosen: "Ubicación aproximada elegida", submit: "Añadirme al mapa",
   privacy: "Publicaremos únicamente la ciudad, el país y una posición aproximada. No publiques tu dirección.", loading: "Cargando el mapa…",
   success: "¡Ya formas parte de Bears Nation!", failure: "No pudimos guardar tu ubicación. Inténtalo de nuevo.",
@@ -14,7 +14,7 @@ const copy = locale === "es" ? {
 } : {
   title: "Bear Nation map", kicker: "FanaticOSOS worldwide",
   intro: "Tell us where you support the Bears from. Your marker is rounded so it only shows an approximate location.",
-  panel: "Leave your mark", help: "Click the map to choose an approximate area.", city: "City", country: "Country",
+  panel: "Leave your mark", help: "Click the map or drag the marker to choose an approximate area.", city: "City", country: "Country",
   point: "You haven't chosen a point yet.", chosen: "Approximate location selected", submit: "Add me to the map",
   privacy: "We only publish your city, country, and an approximate position. Do not enter your address.", loading: "Loading map…",
   success: "You're now part of Bear Nation!", failure: "We couldn't save your location. Please try again.",
@@ -61,7 +61,20 @@ const copy = locale === "es" ? {
   const localKey = "fanaticosos-map-preview";
   const supporterMarkers = L.featureGroup().addTo(map);
   let draftMarker;
-  const setPoint = ({ lat, lng }) => { const roundedLat = Math.round(lat * 10) / 10; const roundedLng = Math.round(lng * 10) / 10; form.elements.lat.value = roundedLat; form.elements.lng.value = roundedLng; coords.textContent = `${copy.chosen}: ${roundedLat.toFixed(1)}, ${roundedLng.toFixed(1)}`; button.disabled = false; if (draftMarker) draftMarker.remove(); draftMarker = L.marker([roundedLat, roundedLng], { icon }).addTo(map); };
+  const setPoint = ({ lat, lng }) => {
+    const roundedLat = Math.round(lat * 10) / 10;
+    const roundedLng = Math.round(lng * 10) / 10;
+    form.elements.lat.value = roundedLat;
+    form.elements.lng.value = roundedLng;
+    coords.textContent = `${copy.chosen}: ${roundedLat.toFixed(1)}, ${roundedLng.toFixed(1)}`;
+    button.disabled = false;
+    if (draftMarker) {
+      draftMarker.setLatLng([roundedLat, roundedLng]);
+      return;
+    }
+    draftMarker = L.marker([roundedLat, roundedLng], { icon, draggable: true }).addTo(map);
+    draftMarker.on("dragend", () => setPoint(draftMarker.getLatLng()));
+  };
   map.on("click", (event) => setPoint(event.latlng));
   const addSupporter = (supporter) => L.marker([supporter.lat, supporter.lng], { icon }).addTo(supporterMarkers).bindPopup(`<strong>${escapeHtml(supporter.city)}</strong><br>${escapeHtml(supporter.country)}`);
   const escapeHtml = (value) => { const node = document.createElement("span"); node.textContent = value; return node.innerHTML; };
