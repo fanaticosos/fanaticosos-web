@@ -10,6 +10,11 @@ One job renders one final, reviewed article locale. Spanish and English run as s
 
 The private publishing workflow supplies schema version 1, the stable article UUID, locale, lowercase SHA-256 source revision, final title, and ordered text segments. Segment IDs are unique and stable. Limits of 250 segments, 8,000 characters per segment, and 100,000 article characters reject unreasonable input before model execution.
 
+Translation completion never starts TTS. Initial bilingual generation is an
+explicit editorial action after the English version and both narration scripts
+have been reviewed and saved. The publisher API requires `confirmReviewed: true`
+and rejects the request before queue admission when that confirmation is absent.
+
 The canonical narration text is the title followed by every segment in order, separated by blank lines and terminated by one newline. Its UTF-8 SHA-256 is the audio `textHash`. Any text edit or reordering therefore makes previous audio stale automatically.
 
 ## Result
