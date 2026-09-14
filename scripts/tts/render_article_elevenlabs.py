@@ -169,10 +169,8 @@ def render_production(request: dict, configuration: dict, pronunciations: dict, 
                     paths.append(silence)
             concat = temp / "concat.txt"
             concat.write_text("".join(f"file '{path.as_posix()}'\n" for path in paths), encoding="utf-8")
-            joined = temp / "joined.mp3"
-            subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(concat), "-c", "copy", str(joined)], check=True)
             mp3_path = staging / file_name
-            subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(joined), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-ac", "1", "-b:a", "128k", str(mp3_path)], check=True)
+            subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(concat), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-ac", "1", "-b:a", "128k", str(mp3_path)], check=True)
         probe = probe_audio(mp3_path)
         result = {
             "schemaVersion": 1, "articleId": request["articleId"], "locale": "es",

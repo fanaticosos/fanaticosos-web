@@ -42,15 +42,15 @@ test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes
   assert.match(html, /<h2>Una defensa<\/h2>/);
   assert.match(html, /<p>Primer párrafo\.<\/p>/);
   assert.match(html, /<strong>Importante<\/strong>/);
-  assert.match(html, /<ul><li>Uno<\/li><li>Dos<\/li><\/ul>/);
-  assert.match(html, /<blockquote><p>Una cita<\/p><\/blockquote>/);
+  assert.match(html, /<ul>[\s\S]*<li>Uno<\/li>[\s\S]*<li>Dos<\/li>[\s\S]*<\/ul>/);
+  assert.match(html, /<blockquote>[\s\S]*<p>Una cita<\/p>[\s\S]*<\/blockquote>/);
   assert.doesNotMatch(html, /<script>/);
 });
 
 test("article Markdown renders multi-paragraph quote boxes and repairs duplicated list markers", () => {
   const html = renderMarkdown(`> “Así queremos vernos.”\n>\n> — **Caleb Williams**\n\n1. 1. Primera jugada\n2. Segunda jugada`);
-  assert.match(html, /<blockquote><p>“Así queremos vernos\.”<\/p><p>— <strong>Caleb Williams<\/strong><\/p><\/blockquote>/);
-  assert.match(html, /<ol><li>Primera jugada<\/li><li>Segunda jugada<\/li><\/ol>/);
+  assert.match(html, /<blockquote>[\s\S]*<p>“Así queremos vernos\.”<\/p>[\s\S]*<p>— <strong>Caleb Williams<\/strong><\/p>[\s\S]*<\/blockquote>/);
+  assert.match(html, /<ol>[\s\S]*<li>Primera jugada<\/li>[\s\S]*<li>Segunda jugada<\/li>[\s\S]*<\/ol>/);
   assert.doesNotMatch(html, /&gt;/);
   assert.doesNotMatch(html, /<li>1\. Primera jugada<\/li>/);
 });
@@ -58,10 +58,20 @@ test("article Markdown renders multi-paragraph quote boxes and repairs duplicate
 test("article Markdown renders comparison tables instead of pipe-delimited prose", () => {
   const html = renderMarkdown(`## El enfrentamiento\n\n| Factor | Bears | Panthers |\n|---|---|---|\n| **Quarterback** | Williams improvisa. | Young protege el balón. |\n| *Defensa* | Presiona. | <script>alert(1)</script> |`);
   assert.match(html, /<div class="table-scroll"><table>/);
-  assert.match(html, /<th scope="col">Factor<\/th>/);
-  assert.match(html, /<th scope="row"><strong>Quarterback<\/strong><\/th>/);
-  assert.match(html, /<th scope="row"><em>Defensa<\/em><\/th>/);
+  assert.match(html, /<th>Factor<\/th>/);
+  assert.match(html, /<td><strong>Quarterback<\/strong><\/td>/);
+  assert.match(html, /<td><em>Defensa<\/em><\/td>/);
   assert.match(html, /<td>Williams improvisa\.<\/td>/);
   assert.doesNotMatch(html, /\|---\|/);
   assert.doesNotMatch(html, /<script>/);
+});
+
+test("article Markdown supports standard links, nested lists, code, rules, and escaped raw HTML", () => {
+  const html = renderMarkdown(`Texto con [fuente](https://example.com) y \`código\`.\n\n- Uno\n  - Anidado\n\n---\n\n<script>alert(1)</script>\n\n[Peligro](javascript:alert(1))`);
+  assert.match(html, /<a href="https:\/\/example\.com">fuente<\/a>/);
+  assert.match(html, /<code>código<\/code>/);
+  assert.match(html, /<ul>[\s\S]*<ul>[\s\S]*Anidado/);
+  assert.match(html, /<hr>/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /javascript:/);
 });

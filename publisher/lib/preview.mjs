@@ -1,69 +1,41 @@
 import { normalizeArticleMarkdown } from "./article-markdown.mjs";
+import { marked } from "marked";
 
 function escapeHtml(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function renderInline(source) {
-  return escapeHtml(source)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/__([^_]+)__/g, "<strong>$1</strong>")
-    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
-}
-
-function tableCells(line) {
-  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
-}
-
-function renderTable(lines) {
-  if (lines.length < 3) return null;
-  const headings = tableCells(lines[0]);
-  const separators = tableCells(lines[1]);
-  if (headings.length < 2 || separators.length !== headings.length
-    || !separators.every((cell) => /^:?-{3,}:?$/.test(cell))) return null;
-  const rows = lines.slice(2).map(tableCells);
-  if (rows.some((cells) => cells.length !== headings.length)) return null;
-  const head = headings.map((cell) => `<th scope="col">${renderInline(cell)}</th>`).join("");
-  const body = rows.map((cells) => `<tr>${cells.map((cell, index) => index === 0
-    ? `<th scope="row">${renderInline(cell)}</th>`
-    : `<td>${renderInline(cell)}</td>`).join("")}</tr>`).join("");
-  return `<div class="table-scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+function safeMarkdownUrl(value, image = false) {
+  const selected = String(value ?? "").trim();
+  if (!selected || /[\u0000-\u001f\u007f]/.test(selected)) return null;
+  if (selected.startsWith("/") || selected.startsWith("./") || selected.startsWith("../") || selected.startsWith("#")) return selected;
+  try {
+    const protocol = new URL(selected).protocol;
+    if (protocol === "https:" || protocol === "http:" || (!image && protocol === "mailto:")) return selected;
+  } catch {}
+  return null;
 }
 
 export function renderMarkdown(source) {
-  return normalizeArticleMarkdown(source).split(/\n\s*\n/).filter((part) => part.trim()).map((part) => {
-    const block = part.trim();
-    const heading = /^(#{1,6})\s+/.exec(block);
-    if (heading) {
-      const level = Math.min(heading[1].length, 6);
-      return `<h${level}>${renderInline(block.slice(heading[0].length))}</h${level}>`;
-    }
-    const lines = block.split("\n").map((line) => line.trim());
-    const table = renderTable(lines);
-    if (table) return table;
-    if (lines.every((line) => /^>\s*/.test(line))) {
-      const paragraphs = [];
-      let paragraph = [];
-      for (const line of lines) {
-        const content = line.replace(/^>\s?/, "").trim();
-        if (content) paragraph.push(content);
-        else if (paragraph.length) {
-          paragraphs.push(paragraph.join(" "));
-          paragraph = [];
-        }
-      }
-      if (paragraph.length) paragraphs.push(paragraph.join(" "));
-      return `<blockquote>${paragraphs.map((value) => `<p>${renderInline(value)}</p>`).join("")}</blockquote>`;
-    }
-    if (lines.every((line) => /^[-*+]\s+/.test(line))) {
-      return `<ul>${lines.map((line) => `<li>${renderInline(line.replace(/^[-*+]\s+/, ""))}</li>`).join("")}</ul>`;
-    }
-    if (lines.every((line) => /^\d+\.\s+/.test(line))) {
-      return `<ol>${lines.map((line) => `<li>${renderInline(line.replace(/^\d+\.\s+/, ""))}</li>`).join("")}</ol>`;
-    }
-    return `<p>${renderInline(lines.join(" "))}</p>`;
-  }).join("\n");
+  const renderer = new marked.Renderer();
+  renderer.html = ({ text }) => escapeHtml(text);
+  renderer.link = function ({ href, title, tokens }) {
+    const label = this.parser.parseInline(tokens);
+    const safe = safeMarkdownUrl(href);
+    if (!safe) return label;
+    const titleAttribute = title ? ` title="${escapeHtml(title)}"` : "";
+    return `<a href="${escapeHtml(safe)}"${titleAttribute}>${label}</a>`;
+  };
+  renderer.image = ({ href, title, text }) => {
+    const safe = safeMarkdownUrl(href, true);
+    if (!safe) return escapeHtml(text);
+    const titleAttribute = title ? ` title="${escapeHtml(title)}"` : "";
+    return `<img src="${escapeHtml(safe)}" alt="${escapeHtml(text)}"${titleAttribute}>`;
+  };
+  return marked.parse(normalizeArticleMarkdown(source), {
+    async: false, breaks: false, gfm: true, renderer,
+  }).replaceAll("<table>", '<div class="table-scroll"><table>')
+    .replaceAll("</table>", "</table></div>");
 }
 
 export function previewErrorPage() {

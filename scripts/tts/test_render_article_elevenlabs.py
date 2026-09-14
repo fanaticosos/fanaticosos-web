@@ -17,7 +17,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ElevenLabsProductionTests(unittest.TestCase):
-    def test_spanish_preserves_bears_for_the_reviewed_elevenlabs_voice(self):
+    def test_production_assembly_decodes_every_chunk_instead_of_copying_mp3_boundaries(self):
+        source = (ROOT / "scripts/tts/render_article_elevenlabs.py").read_text(encoding="utf-8")
+        self.assertNotIn('"-c", "copy"', source)
+        self.assertNotIn("joined.mp3", source)
+        self.assertIn('"-f", "concat", "-safe", "0", "-i", str(concat), "-af", "loudnorm=', source)
+
+    def test_spanish_applies_reviewed_bears_pronunciation_to_plain_narration(self):
         pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
         request = {
             "schemaVersion": 1,
@@ -28,9 +34,23 @@ class ElevenLabsProductionTests(unittest.TestCase):
             "segments": [{"id": "body-001", "text": "Los Chicago Bears necesitan un touchdown con Caleb Williams."}],
         }
         spoken = prepare_spoken_request(request, pronunciations)
-        self.assertEqual(spoken["title"], "Los Bears reciben a Carolina")
-        self.assertEqual(spoken["segments"][0]["text"], "Los Chicago Bears necesitan un touchdown con Caleb Williams.")
+        self.assertEqual(spoken["title"], "Los Bers reciben a Carolina")
+        self.assertEqual(spoken["segments"][0]["text"], "Los Chicago Bers necesitan un touchdown con Caleb Williams.")
         self.assertEqual(request["title"], "Los Bears reciben a Carolina")
+
+    def test_spoken_request_preserves_names_and_places_not_overridden_for_elevenlabs(self):
+        pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))
+        request = {
+            "schemaVersion": 1,
+            "articleId": "00000000-0000-4000-8000-000000000001",
+            "locale": "es",
+            "sourceRevision": "a" * 64,
+            "title": "Chicago en Soldier Field",
+            "narrationScript": "Caleb Williams encontró a Kyle Monangai en Soldier Field.",
+            "segments": [{"id": "script-001", "text": "Caleb Williams encontró a Kyle Monangai en Soldier Field.", "pauseAfterMs": 0}],
+        }
+        spoken = prepare_spoken_request(request, pronunciations)
+        self.assertEqual(spoken["segments"][0]["text"], request["segments"][0]["text"])
 
     def test_worker_rejects_a_stale_pronunciation_knowledge_version(self):
         pronunciations = json.loads((ROOT / "config/tts/pronunciations.json").read_text(encoding="utf-8"))

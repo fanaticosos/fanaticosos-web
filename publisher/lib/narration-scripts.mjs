@@ -16,15 +16,19 @@ export function stripEditorialMasthead(markdown) {
   }).join("").replace(/^\s+/, "");
 }
 
-export function markdownToNarrationScript(markdown, cleanText) {
+export function markdownToNarrationScript(markdown, cleanText, { quoteCadence = false } = {}) {
   const blocks = stripEditorialMasthead(markdown).split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
   return blocks.map((block, index) => {
     const marker = /^(#{1,6}\s+|>\s*|(?:[-*+]\s+)|(?:\d+[.)]\s+))/.exec(block);
     const heading = marker?.[0]?.startsWith("#");
     const cleaned = cleanText(block.slice(marker?.[0]?.length ?? 0));
     const text = heading ? cleaned.replace(/^(?:[IVXLCDM]+|\d+)[.)]\s+/i, "") : cleaned;
-    const pause = marker?.[0]?.startsWith("#") ? "0.9" : "0.7";
-    return `${text}${index === blocks.length - 1 ? "" : `\n<pause=${pause}s>`}`;
+    const quote = quoteCadence && marker?.[0]?.startsWith(">");
+    const spoken = quote
+      ? text.split(/\n+/).map((line) => line.trim()).filter(Boolean).join("\n<pause=0.3s>\n")
+      : text;
+    const pause = heading || quote ? "0.9" : "0.7";
+    return `${spoken}${index === blocks.length - 1 ? "" : `\n<pause=${pause}s>`}`;
   }).join("\n").trim();
 }
 
@@ -55,6 +59,27 @@ export function normalizeNarrationScript(value, field = "narration script") {
   if (/<pause=/i.test(withoutPauses)) throw new Error(`${field} contains an invalid pause; use <pause=0.7s>`);
   if (MARKDOWN.test(withoutPauses)) throw new Error(`${field} must be plain text without Markdown`);
   return normalized.replace(PAUSE, (_, seconds) => `<pause=${Number(seconds).toFixed(1)}s>`);
+}
+
+export function normalizeNarrationCadence(value) {
+  const lines = normalizeNarrationScript(value).split("\n");
+  const output = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^—\s+\S/.test(line.trim())) {
+      if (output.length && !/^<pause=(?:0(?:\.\d+)?|[1-3](?:\.\d+)?)s>$/i.test(output.at(-1).trim())) output.push("<pause=0.3s>");
+      output.push(line);
+      if (index + 1 < lines.length && /^<pause=/.test(lines[index + 1].trim())) {
+        output.push("<pause=0.9s>");
+        index += 1;
+      } else if (index + 1 < lines.length) {
+        output.push("<pause=0.9s>");
+      }
+      continue;
+    }
+    output.push(line);
+  }
+  return normalizeNarrationScript(output.join("\n"));
 }
 
 export function narrationSegmentsFromScript(script) {

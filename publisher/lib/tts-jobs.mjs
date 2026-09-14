@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promi
 import { basename, join } from "node:path";
 
 import { translationSourceRevision } from "./translation-jobs.mjs";
-import { markdownToNarrationScript, narrationSegmentsFromScript, normalizeNarrationScript, plainNarrationText } from "./narration-scripts.mjs";
+import { markdownToNarrationScript, narrationSegmentsFromScript, normalizeNarrationCadence, normalizeNarrationScript, plainNarrationText } from "./narration-scripts.mjs";
 
 const JOB_TIMEOUT_MS = 17 * 60 * 1000;
 const JOB_ID = /^tts-(es|en)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
@@ -41,8 +41,8 @@ export function ttsRequestsForDraft(draft, translation) {
   if (translation.status !== "completed" || !translationMatchesDraft) {
     throw new Error("the current draft revision needs an accepted English translation");
   }
-  const spanishScript = normalizeNarrationScript(draft.narrationEs ?? "")
-    || markdownToNarrationScript(draft.body, narrationText);
+  const spanishScript = normalizeNarrationCadence(normalizeNarrationScript(draft.narrationEs ?? "")
+    || markdownToNarrationScript(draft.body, narrationText, { quoteCadence: true }));
   const englishScript = normalizeNarrationScript(draft.narrationEn ?? "")
     || normalizeNarrationScript(translation.result.narrationScript ?? "")
     || markdownToNarrationScript(translation.result.body, narrationText);
