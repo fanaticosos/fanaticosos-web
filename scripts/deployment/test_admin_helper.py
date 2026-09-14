@@ -210,6 +210,9 @@ class AdminHelperTests(unittest.TestCase):
         )[0]
         self.assertIn('systemd-analyze verify "$publisher_source_unit"', installer)
         self.assertIn('install -d -o "$service_account"', installer)
+        self.assertIn('PATH="/opt/nodejs/current/bin:/usr/bin:/bin"', installer)
+        self.assertIn('/opt/nodejs/current/bin/npm ci', installer)
+        self.assertIn('--prefix "$repository" --ignore-scripts --no-audit --no-fund', installer)
         self.assertIn('"$publisher_database_root"', installer)
         self.assertIn('"$publisher_database_backup_root"', installer)
         self.assertIn("systemctl enable fanaticosos-publisher.service", installer)

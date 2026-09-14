@@ -1246,6 +1246,9 @@ command_install_publisher() {
   [[ -f "$publisher_production_deploy_source" ]] || stop "Production deploy template is missing."
   [[ -f "$publisher_retention_source" ]] || stop "Release retention service is missing."
   [[ -f "$publisher_retention_timer_source" ]] || stop "Release retention timer is missing."
+  run_as_service env HOME="$data_root" PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
+    /opt/nodejs/current/bin/npm ci \
+    --prefix "$repository" --ignore-scripts --no-audit --no-fund
   install -o root -g root -m 0755 "$publisher_dispatcher_source" "$publisher_dispatcher_installed"
   if ! diagnostics="$(systemd-analyze verify "$publisher_source_unit" "$audiogram_source_unit" "$publisher_dispatcher_service_source" "$publisher_release_source" "$publisher_music_release_source" "$publisher_music_deploy_source" "$publisher_production_deploy_source" "$publisher_retention_source" "$publisher_retention_timer_source" 2>&1)"; then
     stop "Publisher service units failed verification: $diagnostics"
