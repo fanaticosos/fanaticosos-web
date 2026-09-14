@@ -84,7 +84,7 @@ function showSpanishAudioProgress(audio) {
     return;
   }
   const phase = job.status === "queued" ? "en cola" : "generando";
-  spanishAudioStatus.textContent = `Audio en español: ${phase} · ${formatElapsed(audio.createdAt)} transcurridos · puedes cerrar esta página.`;
+  spanishAudioStatus.textContent = `Audio en español: ${phase} · ${formatElapsed(job.createdAt ?? audio.updatedAt ?? audio.createdAt)} transcurridos · puedes cerrar esta página.`;
 }
 
 function showTranslationProgress(translation) {

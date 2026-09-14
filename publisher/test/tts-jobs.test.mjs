@@ -180,6 +180,8 @@ test("bilingual TTS queues Spanish and English automatically", async () => {
   assert.equal(result.status, "running");
   assert.equal(result.jobs.es.status, "queued");
   assert.match(result.jobs.es.jobId, /^tts-es-/);
+  assert.equal(result.jobs.es.createdAt, result.createdAt);
+  assert.equal(result.jobs.en.createdAt, result.createdAt);
   await reconcileTts({ statesRoot, jobsRoot, onComplete: () => { completed += 1; } });
   assert.equal(completed, 0);
   await assert.rejects(
@@ -264,6 +266,7 @@ test("Spanish regeneration preserves completed English audio", async () => {
   assert.equal(state.jobs.en.jobId, "old-en");
   assert.equal(state.jobs.en.status, "completed");
   assert.match(state.jobs.es.jobId, /^tts-es-/);
+  assert.equal(state.jobs.es.createdAt, state.createdAt);
   assert.equal(state.regeneratedLocale, "es");
 });
 
@@ -284,5 +287,6 @@ test("English regeneration preserves completed Spanish audio", async () => {
   assert.equal(state.jobs.es.jobId, "old-es");
   assert.equal(state.jobs.es.status, "completed");
   assert.match(state.jobs.en.jobId, /^tts-en-/);
+  assert.equal(state.jobs.en.createdAt, state.createdAt);
   assert.equal(state.regeneratedLocale, "en");
 });

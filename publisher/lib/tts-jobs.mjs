@@ -90,7 +90,7 @@ export async function queueTts({ draft, translation, queueRoot, statesRoot, poli
     await mkdir(temporary, { mode: 0o700 });
     await atomicJson(join(temporary, "request.json"), requests[locale]);
     await rename(temporary, join(queueRoot, jobId));
-    jobs[locale] = { jobId, status: "queued" };
+    jobs[locale] = { jobId, status: "queued", createdAt: now.toISOString() };
   }
   const state = {
     schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision,
@@ -131,7 +131,7 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
     status: "queued", workflow: existing.status === "awaiting-upload" && locale === "es" && existing.workflow === "preview" ? "preview" : "audio-regeneration", regeneratedLocale: locale,
     createdAt: now.toISOString(), updatedAt: now.toISOString(), policyRevision,
     sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
-    jobs: { ...existing.jobs, [locale]: { jobId, status: "queued" } },
+    jobs: { ...existing.jobs, [locale]: { jobId, status: "queued", createdAt: now.toISOString() } },
   };
   await atomicJson(statePath, state);
   await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
