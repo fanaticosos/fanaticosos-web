@@ -26,6 +26,7 @@ test("SQLite music settings and publication lifecycle are transactional and idem
     assert.equal(readDatabaseMusicPublication(database).deploymentUrl, receipt.url);
     database.exec(`INSERT INTO releases(id,catalog_id,site_settings_revision_id,status,path,manifest_json,manifest_checksum_sha256,created_at,validated_at) VALUES('later','catalog','settings','validated','/later','{}','${"c".repeat(64)}','2026-09-09T02:00:00Z','2026-09-09T02:00:00Z');
       INSERT INTO deployments(id,release_id,status,cloudflare_deployment_id,immutable_url,created_at,published_at) VALUES('later-dep','later','published','later','https://later.pages.dev','2026-09-09T02:00:00Z','2026-09-09T02:00:00Z')`);
+    assert.equal(readDatabaseMusicPublication(database).status, "stale");
     const restoreId = jobId.replace("1234abcd", "abcdef12");
     const restored = queueDatabaseMusicPublication(database, { ...input, jobId: restoreId, path: join(root, "restored-release"), now: new Date("2026-09-09T02:01:00Z") });
     assert.equal(restored.status, "queued");

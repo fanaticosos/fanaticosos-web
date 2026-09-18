@@ -9,7 +9,12 @@ const SELECT=`SELECT j.id AS job_id,j.status AS job_status,j.checkpoint_json,j.c
 function state(row){if(!row)return null;const saved=JSON.parse(row.checkpoint_json||"{}");const statuses={queued:"queued",leased:"running",retry_wait:"queued",completed:"completed",failed:"failed",cancelled:"failed"};return{schemaVersion:1,jobId:row.job_id,status:statuses[row.job_status],createdAt:row.created_at,updatedAt:row.finished_at??row.heartbeat_at??row.started_at??row.created_at,...(row.immutable_url?{deploymentUrl:row.immutable_url}:{}),...(row.error_message?{error:row.error_message}:{}),...(saved.settings?{settings:saved.settings}:{})};}
 export function readDatabaseMusicSettings(database){const row=database.prepare("SELECT settings_json FROM site_settings_revisions ORDER BY created_at DESC,id DESC LIMIT 1").get();if(!row){const error=new Error("music settings were not found");error.code="ENOENT";throw error;}return JSON.parse(row.settings_json);}
 export function saveDatabaseMusicSettings(database,settings,now=new Date()){const id=`settings:${digest(settings)}:${randomUUID()}`;database.prepare("INSERT INTO site_settings_revisions(id,settings_json,created_at) VALUES(?,?,?)").run(id,JSON.stringify(settings),now.toISOString());return settings;}
-export function readDatabaseMusicPublication(database){const row=database.prepare(`${SELECT} ORDER BY j.created_at DESC,j.id DESC LIMIT 1`).get();return state(row);}
+export function readDatabaseMusicPublication(database){
+  const publication=state(database.prepare(`${SELECT} ORDER BY j.created_at DESC,j.id DESC LIMIT 1`).get());
+  if(publication?.status!=="completed")return publication;
+  const latest=database.prepare("SELECT release_id FROM deployments WHERE status='published' ORDER BY published_at DESC,id DESC LIMIT 1").get();
+  return latest?.release_id===publication.jobId?publication:{...publication,status:"stale"};
+}
 export function queueDatabaseMusicPublication(database,{settings,jobId,path,now=new Date()}){
   if(!MUSIC_JOB.test(jobId??"")||typeof path!=="string")throw new Error("music release request is invalid");
   return withTransaction(database,(connection)=>{

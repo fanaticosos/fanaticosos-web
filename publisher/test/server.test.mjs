@@ -373,6 +373,7 @@ test("editor shell is served with private security headers", async (context) => 
   const musicApp = await (await fetch(`${base}/music.js`)).text();
   assert.match(musicApp, /\/api\/music/);
   assert.match(musicApp, /Publicando… puedes salir de esta pantalla/);
+  assert.match(musicApp, /Esta canción no está activa en la página principal/);
 
   const seo = await (await fetch(`${base}/seo.js`)).text();
   assert.match(seo, /canonicalUrl/);

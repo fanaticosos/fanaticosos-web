@@ -28,6 +28,13 @@ function renderPublication(publication) {
   if (!publication) { state.textContent = "Lista para cambiar"; return false; }
   if (publication.status === "completed") {
     state.textContent = "✓ Publicada en la página principal";
+    button.textContent = "Cambiar canción";
+    button.disabled = false;
+    return true;
+  }
+  if (publication.status === "stale") {
+    state.textContent = "Esta canción no está activa en la página principal";
+    button.textContent = "Restablecer esta canción";
     button.disabled = false;
     return true;
   }
@@ -39,6 +46,7 @@ function renderPublication(publication) {
     return true;
   }
   activeJobId = publication.jobId;
+  button.textContent = "Publicando…";
   state.textContent = "Publicando… puedes salir de esta pantalla";
   button.disabled = true;
   return false;
