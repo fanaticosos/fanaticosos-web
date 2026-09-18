@@ -100,9 +100,9 @@
           </details>
           <section class="panel future">
             <h2>Crear versiones y vista previa</h2>
-            <p class="workflow-explanation">Crea la traducción, revisa el inglés y ambos guiones, genera los audios y comprueba la vista previa antes de publicar.</p>
+            <p class="workflow-explanation">El español se prepara primero y permanece independiente. Después se crea y revisa la versión en inglés.</p>
             <ol class="workflow-steps" aria-label="Pasos de publicación">
-              <li>Traducción</li><li>Revisión de guiones</li><li>Audios en español e inglés</li><li>Vista previa</li>
+              <li>Texto español</li><li>Guion y audio español</li><li>Traducción</li><li>Guion y audio inglés</li><li>Vista previa</li>
             </ol>
             <p id="workflow-state">Guarda un borrador válido para comenzar.</p>
             <section id="tts-preflight" class="tts-preflight" hidden>
@@ -130,7 +130,8 @@
             </section>
             <section id="audio-result" class="english-result" hidden>
               <h3>Audios · escuchar antes de publicar</h3>
-              <p>Revisa y guarda ambos guiones antes de generar. No se gastarán créditos hasta que pulses “Generar ambos audios”. Usa pausas como &lt;pause=0.7s&gt;.</p>
+              <p>Cada guion controla únicamente su propio audio. Editar español no elimina inglés, y editar inglés no vuelve a generar español. Usa pausas como &lt;pause=0.7s&gt;.</p>
+              <p>No se gastarán créditos hasta que pulses el botón para generar el audio del idioma correspondiente.</p>
               <label>Guion en español<textarea name="narrationEs" id="narration-es" rows="10" maxlength="100000"></textarea></label>
               <label>English narration script<textarea name="narrationEn" id="narration-en" rows="10" maxlength="100000"></textarea></label>
               <button id="generate-spanish-audio" type="button">Generar audio en español</button>

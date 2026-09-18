@@ -137,32 +137,39 @@ function englishNameSuffixes(text) {
   );
 }
 
-export function ttsRequestsForDraft(draft, translation) {
-  const translationMatchesDraft = translation.draftRevision === draft.revision
-    || translation.sourceRevision === translationSourceRevision(draft);
-  if (translation.status !== "completed" || !translationMatchesDraft) {
-    throw new Error("the current draft revision needs an accepted English translation");
-  }
+export function ttsRequestForLocale(draft, translation, locale) {
   const spanishScript = normalizeNarrationCadence(normalizeNarrationScript(draft.narrationEs ?? "")
     || markdownToNarrationScript(draft.body, narrationText, { quoteCadence: true }));
+  if (locale === "es") {
+    const source = { articleId: draft.articleId, title: draft.title, narrationScript: spanishScript };
+    return {
+      schemaVersion: 1, articleId: draft.articleId, locale: "es", sourceRevision: digest(source),
+      title: draft.title, narrationScript: spanishScript, segments: narrationSegmentsFromScript(spanishScript),
+    };
+  }
+  if (locale !== "en") throw new Error("audio locale is invalid");
+  const translationMatchesDraft = translation?.draftRevision === draft.revision
+    || translation?.sourceRevision === translationSourceRevision(draft);
+  if (translation?.status !== "completed" || !translationMatchesDraft) {
+    throw new Error("the current draft revision needs an accepted English translation");
+  }
   const englishScript = normalizeNarrationScript(draft.narrationEn ?? "")
     || normalizeNarrationScript(translation.result.narrationScript ?? "")
     || markdownToNarrationScript(translation.result.body, narrationText);
-  const spanishSegments = narrationSegmentsFromScript(spanishScript);
   const englishSegments = narrationSegmentsFromScript(englishScript)
     .map((segment) => ({ ...segment, text: englishNameSuffixes(segment.text) }));
-  const source = { articleId: draft.articleId, title: draft.title, narrationScript: spanishScript };
   const englishSource = { articleId: draft.articleId, title: translation.result.title, narrationScript: englishScript };
   return {
-    es: {
-      schemaVersion: 1, articleId: draft.articleId, locale: "es", sourceRevision: digest(source),
-      title: draft.title, narrationScript: spanishScript, segments: spanishSegments,
-    },
-    en: {
-      schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: digest(englishSource),
-      title: translation.result.title,
-      narrationScript: englishScript, segments: englishSegments,
-    },
+    schemaVersion: 1, articleId: draft.articleId, locale: "en", sourceRevision: digest(englishSource),
+    title: translation.result.title,
+    narrationScript: englishScript, segments: englishSegments,
+  };
+}
+
+export function ttsRequestsForDraft(draft, translation) {
+  return {
+    es: ttsRequestForLocale(draft, translation, "es"),
+    en: ttsRequestForLocale(draft, translation, "en"),
   };
 }
 
@@ -217,18 +224,19 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });
   await mkdir(statesRoot, { recursive: true, mode: 0o700 });
   const statePath = join(statesRoot, `audio-${draft.articleId}.json`);
-  const existing = JSON.parse(await readFile(statePath, "utf8"));
-  const requests = ttsRequestsForDraft(draft, translation);
-  const preservedLocale = locale === "es" ? "en" : "es";
-  if (existing.jobs?.[preservedLocale]?.status !== "completed") throw new Error(`completed ${preservedLocale} audio is required`);
-  if (existing.sourceRevisions?.[preservedLocale] !== requests[preservedLocale].sourceRevision) {
-    throw new Error("the preserved audio is stale; regenerate both audios");
+  let existing = { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, jobs: {}, sourceRevisions: {}, policyRevisions: {} };
+  try {
+    existing = JSON.parse(await readFile(statePath, "utf8"));
+    if (["queued", "running"].includes(existing.status)) throw new Error("audio generation is already running");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
   }
+  const request = ttsRequestForLocale(draft, translation, locale);
   const jobId = `tts-${locale}-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
   if (!JOB_ID.test(jobId)) throw new Error("TTS job identity is invalid");
   const temporary = join(queueRoot, `.${jobId}.${randomUUID()}.queuing`);
   await mkdir(temporary, { mode: 0o700 });
-  await atomicJson(join(temporary, "request.json"), requests[locale]);
+  await atomicJson(join(temporary, "request.json"), request);
   await rename(temporary, join(queueRoot, jobId));
   const state = {
     ...existing,
@@ -236,7 +244,7 @@ export async function queueTtsLocale({ draft, translation, locale, queueRoot, st
     createdAt: now.toISOString(), updatedAt: now.toISOString(),
     ...(typeof policyRevision === "string" ? { policyRevision } : {}),
     policyRevisions: { ...(existing.policyRevisions ?? {}), [locale]: policyRevisions[locale] },
-    sourceRevisions: { es: requests.es.sourceRevision, en: requests.en.sourceRevision },
+    sourceRevisions: { ...(existing.sourceRevisions ?? {}), [locale]: request.sourceRevision },
     jobs: { ...existing.jobs, [locale]: { jobId, status: "queued", createdAt: now.toISOString(), policyRevision: policyRevisions[locale] } },
   };
   await atomicJson(statePath, state);
@@ -321,7 +329,14 @@ export async function reconcileTts({ statesRoot, jobsRoot, onComplete, onFailure
         }
       }
     }
-    state.status = completed === 2 ? "completed" : "running";
+    const active = Object.values(state.jobs).some((job) => ["queued", "running"].includes(job.status));
+    state.status = completed === 2
+      ? "completed"
+      : active
+        ? "running"
+        : state.jobs.es?.status === "completed"
+          ? "awaiting-english"
+          : "awaiting-upload";
     if (state.status === "running" && now.getTime() - new Date(state.createdAt).getTime() > JOB_TIMEOUT_MS) {
       state.status = "failed";
       state.error = "La generación de audio excedió su límite automático y fue detenida.";

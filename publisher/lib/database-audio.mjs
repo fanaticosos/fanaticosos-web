@@ -66,7 +66,10 @@ export function readDatabaseAudioState(database, articleId) {
     schemaVersion: 1,
     articleId,
     draftRevision: Math.max(...rows.map(({ revision_number }) => revision_number)),
-    status: failed ? "failed" : completed === 2 ? "completed" : running ? "running" : "queued",
+    status: failed ? "failed" : completed === 2 ? "completed" : running ? "running"
+      : latest.es?.status === "completed" && !latest.en ? "awaiting-english"
+      : latest.en?.status === "completed" && !latest.es ? "awaiting-upload"
+      : "queued",
     workflow,
     ...(newestCheckpoint.regeneratedLocale ? { regeneratedLocale: newestCheckpoint.regeneratedLocale } : {}),
     createdAt: locales.map(({ createdAt }) => createdAt).sort()[0],

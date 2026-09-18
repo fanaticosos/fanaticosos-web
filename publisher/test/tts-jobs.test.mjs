@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { audioPolicyIsCurrent, narrationText, normalizePolicyRevisions, queueTts, queueTtsLocale, readTtsState, reconcileTts, sanitizeWorkerProgress, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { audioPolicyIsCurrent, narrationText, normalizePolicyRevisions, queueTts, queueTtsLocale, readTtsState, reconcileTts, sanitizeWorkerProgress, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestForLocale, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -16,6 +16,12 @@ const translation = {
   result: { title: "The Bears win", description: "Game summary.", body: "## First quarter\n\nCaleb Williams threw a touchdown." },
 };
 const policyRevision = "f".repeat(64);
+
+test("Spanish audio can be prepared before an English translation exists", () => {
+  const request = ttsRequestForLocale(draft, null, "es");
+  assert.equal(request.locale, "es");
+  assert.throws(() => ttsRequestForLocale(draft, null, "en"), /accepted English translation/);
+});
 
 test("legacy combined TTS policy revision is still computed for audio generated before the split", () => {
   const production = { configurationVersion: 5 };

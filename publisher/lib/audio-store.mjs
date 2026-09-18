@@ -8,7 +8,7 @@ import {
   queueDatabaseAudio, queueDatabaseAudioLocale, readDatabaseAudioState, startDatabaseAudio,
 } from "./database-audio.mjs";
 import { saveSpanishAudio, writeSpanishAudioJob } from "./spanish-audio-upload.mjs";
-import { audioFileForState, queueTts, queueTtsLocale, readTtsState, readWorkerProgress, reconcileTts, ttsRequestsForDraft } from "./tts-jobs.mjs";
+import { audioFileForState, queueTts, queueTtsLocale, readTtsState, readWorkerProgress, reconcileTts, ttsRequestForLocale, ttsRequestsForDraft } from "./tts-jobs.mjs";
 
 const TIMEOUT_MS = 17 * 60 * 1000;
 
@@ -79,15 +79,11 @@ export function databaseAudioStore({ database, queueRoot, jobsRoot, artifactsRoo
       return readDatabaseAudioState(database, draft.articleId);
     },
     async queueLocale({ draft, translation, locale, policyRevision }) {
-      const requests = ttsRequestsForDraft(draft, translation); const existing = readDatabaseAudioState(database, draft.articleId);
-      const preserved = locale === "es" ? "en" : "es";
-      if (existing.jobs?.[preserved]?.status !== "completed" || existing.sourceRevisions?.[preserved] !== requests[preserved].sourceRevision) {
-        throw new Error("the preserved audio is stale; regenerate both audios");
-      }
+      const request = ttsRequestForLocale(draft, translation, locale);
       const jobId = `tts-${locale}-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
-      const state = queueDatabaseAudioLocale(database, { draft, request: requests[locale], locale, policyRevision, jobId });
+      const state = queueDatabaseAudioLocale(database, { draft, request, locale, policyRevision, jobId });
       if (state.jobs[locale].jobId === jobId) {
-        try { await writeRequest(queueRoot, jobId, requests[locale]); }
+        try { await writeRequest(queueRoot, jobId, request); }
         catch (error) { failDatabaseAudio(database, jobId, "audio request could not be queued"); throw error; }
       }
       return readDatabaseAudioState(database, draft.articleId);

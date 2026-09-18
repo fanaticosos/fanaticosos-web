@@ -12,7 +12,7 @@ import { acknowledgeAllNotifications, acknowledgeNotification, createNotificatio
 import { databaseTranslationStore, filesystemTranslationStore } from "./lib/translation-store.mjs";
 import { databaseAudioStore, filesystemAudioStore } from "./lib/audio-store.mjs";
 import { translationSourceRevision } from "./lib/translation-jobs.mjs";
-import { audioPolicyIsCurrent, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
+import { audioPolicyIsCurrent, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestForLocale, ttsRequestsForDraft } from "./lib/tts-jobs.mjs";
 import { ttsPreflight } from "./lib/tts-preflight.mjs";
 import { previewErrorPage, previewPage, renderMarkdown } from "./lib/preview.mjs";
 import { rebaseReusableArtifacts } from "./lib/artifact-revisions.mjs";
@@ -79,10 +79,11 @@ export function releaseWithFreshness(release, audio) {
 }
 
 export function staleAudioLocales(audio, requests, currentPolicyRevision) {
-  return ["es", "en"].filter((locale) =>
+  return ["es", "en"].filter((locale) => (audio?.jobs?.[locale] || audio?.sourceRevisions?.[locale]) && (
     !audioPolicyIsCurrent(audio, locale, currentPolicyRevision)
-    || audio?.sourceRevisions?.[locale] !== requests?.[locale]?.sourceRevision,
-  );
+    || !requests?.[locale]
+    || audio?.sourceRevisions?.[locale] !== requests[locale].sourceRevision
+  ));
 }
 
 export function audioWithFreshness(audio, requests, currentPolicyRevision) {
@@ -517,7 +518,9 @@ export function createPublisherServer({
         const locale = audioMatch[2];
         const language = locale === "es" ? "español" : "inglés";
         if (value.expectedRevision !== draft.revision) throw new Error(`save the current draft revision before regenerating ${language} audio`);
-        const translation = await translationStore.read(draft.articleId);
+        const translation = locale === "en"
+          ? await translationStore.read(draft.articleId)
+          : await readOptionalState(() => translationStore.read(draft.articleId));
         const audio = await audioStore.queueLocale({ draft, translation, locale, policyRevision: await currentTtsPolicyRevision() });
         await createNotification(notificationsRoot, {
           level: "info", event: `audio-${locale}-regeneration`, articleId: draft.articleId,
@@ -545,9 +548,12 @@ export function createPublisherServer({
         const audio = await readOptionalState(() => audioStore.read(draft.articleId));
         if (!audio) return json(response, 200, { audio: null });
         const [translation, policyRevision] = await Promise.all([
-          translationStore.read(draft.articleId), currentTtsPolicyRevision(),
+          readOptionalState(() => translationStore.read(draft.articleId)), currentTtsPolicyRevision(),
         ]);
-        const requests = ttsRequestsForDraft(draft, translation);
+        const requests = { es: ttsRequestForLocale(draft, translation, "es") };
+        if (translation) {
+          try { requests.en = ttsRequestForLocale(draft, translation, "en"); } catch {}
+        }
         return json(response, 200, { audio: audioWithFreshness(audio, requests, policyRevision) });
       }
       if (audioMatch && request.method === "GET" && audioMatch[2]) {

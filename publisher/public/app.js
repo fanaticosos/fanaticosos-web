@@ -247,10 +247,10 @@ function setFields(draft) {
   removeImage.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
-  generateEnglish.disabled = !draft;
-  workflowState.textContent = draft ? "Listo para crear la traducción. Los audios requieren revisión y confirmación aparte." : "Guarda un borrador válido para comenzar.";
+  generateEnglish.disabled = true;
+  workflowState.textContent = draft ? "Etapa 1 · revisa el guion español y genera únicamente su audio." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
-  audioResult.hidden = true;
+  audioResult.hidden = !draft;
   ttsPreflightPanel.hidden = !draft;
   audiogramResult.hidden = true;
   generateAudio.disabled = true;
@@ -259,6 +259,8 @@ function setFields(draft) {
   prepareRelease.disabled = true;
   publishRelease.disabled = true;
   generateEnglish.textContent = "Crear traducción al inglés";
+  generateSpanishAudio.disabled = !draft;
+  regenerateEnglishAudio.disabled = true;
   document.querySelector("#english-title").value = "";
   document.querySelector("#english-description").value = "";
   document.querySelector("#english-body").value = "";
@@ -291,7 +293,6 @@ async function refreshTtsPreflight() {
     item.textContent = `${entity.written} · ${entity.category} · ${entity.language}`;
     return item;
   }));
-  generateEnglish.disabled = false;
   return preflight;
 }
 
@@ -403,10 +404,24 @@ async function loadDraft(articleId) {
   await refreshList();
   const status = await pollTranslation();
   if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
+  const audioStatus = await pollAudio();
+  if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
 }
 
 form.addEventListener("input", (event) => {
   if (event.target === articleBody) scheduleBodyPreview();
+  if (event.target === form.elements.narrationEs || event.target === form.elements.narrationEn) {
+    const language = event.target === form.elements.narrationEs ? "español" : "inglés";
+    saveState.textContent = "Cambios sin guardar";
+    workflowState.textContent = `Guion ${language} sin guardar · solo se actualizará su propio audio.`;
+    generateSpanishAudio.disabled = true;
+    regenerateEnglishAudio.disabled = true;
+    openPreview.disabled = true;
+    prepareRelease.disabled = true;
+    publishRelease.disabled = true;
+    message.hidden = true;
+    return;
+  }
   if (event.target.closest("#english-result")) {
     workflowState.textContent = "Corrección en inglés sin guardar.";
     generateAudio.disabled = true;
@@ -447,6 +462,10 @@ form.addEventListener("submit", async (event) => {
     setFields(current);
     await refreshTtsPreflight();
     await refreshList();
+    const translationStatus = await pollTranslation();
+    if (["queued", "running"].includes(translationStatus) && !translationTimer) translationTimer = setInterval(pollTranslation, 5000);
+    const audioStatus = await pollAudio();
+    if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
   } catch (error) {
     saveState.textContent = "No guardado";
     showError(error.message);
@@ -463,7 +482,7 @@ async function pollTranslation() {
     if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
       stopTranslationClock();
-      workflowState.textContent = "Traducción lista · revisa y guarda el inglés y ambos guiones antes de generar audio.";
+      workflowState.textContent = "Etapa 2 · traducción lista; revisa el guion inglés y genera únicamente su audio.";
       clearInterval(translationTimer);
       translationTimer = null;
       document.querySelector("#english-title").value = translation.result.title;
@@ -475,12 +494,13 @@ async function pollTranslation() {
       generateEnglish.disabled = true;
       generateEnglish.textContent = "Traducción creada";
       await refreshNotifications();
-      generateAudio.hidden = false;
-      generateAudio.disabled = false;
+      generateAudio.hidden = true;
+      generateAudio.disabled = true;
+      regenerateEnglishAudio.disabled = false;
       const audioStatus = await pollAudio();
       if (!audioStatus) {
-        generateAudio.hidden = false;
-        generateAudio.disabled = false;
+        generateAudio.hidden = true;
+        generateAudio.disabled = true;
       }
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
@@ -600,6 +620,15 @@ async function pollAudio() {
       uploadSpanishAudio.disabled = false;
       generateSpanishAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
+    } else if (audio.status === "awaiting-english") {
+      if (audioTimer) clearInterval(audioTimer);
+      audioTimer = null;
+      workflowState.textContent = "Audio español listo · continúa con la traducción y después genera el audio inglés.";
+      spanishAudioStatus.textContent = "Audio en español: listo y conservado.";
+      uploadSpanishAudio.disabled = false;
+      generateSpanishAudio.disabled = false;
+      regenerateEnglishAudio.disabled = true;
+      generateEnglish.disabled = false;
     } else if (audio.status === "failed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
