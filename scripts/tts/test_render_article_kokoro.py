@@ -12,6 +12,7 @@ from render_article_kokoro import (
     render_article,
     resolve_delivery,
     resolve_production_voice,
+    synthesize_unit,
     validate_voice,
 )
 
@@ -85,6 +86,41 @@ def fake_probe(path):
 
 
 class KokoroArticleWorkerTests(unittest.TestCase):
+    def test_required_unit_retries_after_empty_kokoro_output(self):
+        calls = []
+
+        class Result:
+            def __init__(self, audio):
+                self.audio = audio
+
+        class Audio:
+            def __init__(self, size):
+                self.size = size
+
+            def numel(self):
+                return self.size
+
+        def pipeline(text, *, voice, speed):
+            calls.append((text, voice, speed))
+            return [Result(Audio(0 if len(calls) == 1 else 12))]
+
+        chunks, attempts = synthesize_unit(
+            pipeline, "Required sentence", Path("voice.pt"), 1.02, 4
+        )
+        self.assertEqual(attempts, 2)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(len(calls), 2)
+
+    def test_required_unit_fails_after_bounded_empty_retries(self):
+        class Result:
+            audio = None
+
+        def pipeline(text, *, voice, speed):
+            return [Result()]
+
+        with self.assertRaisesRegex(ValueError, "required text unit 7 after 2 attempts"):
+            synthesize_unit(pipeline, "Required sentence", Path("voice.pt"), 1.02, 7)
+
     def test_rejects_cross_language_voice(self):
         with self.assertRaisesRegex(ValueError, "not permitted"):
             validate_voice("es", "af_heart")

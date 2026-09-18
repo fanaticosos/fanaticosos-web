@@ -34,6 +34,7 @@ ALLOWED_VOICES = {
 LANGUAGE_CODES = {"es": "e", "en": "a"}
 EXPECTED_MODEL = "hexgrad/Kokoro-82M"
 EXPECTED_MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"
+UNIT_SYNTHESIS_ATTEMPTS = 2
 
 
 def validate_voice(locale: str, voice: str) -> None:
@@ -97,6 +98,28 @@ def resolve_delivery(configuration: Any, locale: str) -> tuple[float, float, int
     return selected["speed"], selected["pauseSeconds"], pronunciation_version
 
 
+def synthesize_unit(
+    pipeline: Any,
+    text: str,
+    voice_path: Path,
+    speed: float,
+    unit_index: int,
+) -> tuple[list[Any], int]:
+    """Render one required text unit, retrying only when Kokoro returns no samples."""
+    for attempt in range(1, UNIT_SYNTHESIS_ATTEMPTS + 1):
+        chunks = []
+        for result in pipeline(text, voice=str(voice_path), speed=speed):
+            audio = result.audio
+            if audio is not None and audio.numel() > 0:
+                chunks.append(audio)
+        if chunks:
+            return chunks, attempt
+    raise ValueError(
+        f"Kokoro produced no audio for required text unit {unit_index} "
+        f"after {UNIT_SYNTHESIS_ATTEMPTS} attempts"
+    )
+
+
 def synthesize_kokoro(
     request: dict[str, Any],
     manifest: dict[str, Any],
@@ -126,28 +149,28 @@ def synthesize_kokoro(
     )
     voice_path = model_root / "voices" / f"{voice}.pt"
     started = time.monotonic()
-    generated = [
-        result.audio
-        for result in pipeline(
-            [request["title"], *(item["text"] for item in request["segments"])],
-            voice=str(voice_path),
-            speed=speed,
-        )
-        if result.audio is not None
-    ]
-    chunks = []
+    texts = [request["title"], *(item["text"] for item in request["segments"])]
     units = [{"pauseAfterMs": round(pause_seconds * 1000)}, *request["segments"]]
-    for index, chunk in enumerate(generated):
-        chunks.append(chunk)
-        if index < len(generated) - 1:
+    chunks = []
+    retried_units = []
+    for index, text in enumerate(texts):
+        unit_chunks, attempts = synthesize_unit(
+            pipeline, text, voice_path, speed, index
+        )
+        chunks.append(concatenate_audio(unit_chunks, torch))
+        if attempts > 1:
+            retried_units.append(index)
+        if index < len(texts) - 1:
             selected_pause = units[index].get("pauseAfterMs", round(pause_seconds * 1000))
             chunks.append(torch.zeros(round(SAMPLE_RATE * selected_pause / 1000)))
-    audio = concatenate_audio(chunks, torch)
+    audio = torch.cat(chunks)
     generation_seconds = time.monotonic() - started
     soundfile.write(wav_path, audio.numpy(), SAMPLE_RATE, subtype="PCM_16")
     return {
         "modelLoadSeconds": round(model_load_seconds, 3),
         "generationSeconds": round(generation_seconds, 3),
+        "synthesisUnits": len(texts),
+        "retriedUnits": retried_units,
         "peakResidentMemoryKiB": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
     }
 
