@@ -12,6 +12,7 @@ import { readDatabaseDraft } from "../../publisher/lib/database-drafts.mjs";
 import { readDatabaseTranslationState } from "../../publisher/lib/database-translations.mjs";
 import { readDatabaseAudioState } from "../../publisher/lib/database-audio.mjs";
 import { readDatabaseReleaseImageArtifact } from "../../publisher/lib/database-releases.mjs";
+import { siteSettingsSchema } from "../../src/lib/siteSettingsSchema.mjs";
 
 const execute = promisify(execFile);
 
@@ -32,6 +33,7 @@ function validateRequest(value) {
   if (!Number.isInteger(value.draftRevision) || value.draftRevision < 1) throw new Error("release draftRevision is invalid");
   if (typeof value.publishedAt !== "string" || Number.isNaN(Date.parse(value.publishedAt))) throw new Error("release publishedAt is invalid");
   if (!/^[0-9a-f]{40}$/.test(value.sourceCommit ?? "")) throw new Error("release sourceCommit is invalid");
+  if (value.settings !== undefined) siteSettingsSchema.parse(value.settings);
   return value;
 }
 
@@ -139,7 +141,9 @@ async function main() {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, contents, { encoding: "utf8", mode: 0o600 });
   }
-  const siteSettings = await optionalFile(join(publisherRoot, "site-settings.json"));
+  const siteSettings = request.settings
+    ? Buffer.from(`${JSON.stringify(siteSettingsSchema.parse(request.settings), null, 2)}\n`)
+    : await optionalFile(join(publisherRoot, "site-settings.json"));
   if (siteSettings) {
     await writeFile(join(temporary, "src", "data", "site-settings.json"), siteSettings, { mode: 0o600 });
   }

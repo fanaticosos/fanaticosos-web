@@ -69,7 +69,7 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot, upload
       const state = queueDatabaseRelease(database, { draft, translation, audio, imageArtifact, jobId,
         path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, sourceCommit, now });
       if (state.jobId !== jobId) return state;
-      try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt, sourceCommit }); }
+      try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt, sourceCommit, settings }); }
       catch (error) { failDatabaseRelease(database, jobId, "release request could not be queued", now); throw error; }
       return state;
     },

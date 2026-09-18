@@ -38,17 +38,17 @@ function currentRevision(database, draft) {
   return revision.id;
 }
 
-export function releaseDependency({ draft, translation, audio, sourceCommit }) {
+export function releaseDependency({ draft, translation, audio, settings, sourceCommit }) {
   if (!GIT_COMMIT.test(sourceCommit ?? "")) throw new Error("release source commit is invalid");
   return digest({ articleId: draft.articleId, revision: draft.revision,
     translation: translation.artifact?.sha256, esAudio: audio.jobs?.es?.result?.sha256,
-    enAudio: audio.jobs?.en?.result?.sha256, featuredImage: draft.featuredImage, sourceCommit });
+    enAudio: audio.jobs?.en?.result?.sha256, featuredImage: draft.featuredImage, settings, sourceCommit });
 }
 
 export function queueDatabaseRelease(database, { draft, translation, audio, imageArtifact = null, jobId, path, settings, publishedAt, sourceCommit, now = new Date() }) {
   if (!RELEASE_JOB.test(jobId ?? "") || typeof path !== "string" || !path) throw new Error("release job identity is invalid");
   if (!Number.isFinite(Date.parse(publishedAt ?? ""))) throw new Error("release publication date is invalid");
-  const dependencyHash = releaseDependency({ draft, translation, audio, sourceCommit }); const key = `release:${dependencyHash}`;
+  const dependencyHash = releaseDependency({ draft, translation, audio, settings, sourceCommit }); const key = `release:${dependencyHash}`;
   return withTransaction(database, (connection) => {
     const existing = connection.prepare(`${SELECT_RELEASE} WHERE j.type = 'release' AND j.dependency_hash = ?
       ORDER BY j.created_at DESC, j.id DESC LIMIT 1`).get(dependencyHash);

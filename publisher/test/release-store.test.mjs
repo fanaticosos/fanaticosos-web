@@ -37,10 +37,12 @@ test("SQLite release store owns state while the filesystem carries only worker r
     const sourceCommit = "d".repeat(40);
     const store = databaseReleaseStore({ database, queueRoot, releasesRoot, uploadsRoot, imagesRoot, repository: root, resolveSourceCommit: async () => sourceCommit });
     const now = new Date("2026-09-09T18:00:00Z");
-    const queued = await store.queue({ draft, translation, audio, settings: { schemaVersion: 1 }, now });
+    const siteSettings = { version: 1, music: { playlistUrl: "https://music.example/list", weeklySongUrl: "https://music.example/song", weeklySong: { title: "Current", artist: "Artist", album: "Album", duration: 10, coverUrl: "https://music.example/cover", streamUrl: "https://music.example/stream" } } };
+    const queued = await store.queue({ draft, translation, audio, settings: siteSettings, now });
     const request = JSON.parse(await readFile(join(queueRoot, queued.jobId, "request.json"), "utf8"));
     assert.equal(request.publishedAt, "2026-09-09T13:00:00-05:00");
     assert.equal(request.sourceCommit, sourceCommit);
+    assert.deepEqual(request.settings, siteSettings);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM release_artifacts WHERE release_id = ?").get(queued.jobId).count, 4);
     const storedImage = database.prepare("SELECT path, checksum_sha256 FROM artifacts WHERE type = 'image'").get();
     assert.equal(storedImage.checksum_sha256, createHash("sha256").update(imageBytes).digest("hex"));
