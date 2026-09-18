@@ -48,6 +48,19 @@ class KokoroBenchmarkTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no audio"):
             concatenate_audio([], FakeTorch)
 
+    def test_ignores_empty_chunks_when_kokoro_also_produced_audio(self):
+        result = concatenate_audio(
+            [FakeTensor([]), FakeTensor([1, 2]), FakeTensor([]), FakeTensor([3])],
+            FakeTorch,
+        )
+        self.assertEqual(len(result.values), 2 + 4800 + 1)
+        self.assertEqual(result.values[:2], [1, 2])
+        self.assertEqual(result.values[-1], 3)
+
+    def test_rejects_only_empty_chunks(self):
+        with self.assertRaisesRegex(ValueError, "no audio"):
+            concatenate_audio([FakeTensor([]), FakeTensor([])], FakeTorch)
+
     def test_probe_requires_mp3_mono_48khz(self):
         payload = {
             "streams": [

@@ -49,11 +49,12 @@ def concatenate_audio(chunks: list[Any], torch_module: Any) -> Any:
     if not chunks:
         raise ValueError("Kokoro produced no audio")
     normalized = [chunk.detach().cpu().flatten() for chunk in chunks]
+    normalized = [chunk for chunk in normalized if chunk.numel() > 0]
+    if not normalized:
+        raise ValueError("Kokoro produced no audio")
     silence = torch_module.zeros(int(SAMPLE_RATE * SILENCE_SECONDS))
     joined: list[Any] = []
     for index, chunk in enumerate(normalized):
-        if chunk.numel() == 0:
-            raise ValueError("Kokoro produced an empty audio chunk")
         if index:
             joined.append(silence)
         joined.append(chunk)
