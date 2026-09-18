@@ -146,7 +146,7 @@ export function buildGameCenterFromEspnHtml(html, options = {}) {
   const finals = events
     .filter((event) => status(event) === "final")
     .sort((left, right) => Date.parse(right.date) - Date.parse(left.date))
-    .slice(0, 3)
+    .slice(0, 4)
     .map(finalGame);
 
   const value = {

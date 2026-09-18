@@ -60,7 +60,7 @@ export const gameCenterSchema = z.object({
   }),
   nextGame: game.nullable(),
   previousGame: result.nullable(),
-  recentResults: z.array(result).max(3),
+  recentResults: z.array(result).max(4),
   nfcNorth: z.array(standing).length(4),
   projections: projections.optional(),
 }).superRefine((value, context) => {
