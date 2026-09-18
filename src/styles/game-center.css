@@ -16,11 +16,13 @@
   border: 1px solid rgba(240,120,32,.35);
   border-radius: 16px;
   display: grid;
-  grid-template-columns: 1.05fr 1.45fr 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
 }
 .game-panel { min-width: 0; padding: 24px 22px; }
 .game-panel + .game-panel { border-left: 1px solid rgba(255,255,255,.09); }
+.game-panel:nth-child(3) { border-left: 0; }
+.game-panel:nth-child(n+3) { border-top: 1px solid rgba(255,255,255,.09); }
 .game-panel h3 { align-items: center; color: var(--orange); display: flex; font-family: "Bebas Neue", sans-serif; font-size: 18px; gap: 8px; letter-spacing: .09em; margin-bottom: 22px; }
 .game-panel h3 span { background: var(--orange); border-radius: 50%; height: 7px; width: 7px; }
 .team-mark { align-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(240,120,32,.55); border-radius: 50%; color: var(--white); display: inline-flex; flex-shrink: 0; font-family: "Bebas Neue", sans-serif; font-size: 18px; height: 58px; justify-content: center; letter-spacing: .04em; position: relative; width: 58px; }
@@ -65,12 +67,10 @@
 .game-standings tr.bears th { color: var(--orange); font-weight: 700; }
 .empty-state { color: var(--gray); font-size: 13px; line-height: 1.5; }
 .game-center-updated { color: rgba(203,213,225,.55); font-size: 9px; margin: 9px 4px 0; text-align: right; }
-.game-projections { border-top: 1px solid rgba(240,120,32,.28); margin-top: 14px; padding-top: 12px; }.projections-title strong { color: var(--orange); font-family: "Bebas Neue", sans-serif; font-size: 12px; letter-spacing: .06em; line-height: 1.15; }.game-projections dl { display: grid; gap: 5px; margin-top: 9px; }.game-projections dl > div { align-items: center; background: rgba(3,18,33,.28); border-radius: 5px; display: grid; gap: 5px; grid-template-columns: minmax(0,1fr) auto; padding: 6px 7px; }.game-projections dt { color: var(--gray-light); font-size: 8px; line-height: 1.15; }.game-projections dd { color: var(--white); font-family: "Bebas Neue", sans-serif; font-size: 16px; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; min-width: 45px; text-align: right; }.game-projections a { color: var(--gray); display: block; font-size: 7px; margin-top: 6px; text-align: right; text-decoration: none; }.game-projections a:hover { color: var(--orange); }
+.game-projections { align-items: center; border-top: 1px solid rgba(240,120,32,.28); display: grid; gap: 22px; grid-column: 1 / -1; grid-template-columns: auto minmax(0,1fr) auto; padding: 14px 22px; }.projections-title strong { color: var(--orange); font-family: "Bebas Neue", sans-serif; font-size: 15px; letter-spacing: .07em; line-height: 1.15; white-space: nowrap; }.game-projections dl { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0,1fr)); }.game-projections dl > div { align-items: center; background: rgba(3,18,33,.28); border-radius: 6px; display: grid; gap: 8px; grid-template-columns: minmax(0,1fr) auto; min-height: 38px; padding: 7px 10px; }.game-projections dt { color: var(--gray-light); font-size: 9px; line-height: 1.15; }.game-projections dd { color: var(--white); font-family: "Bebas Neue", sans-serif; font-size: 18px; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; text-align: right; }.game-projections a { color: var(--gray); font-size: 7px; text-align: right; text-decoration: none; white-space: nowrap; }.game-projections a:hover { color: var(--orange); }
 
 @media (max-width: 1050px) {
-  .game-center-grid { grid-template-columns: 1fr 1.3fr; }
-  .game-panel:nth-child(3) { border-left: 0; }
-  .game-panel:nth-child(n+3) { border-top: 1px solid rgba(255,255,255,.09); }
+  .game-projections { gap: 12px; grid-template-columns: 1fr; }.projections-title strong { display: block; text-align: center; }.game-projections a { text-align: center; }
 }
 @media (max-width: 620px) {
   .game-center { margin-top: 44px; padding: 0 16px; }
@@ -80,6 +80,6 @@
   .game-next { order: 1; }.game-previous { order: 2; }.game-standings { order: 3; }.game-results { order: 4; }
   .game-panel h3 { margin-bottom: 18px; }
   .score-team b { font-size: 46px; }
-  .projections-title strong { font-size: 12px; }.game-projections dl > div { padding: 8px; }.game-projections dt { font-size: 9px; }.game-projections dd { font-size: 18px; min-width: 52px; }
+  .game-projections { order: 5; padding: 18px 20px; }.game-projections dl { grid-template-columns: 1fr; }.projections-title strong { font-size: 14px; }.game-projections dl > div { padding: 8px 10px; }.game-projections dt { font-size: 10px; }.game-projections dd { font-size: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { .box-score-link { transition: none; } }
