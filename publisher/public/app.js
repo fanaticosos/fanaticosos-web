@@ -277,6 +277,7 @@ function setFields(draft) {
   openPreview.disabled = true;
   prepareRelease.disabled = true;
   publishRelease.disabled = true;
+  publishRelease.textContent = "Publicar";
   generateEnglish.textContent = "Crear traducción al inglés";
   generateSpanishAudio.disabled = !draft;
   regenerateEnglishAudio.disabled = true;
@@ -425,6 +426,8 @@ async function loadDraft(articleId) {
   if (["queued", "running"].includes(status)) translationTimer = setInterval(pollTranslation, 5000);
   const audioStatus = await pollAudio();
   if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
+  const deploymentStatus = await pollDeployment();
+  if (["queued", "running"].includes(deploymentStatus) && !deploymentTimer) deploymentTimer = setInterval(pollDeployment, 4000);
 }
 
 form.addEventListener("input", (event) => {
@@ -885,6 +888,36 @@ prepareRelease.addEventListener("click", async () => {
   }
 });
 
+async function pollDeployment() {
+  if (!current) return null;
+  const articleId = current.articleId;
+  try {
+    const { deployment } = await request(`/api/drafts/${articleId}/publish`);
+    if (current?.articleId !== articleId || !deployment) return null;
+    if (deployment.status === "completed") {
+      if (deploymentTimer) clearInterval(deploymentTimer);
+      deploymentTimer = null;
+      publishRelease.disabled = true;
+      publishRelease.textContent = "Publicado";
+      workflowState.textContent = "Publicado y verificado en fanaticosos.com.";
+    } else if (deployment.status === "failed") {
+      if (deploymentTimer) clearInterval(deploymentTimer);
+      deploymentTimer = null;
+      publishRelease.disabled = false;
+      publishRelease.textContent = "Reintentar publicación";
+      showError(deployment.error || "La publicación no pudo completarse.");
+    } else {
+      publishRelease.disabled = true;
+      publishRelease.textContent = "Publicando…";
+      workflowState.textContent = "Publicación en curso… el sitio actual permanece activo durante la validación.";
+    }
+    return deployment.status;
+  } catch (error) {
+    if (!/not found/i.test(error.message)) showError(error.message);
+    return null;
+  }
+}
+
 publishRelease.addEventListener("click", async () => {
   if (!current) return;
   publishRelease.disabled = true;
@@ -892,26 +925,9 @@ publishRelease.addEventListener("click", async () => {
   try {
     await request(`/api/drafts/${current.articleId}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: current.revision }) });
     workflowState.textContent = "Publicación iniciada… el sitio actual permanece activo durante la validación.";
-    const articleId = current.articleId;
     if (deploymentTimer) clearInterval(deploymentTimer);
-    deploymentTimer = setInterval(async () => {
-      try {
-        const { deployment } = await request(`/api/drafts/${articleId}/publish`);
-        if (current?.articleId !== articleId || !deployment) return;
-        if (deployment.status === "completed") {
-          clearInterval(deploymentTimer); deploymentTimer = null;
-          workflowState.textContent = "Publicado y verificado en fanaticosos.com.";
-        } else if (deployment.status === "failed") {
-          clearInterval(deploymentTimer); deploymentTimer = null;
-          publishRelease.disabled = false;
-          showError(deployment.error || "La publicación no pudo completarse.");
-        }
-      } catch (error) {
-        clearInterval(deploymentTimer); deploymentTimer = null;
-        publishRelease.disabled = false;
-        showError(error.message);
-      }
-    }, 4000);
+    const deploymentStatus = await pollDeployment();
+    if (["queued", "running"].includes(deploymentStatus) && !deploymentTimer) deploymentTimer = setInterval(pollDeployment, 4000);
   } catch (error) { publishRelease.disabled = false; showError(error.message); }
 });
 
