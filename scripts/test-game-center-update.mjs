@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import {
   BEARS_SCHEDULE_URL,
   ESPN_TEAM_URL,
+  PFN_PROJECTIONS,
   updateGameCenter,
 } from "../src/lib/gameCenterUpdate.mjs";
 
@@ -49,6 +50,7 @@ try {
   await writeFile(outputPath, "sentinel\n");
   const updated = await updateGameCenter({ outputPath, fetchImplementation: mockFetch(), updatedAt: "2026-09-10T23:59:00Z" });
   assert.equal(updated.previousGame.id, "last");
+  assert.deepEqual(updated.projections, PFN_PROJECTIONS);
   assert.equal(JSON.parse(await readFile(outputPath, "utf8")).nextGame.id, "next");
 
   await writeFile(outputPath, "preserve-me\n");

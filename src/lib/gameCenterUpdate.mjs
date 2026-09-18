@@ -8,6 +8,14 @@ import {
 
 export const ESPN_TEAM_URL = "https://www.espn.com/nfl/team/_/name/chi/chicago-bears";
 export const BEARS_SCHEDULE_URL = "https://www.chicagobears.com/schedule/";
+export const PFN_PROJECTIONS = {
+  season: 2026,
+  playoffPercent: 62.2,
+  divisionWinPercent: 32.6,
+  averageWins: 9.8,
+  sourceUrl: "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
+  asOf: "2026-09-18",
+};
 
 function verifyPreviousGame(previousGame, boxScore) {
   if (!previousGame) return;
@@ -54,6 +62,7 @@ export async function updateGameCenter({
     ? await fetchText(fetchImplementation, preliminary.previousGame.boxScoreUrl)
     : "";
   const candidate = buildVerifiedGameCenter({ teamHtml, officialHtml, boxScoreHtml, updatedAt });
+  candidate.projections = PFN_PROJECTIONS;
 
   await mkdir(dirname(outputPath), { recursive: true });
   const temporaryPath = `${outputPath}.${process.pid}.tmp`;
