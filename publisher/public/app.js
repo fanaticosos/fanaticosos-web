@@ -1,4 +1,5 @@
 import { generateSeoPreview } from "/seo.js";
+import { deploymentStateForRevision } from "/workflow-state.js";
 
 const form = document.querySelector("#article-form");
 const list = document.querySelector("#draft-list");
@@ -895,13 +896,15 @@ async function pollDeployment() {
   try {
     const { deployment } = await request(`/api/drafts/${articleId}/publish`);
     if (current?.articleId !== articleId || !deployment) return null;
-    if (deployment.status === "completed") {
+    const deploymentState = deploymentStateForRevision(deployment, current.revision);
+    if (deploymentState === "outdated") return "outdated";
+    if (deploymentState === "published") {
       if (deploymentTimer) clearInterval(deploymentTimer);
       deploymentTimer = null;
       publishRelease.disabled = true;
       publishRelease.textContent = "Publicado";
       workflowState.textContent = "Publicado y verificado en fanaticosos.com.";
-    } else if (deployment.status === "failed") {
+    } else if (deploymentState === "failed") {
       if (deploymentTimer) clearInterval(deploymentTimer);
       deploymentTimer = null;
       publishRelease.disabled = false;

@@ -45,6 +45,7 @@ const STATIC_FILES = new Map([
   ["/music.html", ["music.html", "text/html; charset=utf-8"]],
   ["/music.js", ["music.js", "text/javascript; charset=utf-8"]],
   ["/seo.js", ["seo.js", "text/javascript; charset=utf-8"]],
+  ["/workflow-state.js", ["workflow-state.js", "text/javascript; charset=utf-8"]],
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
   ["/preview.css", ["preview.css", "text/css; charset=utf-8"]],
 ]);

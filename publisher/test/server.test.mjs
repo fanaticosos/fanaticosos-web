@@ -376,6 +376,8 @@ test("editor shell is served with private security headers", async (context) => 
 
   const seo = await (await fetch(`${base}/seo.js`)).text();
   assert.match(seo, /canonicalUrl/);
+  const workflowStateModule = await (await fetch(`${base}/workflow-state.js`)).text();
+  assert.match(workflowStateModule, /deploymentStateForRevision/);
 
   const styles = await (await fetch(`${base}/styles.css`)).text();
   assert.match(styles, /#notification-list[^}]*max-height:[^}]*overflow-y: auto/);
