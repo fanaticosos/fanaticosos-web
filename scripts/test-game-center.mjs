@@ -4,6 +4,9 @@ import { gameCenterSchema } from "../src/lib/gameCenterSchema.mjs";
 import source from "../src/data/game-center.json" with { type: "json" };
 
 assert.doesNotThrow(() => gameCenterSchema.parse(source));
+assert.equal(source.projections.playoffPercent, 62.2);
+assert.equal(source.projections.divisionWinPercent, 32.6);
+assert.equal(source.projections.averageWins, 9.8);
 
 assert.throws(() => gameCenterSchema.parse({
   ...source,
@@ -24,5 +27,7 @@ const component = await readFile(new URL("../src/components/GameCenter.astro", i
 assert.match(component, /data-local-kickoff=/);
 assert.match(component, /Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone/);
 assert.match(component, /hora local/);
+assert.match(component, /PFN \{projections\.season\} Projections/);
+assert.match(component, /% de ganar división/);
 
 console.log("Passed Game Center contract tests.");

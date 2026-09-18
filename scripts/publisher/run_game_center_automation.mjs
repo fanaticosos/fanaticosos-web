@@ -26,6 +26,7 @@ export function preserveVenues(candidate, current) {
       if (prior?.venue) game.venue = prior.venue;
     }
   }
+  if (!candidate.projections && current?.projections) candidate.projections = current.projections;
   return candidate;
 }
 

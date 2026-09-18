@@ -19,9 +19,11 @@ test("Game Center respects provider backoff", () => {
 });
 
 test("Game Center preserves verified venue metadata omitted by ESPN team markup", () => {
+  const projections = { season: 2026, playoffPercent: 62.2, divisionWinPercent: 32.6, averageWins: 9.8 };
   const candidate = { previousGame: { id: "game-1", venue: null }, nextGame: null, recentResults: [{ id: "game-1", venue: null }] };
-  const prior = { previousGame: { id: "game-1", venue: "Soldier Field" }, nextGame: null, recentResults: [] };
+  const prior = { previousGame: { id: "game-1", venue: "Soldier Field" }, nextGame: null, recentResults: [], projections };
   preserveVenues(candidate, prior);
   assert.equal(candidate.previousGame.venue, "Soldier Field");
   assert.equal(candidate.recentResults[0].venue, "Soldier Field");
+  assert.equal(candidate.projections, projections);
 });

@@ -34,6 +34,15 @@ const standing = z.object({
   ties: z.number().int().nonnegative(),
 });
 
+const projections = z.object({
+  season: z.literal(2026),
+  playoffPercent: z.number().min(0).max(100),
+  divisionWinPercent: z.number().min(0).max(100),
+  averageWins: z.number().nonnegative(),
+  sourceUrl: z.url().refine((value) => new URL(value).hostname === "www.profootballnetwork.com", "Projection source must use profootballnetwork.com"),
+  asOf: z.iso.date(),
+});
+
 export const gameCenterSchema = z.object({
   version: z.literal(1),
   updatedAt: z.iso.datetime(),
@@ -45,6 +54,7 @@ export const gameCenterSchema = z.object({
   previousGame: result.nullable(),
   recentResults: z.array(result).max(3),
   nfcNorth: z.array(standing).length(4),
+  projections: projections.optional(),
 }).superRefine((value, context) => {
   const abbreviations = value.nfcNorth.map((entry) => entry.team.abbreviation);
   const expected = ["CHI", "DET", "GB", "MIN"];

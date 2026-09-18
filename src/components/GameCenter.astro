@@ -2,7 +2,7 @@
 import { gameCenter } from "../lib/gameCenter";
 import "../styles/game-center.css";
 
-const { nextGame, previousGame, recentResults, nfcNorth, updatedAt } = gameCenter;
+const { nextGame, previousGame, recentResults, nfcNorth, projections, updatedAt } = gameCenter;
 const dateFormatter = new Intl.DateTimeFormat("es-MX", {
   weekday: "long", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
   timeZone: "America/Mexico_City", timeZoneName: "short",
@@ -98,6 +98,21 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
       </table>
     </article>
   </div>
+  {projections && (
+    <aside class="game-projections" aria-labelledby="projections-title">
+      <div class="projections-title" id="projections-title">
+        <strong>PFN {projections.season} Projections</strong>
+        <span aria-hidden="true">/</span>
+        <strong>Proyecciones para {projections.season}</strong>
+      </div>
+      <dl>
+        <div><dt>Playoff %</dt><dd>{projections.playoffPercent}%</dd><dt lang="es">% de playoffs</dt></div>
+        <div><dt>Div Win %</dt><dd>{projections.divisionWinPercent}%</dd><dt lang="es">% de ganar división</dt></div>
+        <div><dt>Avg Wins</dt><dd>{projections.averageWins}</dd><dt lang="es">Promedio de victorias</dt></div>
+      </dl>
+      <a href={projections.sourceUrl} target="_blank" rel="noopener">Fuente: Pro Football Network <span aria-hidden="true">↗</span></a>
+    </aside>
+  )}
   <p class="game-center-updated">Actualizado <time datetime={updatedAt}>{formatDate(updatedAt)}</time></p>
 </section>
 

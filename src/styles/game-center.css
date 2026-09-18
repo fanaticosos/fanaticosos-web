@@ -64,6 +64,7 @@
 .game-standings tr.bears th { color: var(--orange); font-weight: 700; }
 .empty-state { color: var(--gray); font-size: 13px; line-height: 1.5; }
 .game-center-updated { color: rgba(203,213,225,.55); font-size: 9px; margin: 9px 4px 0; text-align: right; }
+.game-projections { background: rgba(8,31,53,.86); border: 1px solid rgba(240,120,32,.28); border-radius: 12px; margin-top: 12px; padding: 16px 20px; }.projections-title { align-items: center; display: grid; gap: 12px; grid-template-columns: 1fr auto 1fr; }.projections-title strong { color: var(--orange); font-family: "Bebas Neue", sans-serif; font-size: 18px; letter-spacing: .07em; }.projections-title strong:last-child { text-align: right; }.projections-title span { color: rgba(255,255,255,.25); }.game-projections dl { display: grid; gap: 8px; margin-top: 13px; }.game-projections dl > div { align-items: center; background: rgba(3,18,33,.32); border-radius: 7px; display: grid; gap: 12px; grid-template-columns: 1fr auto 1fr; padding: 9px 12px; }.game-projections dt { color: var(--gray-light); font-size: 11px; }.game-projections dt:last-child { text-align: right; }.game-projections dd { color: var(--white); font-family: "Bebas Neue", sans-serif; font-size: 22px; font-variant-numeric: tabular-nums; margin: 0; min-width: 64px; text-align: center; }.game-projections a { color: var(--gray); display: block; font-size: 8px; margin-top: 10px; text-align: right; text-decoration: none; }.game-projections a:hover { color: var(--orange); }
 
 @media (max-width: 1050px) {
   .game-center-grid { grid-template-columns: 1fr 1.3fr; }
@@ -78,5 +79,6 @@
   .game-next { order: 1; }.game-previous { order: 2; }.game-standings { order: 3; }.game-results { order: 4; }
   .game-panel h3 { margin-bottom: 18px; }
   .score-team b { font-size: 46px; }
+  .game-projections { padding: 15px 13px; }.projections-title strong { font-size: 15px; }.game-projections dl > div { gap: 7px; padding: 9px; }.game-projections dt { font-size: 9px; }.game-projections dd { font-size: 19px; min-width: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .box-score-link { transition: none; } }
