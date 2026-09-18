@@ -23,7 +23,13 @@
     },
     "homeScore": null,
     "awayScore": null,
-    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872937"
+    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872937",
+    "winProbability": {
+      "awayPercent": 34,
+      "homePercent": 66,
+      "sourceUrl": "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
+      "asOf": "2026-09-18"
+    }
   },
   "previousGame": {
     "id": "401872661",

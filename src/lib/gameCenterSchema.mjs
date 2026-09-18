@@ -8,6 +8,13 @@ const team = z.object({
 
 const gameStatus = z.enum(["scheduled", "in_progress", "final", "postponed", "canceled", "tbd"]);
 
+const winProbability = z.object({
+  awayPercent: z.number().int().min(0).max(100),
+  homePercent: z.number().int().min(0).max(100),
+  sourceUrl: z.url().refine((value) => new URL(value).hostname === "www.profootballnetwork.com", "Win probability source must use profootballnetwork.com"),
+  asOf: z.iso.date(),
+}).refine((value) => value.awayPercent + value.homePercent === 100, "Win probabilities must add up to 100");
+
 const game = z.object({
   id: z.string().min(1),
   status: gameStatus,
@@ -19,6 +26,7 @@ const game = z.object({
   homeScore: z.number().int().nonnegative().nullable(),
   awayScore: z.number().int().nonnegative().nullable(),
   boxScoreUrl: z.url().refine((value) => new URL(value).hostname === "www.espn.com", "Box score must use www.espn.com"),
+  winProbability: winProbability.optional(),
 });
 
 const result = game.extend({

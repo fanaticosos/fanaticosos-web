@@ -5,17 +5,11 @@ import {
   extractOfficialBearsSchedule,
   verifyGameCenterAgainstOfficialSchedule,
 } from "./bearsScheduleVerification.mjs";
+import { extractPfnGameCenter } from "./pfnGameCenter.mjs";
 
 export const ESPN_TEAM_URL = "https://www.espn.com/nfl/team/_/name/chi/chicago-bears";
 export const BEARS_SCHEDULE_URL = "https://www.chicagobears.com/schedule/";
-export const PFN_PROJECTIONS = {
-  season: 2026,
-  playoffPercent: 69.5,
-  divisionWinPercent: 37.2,
-  averageWins: 10.5,
-  sourceUrl: "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
-  asOf: "2026-09-18",
-};
+export const PFN_URL = "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/";
 
 function verifyPreviousGame(previousGame, boxScore) {
   if (!previousGame) return;
@@ -53,16 +47,20 @@ export async function updateGameCenter({
   fetchImplementation = fetch,
   updatedAt = Date.now(),
 }) {
-  const [teamHtml, officialHtml] = await Promise.all([
+  const [teamHtml, officialHtml, pfnHtml] = await Promise.all([
     fetchText(fetchImplementation, ESPN_TEAM_URL),
     fetchText(fetchImplementation, BEARS_SCHEDULE_URL),
+    fetchText(fetchImplementation, PFN_URL),
   ]);
   const preliminary = buildGameCenterFromEspnHtml(teamHtml, { updatedAt });
   const boxScoreHtml = preliminary.previousGame
     ? await fetchText(fetchImplementation, preliminary.previousGame.boxScoreUrl)
     : "";
   const candidate = buildVerifiedGameCenter({ teamHtml, officialHtml, boxScoreHtml, updatedAt });
-  candidate.projections = PFN_PROJECTIONS;
+  const asOf = new Date(updatedAt).toISOString().slice(0, 10);
+  const pfn = extractPfnGameCenter(pfnHtml, candidate.nextGame, asOf);
+  candidate.projections = pfn.projections;
+  candidate.nextGame.winProbability = pfn.winProbability;
 
   await mkdir(dirname(outputPath), { recursive: true });
   const temporaryPath = `${outputPath}.${process.pid}.tmp`;

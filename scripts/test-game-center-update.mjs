@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import {
   BEARS_SCHEDULE_URL,
   ESPN_TEAM_URL,
-  PFN_PROJECTIONS,
+  PFN_URL,
   updateGameCenter,
 } from "../src/lib/gameCenterUpdate.mjs";
 
@@ -31,12 +31,14 @@ const scriptHtml = (state) => `<script>window['__espnfitt__']=${JSON.stringify(s
 const officialHtml = `<script>var nationalGames=[];var regionalGames=${JSON.stringify([{
   GameId: "official-next", Week: "1", Title: "Chicago Bears at Carolina Panthers", StartTime: "2026-09-13T17:00:00.000Z",
 }])};</script>`;
+const pfnHtml = `<div>69.5%</div><div>Playoff %</div><div>37.2%</div><div>Div Win %</div><div>10.5</div><div>Avg Wins</div><button aria-label="Week 1. Chicago Bears at Carolina Panthers. PFN win probability from 100,000 simulations: Chicago Bears 61%, Carolina Panthers 39%. Show details"></button>`;
 
 function mockFetch({ wrongScore = false } = {}) {
   return async (url) => {
     let body;
     if (url === ESPN_TEAM_URL) body = scriptHtml(teamState);
     else if (url === BEARS_SCHEDULE_URL) body = officialHtml;
+    else if (url === PFN_URL) body = pfnHtml;
     else body = scriptHtml(wrongScore
       ? { ...boxState, page: { content: { gamepackage: { ...boxState.page.content.gamepackage, prsdTms: { ...boxState.page.content.gamepackage.prsdTms, away: { ...boxState.page.content.gamepackage.prsdTms.away, score: "23" } } } } } }
       : boxState);
@@ -50,7 +52,11 @@ try {
   await writeFile(outputPath, "sentinel\n");
   const updated = await updateGameCenter({ outputPath, fetchImplementation: mockFetch(), updatedAt: "2026-09-10T23:59:00Z" });
   assert.equal(updated.previousGame.id, "last");
-  assert.deepEqual(updated.projections, PFN_PROJECTIONS);
+  assert.deepEqual(updated.projections, {
+    season: 2026, playoffPercent: 69.5, divisionWinPercent: 37.2, averageWins: 10.5,
+    sourceUrl: PFN_URL, asOf: "2026-09-10",
+  });
+  assert.deepEqual(updated.nextGame.winProbability, { awayPercent: 61, homePercent: 39, sourceUrl: PFN_URL, asOf: "2026-09-10" });
   assert.equal(JSON.parse(await readFile(outputPath, "utf8")).nextGame.id, "next");
 
   await writeFile(outputPath, "preserve-me\n");

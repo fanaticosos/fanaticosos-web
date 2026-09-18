@@ -31,9 +31,9 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
       {nextGame ? (
         <>
           <div class="matchup" aria-label={`${nextGame.away.name} contra ${nextGame.home.name}`}>
-            <div class="team"><span class="team-mark">{nextGame.away.abbreviation}<img src={logoUrl(nextGame.away.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(nextGame.away.name)}</strong></div>
+            <div class="team"><span class="team-mark">{nextGame.away.abbreviation}<img src={logoUrl(nextGame.away.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(nextGame.away.name)}</strong>{nextGame.winProbability && <span class="win-probability"><b>{nextGame.winProbability.awayPercent}%</b> de ganar</span>}</div>
             <span class="at" aria-hidden="true">@</span>
-            <div class="team"><span class="team-mark">{nextGame.home.abbreviation}<img src={logoUrl(nextGame.home.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(nextGame.home.name)}</strong></div>
+            <div class="team"><span class="team-mark">{nextGame.home.abbreviation}<img src={logoUrl(nextGame.home.abbreviation)} alt="" width="58" height="58" loading="lazy" data-team-logo /></span><strong>{shortName(nextGame.home.name)}</strong>{nextGame.winProbability && <span class="win-probability"><b>{nextGame.winProbability.homePercent}%</b> de ganar</span>}</div>
           </div>
           <div class="countdown" data-countdown={nextGame.startsAt ?? undefined} aria-label="Cuenta regresiva al próximo partido">
             {[["días", "00"], ["horas", "00"], ["min", "00"], ["seg", "00"]].map(([label, value]) => (
@@ -86,13 +86,12 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
       {projections && (
         <aside class="game-projections" aria-labelledby="projections-title">
           <div class="projections-title" id="projections-title">
-            <strong>PFN {projections.season} Projections</strong>
-            <strong>Proyecciones para {projections.season}</strong>
+            <strong>Predicciones {projections.season}</strong>
           </div>
           <dl>
-            <div><dt>Playoff %</dt><dd>{projections.playoffPercent}%</dd><dt lang="es">% de playoffs</dt></div>
-            <div><dt>Div Win %</dt><dd>{projections.divisionWinPercent}%</dd><dt lang="es">% de ganar división</dt></div>
-            <div><dt>Avg Wins</dt><dd>{projections.averageWins}</dd><dt lang="es">Promedio de victorias</dt></div>
+            <div><dt>% de playoffs</dt><dd>{projections.playoffPercent}%</dd></div>
+            <div><dt>% de ganar división</dt><dd>{projections.divisionWinPercent}%</dd></div>
+            <div><dt>Promedio de victorias</dt><dd>{projections.averageWins}</dd></div>
           </dl>
           <a href={projections.sourceUrl} target="_blank" rel="noopener">Fuente: PFN <span aria-hidden="true">↗</span></a>
         </aside>
