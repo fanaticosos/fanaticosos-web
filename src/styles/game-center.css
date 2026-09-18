@@ -1,6 +1,6 @@
 .game-center {
   margin: 56px auto 0;
-  max-width: 1320px;
+  max-width: 860px;
   padding: 0 24px;
   position: relative;
   z-index: 1;
@@ -67,11 +67,8 @@
 .game-standings tr.bears th { color: var(--orange); font-weight: 700; }
 .empty-state { color: var(--gray); font-size: 13px; line-height: 1.5; }
 .game-center-updated { color: rgba(203,213,225,.55); font-size: 9px; margin: 9px 4px 0; text-align: right; }
-.game-projections { align-items: center; border-top: 1px solid rgba(240,120,32,.28); display: grid; gap: 22px; grid-column: 1 / -1; grid-template-columns: auto minmax(0,1fr) auto; padding: 14px 22px; }.projections-title strong { color: var(--orange); font-family: "Bebas Neue", sans-serif; font-size: 15px; letter-spacing: .07em; line-height: 1.15; white-space: nowrap; }.game-projections dl { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0,1fr)); }.game-projections dl > div { align-items: center; background: rgba(3,18,33,.28); border-radius: 6px; display: grid; gap: 8px; grid-template-columns: minmax(0,1fr) auto; min-height: 38px; padding: 7px 10px; }.game-projections dt { color: var(--gray-light); font-size: 9px; line-height: 1.15; }.game-projections dd { color: var(--white); font-family: "Bebas Neue", sans-serif; font-size: 18px; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; text-align: right; }.game-projections a { color: var(--gray); font-size: 7px; text-align: right; text-decoration: none; white-space: nowrap; }.game-projections a:hover { color: var(--orange); }
+.game-projections { align-items: center; border-top: 1px solid rgba(240,120,32,.28); display: grid; gap: 12px; grid-column: 1 / -1; grid-template-columns: 1fr; padding: 14px 22px; }.projections-title strong { color: var(--orange); display: block; font-family: "Bebas Neue", sans-serif; font-size: 15px; letter-spacing: .07em; line-height: 1.15; text-align: center; white-space: nowrap; }.game-projections dl { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0,1fr)); }.game-projections dl > div { align-items: center; background: rgba(3,18,33,.28); border-radius: 6px; display: grid; gap: 8px; grid-template-columns: minmax(0,1fr) auto; min-height: 38px; padding: 7px 10px; }.game-projections dt { color: var(--gray-light); font-size: 9px; line-height: 1.15; }.game-projections dd { color: var(--white); font-family: "Bebas Neue", sans-serif; font-size: 18px; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; text-align: right; }.game-projections a { color: var(--gray); font-size: 7px; text-align: center; text-decoration: none; white-space: nowrap; }.game-projections a:hover { color: var(--orange); }
 
-@media (max-width: 1050px) {
-  .game-projections { gap: 12px; grid-template-columns: 1fr; }.projections-title strong { display: block; text-align: center; }.game-projections a { text-align: center; }
-}
 @media (max-width: 620px) {
   .game-center { margin-top: 44px; padding: 0 16px; }
   .game-center-grid { display: flex; flex-direction: column; }
