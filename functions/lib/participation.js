@@ -58,6 +58,16 @@ export function isParticipationSlotPast(streamDate, now = new Date(), timeZone =
   return streamDate < currentDate;
 }
 
+export function validateAdministrativeReservation(value) {
+  const slotId = String(value?.slotId ?? "").trim();
+  const fullName = String(value?.fullName ?? "").trim();
+  const email = String(value?.email ?? "").trim().toLowerCase();
+  if (!SLOT.test(slotId)) throw new Error("invalid:slotId");
+  if (fullName.length < 2 || fullName.length > 100) throw new Error("invalid:fullName");
+  if (email.length > 254 || !EMAIL.test(email)) throw new Error("invalid:email");
+  return { slotId, fullName, email };
+}
+
 export function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",

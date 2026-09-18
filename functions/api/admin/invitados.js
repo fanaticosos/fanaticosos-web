@@ -10,7 +10,8 @@ export async function onRequestGet({ request, env }) {
     r.song_artist AS songArtist, r.song_reason AS songReason, r.email_status AS emailStatus,
     r.decision_email_status AS decisionEmailStatus, r.submitted_at AS submittedAt,
     s.stream_date AS streamDate, s.previous_game AS previousGame, s.next_game AS nextGame,
-    s.special_topic AS specialTopic
+    s.special_topic AS specialTopic,
+    CASE WHEN r.bears_story = '__admin_reservation__' THEN 1 ELSE 0 END AS administrative
     FROM participation_requests r
     JOIN participation_slots s ON s.id = r.slot_id
     ORDER BY s.stream_date, r.submitted_at`).all();

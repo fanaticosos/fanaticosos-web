@@ -18,6 +18,19 @@ import "../../styles/admin-invitados.css";
       </nav>
     </header>
     <div class="admin-notice" data-admin-status role="status">Cargando solicitudes…</div>
+    <section class="quick-reservation" aria-labelledby="reservation-heading">
+      <div class="section-heading">
+        <p>Reserva rápida</p>
+        <h2 id="reservation-heading">Separar una fecha</h2>
+        <span>Confirma directamente a un invitado sin llenar el formulario público.</span>
+      </div>
+      <form data-reservation-form>
+        <label>Fecha disponible<select name="slotId" required data-available-slots><option value="">Cargando fechas…</option></select></label>
+        <label>Nombre<input type="text" name="fullName" minlength="2" maxlength="100" autocomplete="name" required /></label>
+        <label>Email<input type="email" name="email" maxlength="254" autocomplete="email" required /></label>
+        <button type="submit">Separar y confirmar fecha</button>
+      </form>
+    </section>
     <section class="schedule-overview" aria-labelledby="schedule-heading">
       <div class="section-heading"><p>Calendario</p><h2 id="schedule-heading">Fechas e invitados</h2></div>
       <div class="schedule-list" data-schedule-list></div>
@@ -36,7 +49,7 @@ import "../../styles/admin-invitados.css";
     id: string; slotId: string; status: string; fullName: string; email: string; phone: string;
     birthDate: string; bearsStory: string; songTitle: string; songArtist: string; songReason: string;
     emailStatus: string; decisionEmailStatus: string | null; submittedAt: string; streamDate: string;
-    previousGame: string; nextGame: string; specialTopic: string | null;
+    previousGame: string; nextGame: string; specialTopic: string | null; administrative: number;
   };
   type GuestSlot = {
     id: string; streamDate: string; status: string; previousGame: string; nextGame: string;
@@ -44,6 +57,8 @@ import "../../styles/admin-invitados.css";
   };
   const list = document.querySelector<HTMLElement>("[data-request-list]");
   const scheduleList = document.querySelector<HTMLElement>("[data-schedule-list]");
+  const reservationForm = document.querySelector<HTMLFormElement>("[data-reservation-form]");
+  const slotSelect = document.querySelector<HTMLSelectElement>("[data-available-slots]");
   const status = document.querySelector<HTMLElement>("[data-admin-status]");
   let requests: GuestRequest[] = [];
   let slots: GuestSlot[] = [];
@@ -78,9 +93,14 @@ import "../../styles/admin-invitados.css";
       schedule.append(element("strong", "", `${item.streamDate} · 8:00 p.m. CDMX`), element("span", "", `Revisión: ${item.previousGame}`), element("span", "", `Próximo: ${item.nextGame}`));
       if (item.specialTopic) schedule.append(element("span", "", `Tema: ${item.specialTopic}`));
       const contact = element("p", "request-contact", `${item.email} · ${item.phone} · Nacimiento: ${item.birthDate}`);
-      const storyBody = element("div", "request-story");
-      storyBody.append(element("h3", "", "Cómo se hizo fan"), element("p", "", item.bearsStory), element("h3", "", "Canción"), element("p", "", `${item.songTitle} — ${item.songArtist}`), element("p", "", item.songReason));
-      article.append(heading, schedule, contact, storyBody);
+      if (item.administrative) {
+        contact.textContent = item.email;
+        article.append(heading, schedule, contact, element("p", "administrative-note", "Reserva creada directamente desde administración."));
+      } else {
+        const storyBody = element("div", "request-story");
+        storyBody.append(element("h3", "", "Cómo se hizo fan"), element("p", "", item.bearsStory), element("h3", "", "Canción"), element("p", "", `${item.songTitle} — ${item.songArtist}`), element("p", "", item.songReason));
+        article.append(heading, schedule, contact, storyBody);
+      }
       if (["pending", "waitlisted"].includes(item.status)) {
         const actions = element("div", "request-actions");
         for (const [action, copy] of [["confirm", "Confirmar fecha"], ["reject", "Rechazar"]]) {
@@ -116,12 +136,32 @@ import "../../styles/admin-invitados.css";
     }
   }
 
+  function renderAvailableSlots() {
+    if (!slotSelect) return;
+    slotSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Selecciona una fecha";
+    slotSelect.append(placeholder);
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const available = slots.filter((slot) => slot.status === "available" && slot.streamDate >= today);
+    for (const slot of available) {
+      const option = document.createElement("option");
+      option.value = slot.id;
+      option.textContent = `${formatStreamDate(slot.streamDate)} · ${slot.previousGame}`;
+      slotSelect.append(option);
+    }
+    slotSelect.disabled = available.length === 0;
+    if (!available.length) placeholder.textContent = "No hay fechas disponibles";
+  }
+
   async function load() {
     try {
       const response = await fetch("/api/admin/invitados", { headers: { accept: "application/json" } });
       if (!response.ok) throw new Error(response.status === 401 ? "Acceso administrativo no autorizado." : "No se pudieron cargar las solicitudes.");
       ({ requests, slots } = await response.json());
       if (status) status.textContent = `${requests.length} solicitud${requests.length === 1 ? "" : "es"}.`;
+      renderAvailableSlots();
       renderSchedule();
       render();
     } catch (error) {
@@ -134,6 +174,40 @@ import "../../styles/admin-invitados.css";
     document.querySelectorAll("[data-filter]").forEach((item) => item.classList.toggle("active", item === button));
     render();
   }));
+  reservationForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!reservationForm.reportValidity()) return;
+    const button = reservationForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (button) button.disabled = true;
+    if (status) status.textContent = "Separando fecha…";
+    const data = new FormData(reservationForm);
+    try {
+      const response = await fetch("/api/admin/invitados/reserve", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify(Object.fromEntries(data)),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "request_failed");
+      reservationForm.reset();
+      if (status) status.textContent = result.emailStatus === "sent"
+        ? "Fecha separada, invitado confirmado y correo enviado."
+        : "Fecha separada e invitado confirmado; el correo no pudo enviarse.";
+      await load();
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "request_failed";
+      const messages: Record<string, string> = {
+        slot_unavailable: "La fecha ya no está disponible. Actualizamos la lista.",
+        slot_past: "La fecha seleccionada ya pasó.",
+        "invalid:fullName": "Revisa el nombre.",
+        "invalid:email": "Revisa el email.",
+      };
+      if (status) status.textContent = messages[code] ?? "No se pudo separar la fecha.";
+      await load();
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
   list?.addEventListener("click", async (event) => {
     const button = (event.target as Element).closest<HTMLButtonElement>("[data-action]");
     const card = button?.closest<HTMLElement>("[data-request-id]");

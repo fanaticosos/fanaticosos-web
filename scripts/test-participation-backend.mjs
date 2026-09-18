@@ -7,6 +7,7 @@ import {
   sendDecisionEmail,
   sendParticipationEmails,
   validateParticipationForm,
+  validateAdministrativeReservation,
   verifyTurnstile,
 } from "../functions/lib/participation.js";
 
@@ -29,6 +30,12 @@ assert.equal(submission.email, "ana@example.com");
 assert.equal(isParticipationSlotPast("2026-09-16", new Date("2026-09-18T12:00:00Z")), true);
 assert.equal(isParticipationSlotPast("2026-09-18", new Date("2026-09-18T12:00:00Z")), false);
 assert.equal(isParticipationSlotPast("2026-09-19", new Date("2026-09-18T12:00:00Z")), false);
+assert.deepEqual(validateAdministrativeReservation({
+  slotId: "2026-09-23", fullName: "  Luis Ejemplo  ", email: "LUIS@example.com",
+}), { slotId: "2026-09-23", fullName: "Luis Ejemplo", email: "luis@example.com" });
+assert.throws(() => validateAdministrativeReservation({ slotId: "ayer", fullName: "Luis", email: "luis@example.com" }), /slotId/);
+assert.throws(() => validateAdministrativeReservation({ slotId: "2026-09-23", fullName: "L", email: "luis@example.com" }), /fullName/);
+assert.throws(() => validateAdministrativeReservation({ slotId: "2026-09-23", fullName: "Luis", email: "correo" }), /email/);
 const shortStory = new FormData();
 for (const [name, value] of validForm.entries()) shortStory.set(name, value);
 shortStory.set("bearsStory", "1234567890123456789012345678901234567890");
