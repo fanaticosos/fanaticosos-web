@@ -53,10 +53,11 @@ function syncWorkflowDock() {
   dockSave.disabled = document.querySelector("#save-draft").disabled;
   dockPreview.disabled = openPreview.disabled;
   dockPublish.disabled = publishRelease.disabled;
+  dockPublish.textContent = publishRelease.textContent;
 }
 
 for (const source of [document.querySelector("#save-draft"), openPreview, publishRelease]) {
-  new MutationObserver(syncWorkflowDock).observe(source, { attributes: true, attributeFilter: ["disabled"] });
+  new MutationObserver(syncWorkflowDock).observe(source, { attributes: true, attributeFilter: ["disabled"], childList: true });
 }
 document.querySelectorAll("[data-scroll-target]").forEach((button) => button.addEventListener("click", () => {
   document.querySelector(`#${button.dataset.scrollTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
