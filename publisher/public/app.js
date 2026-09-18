@@ -49,6 +49,21 @@ let previewRequestedArticleId = null;
 let audiogramTimer = null;
 let deploymentTimer = null;
 let markdownPreviewTimer = null;
+let hasUnsavedChanges = false;
+
+function markSaved() {
+  hasUnsavedChanges = false;
+}
+
+function confirmDiscardChanges() {
+  return !hasUnsavedChanges || window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos?");
+}
+
+window.addEventListener("beforeunload", (event) => {
+  if (!hasUnsavedChanges) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 function syncWorkflowDock() {
   dockSave.disabled = document.querySelector("#save-draft").disabled;
@@ -292,11 +307,23 @@ function setFields(draft) {
   audiogramMetadata = null;
   renderSeoPreview();
   scheduleBodyPreview();
+  markSaved();
 }
 
 async function refreshTtsPreflight() {
   if (!current) { ttsPreflightPanel.hidden = true; return null; }
-  const { preflight } = await request(`/api/drafts/${current.articleId}/tts-preflight`);
+  let preflight;
+  try {
+    ({ preflight } = await request(`/api/drafts/${current.articleId}/tts-preflight`));
+  } catch (error) {
+    ttsPreflightPanel.hidden = false;
+    ttsPreflightPanel.className = "tts-preflight warning";
+    document.querySelector("#tts-preflight-title").textContent = "La revisión de pronunciación no está disponible";
+    document.querySelector("#tts-preflight-summary").textContent = `${error.message} El borrador sí permanece guardado.`;
+    document.querySelector("#tts-preflight-unresolved").replaceChildren();
+    document.querySelector("#tts-preflight-detected").replaceChildren();
+    return null;
+  }
   ttsPreflightPanel.hidden = false;
   ttsPreflightPanel.className = "tts-preflight ready";
   document.querySelector("#tts-preflight-title").textContent = preflight.status === "ready"
@@ -380,6 +407,7 @@ async function uploadImage(file) {
     imagePreview.hidden = false;
     removeImage.hidden = false;
     imageFile.value = "";
+    hasUnsavedChanges = true;
     renderSeoPreview();
     saveState.textContent = "Imagen lista · guarda el borrador";
   } catch (error) {
@@ -395,8 +423,16 @@ function showError(text) {
 
 async function request(url, options) {
   const response = await fetch(url, options);
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.error || "La operación no pudo completarse.");
+  const contentType = response.headers.get("content-type") ?? "";
+  let value;
+  if (contentType.toLowerCase().includes("application/json")) {
+    value = await response.json();
+  } else {
+    const text = await response.text();
+    if (!response.ok) throw new Error(`El servidor respondió ${response.status}${text.trim() ? `: ${text.trim().slice(0, 180)}` : ""}`);
+    throw new Error("El servidor devolvió una respuesta inesperada.");
+  }
+  if (!response.ok) throw new Error(value.error || `La operación no pudo completarse (${response.status}).`);
   return value;
 }
 
@@ -410,6 +446,7 @@ async function refreshList() {
     button.querySelector("strong").textContent = draft.title;
     button.querySelector("span").textContent = new Date(draft.updatedAt).toLocaleString("es-MX");
     button.addEventListener("click", async () => {
+      if (draft.articleId !== current?.articleId && !confirmDiscardChanges()) return;
       await loadDraft(draft.articleId);
     });
     return button;
@@ -433,6 +470,7 @@ async function loadDraft(articleId) {
 }
 
 form.addEventListener("input", (event) => {
+  hasUnsavedChanges = true;
   if (event.target === articleBody) scheduleBodyPreview();
   if (event.target === form.elements.narrationEs || event.target === form.elements.narrationEn) {
     const language = event.target === form.elements.narrationEs ? "español" : "inglés";
@@ -484,16 +522,20 @@ form.addEventListener("submit", async (event) => {
       })).draft;
     }
     setFields(current);
-    await refreshTtsPreflight();
-    await refreshList();
-    const translationStatus = await pollTranslation();
-    if (["queued", "running"].includes(translationStatus) && !translationTimer) translationTimer = setInterval(pollTranslation, 5000);
-    const audioStatus = await pollAudio();
-    if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
+    markSaved();
   } catch (error) {
     saveState.textContent = "No guardado";
     showError(error.message);
+    return;
   }
+  // The save above is authoritative. Follow-up status panels are useful but
+  // must never turn a successful save into a false "No guardado" result.
+  const refreshes = await Promise.allSettled([refreshTtsPreflight(), refreshList(), pollTranslation(), pollAudio()]);
+  const [translationRefresh, audioRefresh] = [refreshes[2], refreshes[3]];
+  if (translationRefresh.status === "fulfilled" && ["queued", "running"].includes(translationRefresh.value) && !translationTimer) translationTimer = setInterval(pollTranslation, 5000);
+  if (audioRefresh.status === "fulfilled" && ["queued", "running"].includes(audioRefresh.value) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
+  const failed = refreshes.find((result) => result.status === "rejected");
+  if (failed) showError(`El borrador quedó guardado, pero no se pudo actualizar todo el estado: ${failed.reason?.message ?? "error desconocido"}`);
 });
 
 async function pollTranslation() {
@@ -936,6 +978,7 @@ publishRelease.addEventListener("click", async () => {
 });
 
 document.querySelector("#new-draft").addEventListener("click", () => {
+  if (!confirmDiscardChanges()) return;
   current = null;
   window.history.replaceState(null, "", "/");
   form.reset();
@@ -950,6 +993,7 @@ imageFile.addEventListener("change", () => {
   if (imageFile.files[0]) uploadImage(imageFile.files[0]);
 });
 removeImage.addEventListener("click", () => {
+  hasUnsavedChanges = true;
   form.elements.imagePath.value = "";
   imagePreview.removeAttribute("src");
   imagePreview.hidden = true;

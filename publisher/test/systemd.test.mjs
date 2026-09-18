@@ -94,6 +94,8 @@ test("every validated production deployment becomes the source for later music b
   assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases(?:\n|$)/);
   assert.match(productionUnit, /TimeoutStartSec=35min/);
   assert.match(productionUnit, /TimeoutStopSec=2min/);
+  const deploymentTimeouts = await readFile(new URL("../lib/deployment-timeouts.mjs", import.meta.url), "utf8");
+  assert.match(deploymentTimeouts, /RUNNING_DEPLOYMENT_TIMEOUT_MS = 40 \* 60 \* 1000/);
   assert.match(production, /trap 'rollback_on_signal SIGTERM' TERM/);
   assert.match(production, /readonly validation_deadline=\$\(\(SECONDS \+ 20 \* 60\)\)/);
   assert.match(failureRecorder, /await chown\(temporary, owner\.uid, owner\.gid\)/);

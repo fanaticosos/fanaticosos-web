@@ -364,6 +364,11 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /release\.status/);
   assert.doesNotMatch(app, /\/api\/music/);
   assert.match(app, /\/api\/markdown-preview/);
+  assert.match(app, /window\.addEventListener\("beforeunload"/);
+  assert.match(app, /confirmDiscardChanges/);
+  assert.match(app, /const refreshes = await Promise\.allSettled/);
+  assert.match(app, /El borrador quedó guardado, pero no se pudo actualizar todo el estado/);
+  assert.match(app, /El borrador sí permanece guardado/);
 
   const musicResponse = await fetch(`${base}/music.html`);
   assert.equal(musicResponse.status, 200);

@@ -1,7 +1,7 @@
 import { withTransaction } from "./database.mjs";
+import { QUEUED_DEPLOYMENT_TIMEOUT_MS, RUNNING_DEPLOYMENT_TIMEOUT_MS } from "./deployment-timeouts.mjs";
 
 const RELEASE_JOB = /^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
-const DEPLOYMENT_TIMEOUT_MS = 15 * 60 * 1000;
 
 const SELECT_DEPLOYMENT = `
   SELECT d.id AS deployment_id, d.release_id, d.status AS deployment_status,
@@ -32,9 +32,12 @@ function state(row) {
 }
 
 function failStale(connection, now) {
-  const cutoff = new Date(now.getTime() - DEPLOYMENT_TIMEOUT_MS).toISOString();
+  const queuedCutoff = new Date(now.getTime() - QUEUED_DEPLOYMENT_TIMEOUT_MS).toISOString();
+  const runningCutoff = new Date(now.getTime() - RUNNING_DEPLOYMENT_TIMEOUT_MS).toISOString();
   const stale = connection.prepare(`SELECT id FROM deployments
-    WHERE status IN ('queued','uploading','verifying') AND created_at < ?`).all(cutoff);
+    WHERE (status = 'queued' AND created_at < ?)
+       OR (status IN ('uploading','verifying') AND COALESCE((SELECT started_at FROM jobs WHERE jobs.id = deployments.id), created_at) < ?)`)
+    .all(queuedCutoff, runningCutoff);
   for (const { id } of stale) {
     connection.prepare(`UPDATE deployments SET status = 'failed', finished_at = ?, error_message = ? WHERE id = ?`)
       .run(now.toISOString(), "La publicación anterior se detuvo y fue liberada automáticamente.", id);
@@ -84,7 +87,7 @@ export function listActiveDatabaseDeployments(database) {
 
 export function startDatabaseDeployment(database, deploymentId, now = new Date()) {
   return withTransaction(database, (connection) => {
-    const timestamp = now.toISOString(); const expires = new Date(now.getTime() + DEPLOYMENT_TIMEOUT_MS).toISOString();
+    const timestamp = now.toISOString(); const expires = new Date(now.getTime() + RUNNING_DEPLOYMENT_TIMEOUT_MS).toISOString();
     const deployment = connection.prepare("UPDATE deployments SET status = 'uploading' WHERE id = ? AND status = 'queued'").run(deploymentId);
     const job = connection.prepare(`UPDATE jobs SET status = 'leased', attempt = attempt + 1, lease_owner = 'systemd',
       lease_expires_at = ?, heartbeat_at = ?, started_at = COALESCE(started_at, ?) WHERE id = ? AND status = 'queued'`)

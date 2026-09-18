@@ -74,3 +74,32 @@ test("SQLite deployment store owns state while the filesystem carries only the p
     await assert.rejects(access(statesRoot), /ENOENT/);
   } finally { closeDatabase(database); }
 });
+
+test("a valid long production deployment is not failed before systemd can finish", async () => {
+  const root = await mkdtemp(join(tmpdir(), "deployment-long-running-test-"));
+  const database = await openDatabase(join(root, "publisher.sqlite"));
+  const queueRoot = join(root, "queue"); const releasesRoot = join(root, "releases");
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const revisionId = database.prepare("SELECT current_revision_id FROM articles WHERE id = ?").get(draft.articleId).current_revision_id;
+    const releaseJobId = `release-${draft.articleId.replaceAll("-", "")}-r1-fedcba98`;
+    const timestamp = "2026-09-09T01:00:00.000Z";
+    database.prepare("INSERT INTO article_catalogs (id, created_at) VALUES ('catalog-long', ?)").run(timestamp);
+    database.prepare("INSERT INTO article_catalog_entries (catalog_id, article_id, revision_id, position) VALUES ('catalog-long', ?, ?, 0)").run(draft.articleId, revisionId);
+    database.prepare("INSERT INTO site_settings_revisions (id, settings_json, created_at) VALUES ('settings-long', '{}', ?)").run(timestamp);
+    database.prepare(`INSERT INTO releases (id, catalog_id, site_settings_revision_id, status, path, manifest_json,
+      manifest_checksum_sha256, created_at, validated_at) VALUES (?, 'catalog-long', 'settings-long', 'validated', ?, '{}', ?, ?, ?)`)
+      .run(releaseJobId, join(releasesRoot, releaseJobId, "release"), "d".repeat(64), timestamp, timestamp);
+    database.prepare(`INSERT INTO jobs (id, type, revision_id, idempotency_key, dependency_hash, status, checkpoint_json,
+      available_at, created_at, finished_at) VALUES (?, 'release', ?, ?, ?, 'completed', '{}', ?, ?, ?)`)
+      .run(releaseJobId, revisionId, `release:${releaseJobId}`, "d".repeat(64), timestamp, timestamp, timestamp);
+    const store = databaseDeploymentStore({ database, queueRoot, releasesRoot });
+    const queued = await store.queue({ articleId: draft.articleId, draftRevision: 1, releaseJobId, now: new Date("2026-09-09T01:01:00Z") });
+    await mkdir(join(releasesRoot, releaseJobId), { recursive: true });
+    await writeFile(join(releasesRoot, releaseJobId, "production-request.json"), "{}\n");
+    assert.equal((await store.reconcile(draft.articleId, new Date("2026-09-09T01:02:00Z"))).status, "running");
+    assert.equal((await store.reconcile(draft.articleId, new Date("2026-09-09T01:32:00Z"))).status, "running");
+    assert.equal((await store.reconcile(draft.articleId, new Date("2026-09-09T01:43:00Z"))).status, "failed");
+    assert.equal(database.prepare("SELECT status FROM jobs WHERE id = ?").get(queued.jobId).status, "failed");
+  } finally { closeDatabase(database); }
+});

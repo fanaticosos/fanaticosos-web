@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { QUEUED_DEPLOYMENT_TIMEOUT_MS, RUNNING_DEPLOYMENT_TIMEOUT_MS } from "./deployment-timeouts.mjs";
 
-const DEPLOYMENT_TIMEOUT_MS = 15 * 60 * 1000;
 let deploymentQueueBusy = false;
 
 async function atomicJson(path, value) {
@@ -13,7 +13,8 @@ async function atomicJson(path, value) {
 
 function isStale(state, now) {
   const timestamp = Date.parse(state.updatedAt || state.createdAt || "");
-  return !Number.isFinite(timestamp) || now.getTime() - timestamp > DEPLOYMENT_TIMEOUT_MS;
+  const timeout = state.status === "running" ? RUNNING_DEPLOYMENT_TIMEOUT_MS : QUEUED_DEPLOYMENT_TIMEOUT_MS;
+  return !Number.isFinite(timestamp) || now.getTime() - timestamp > timeout;
 }
 
 export async function queueDeployment({ articleId, draftRevision, releaseJobId, queueRoot, statesRoot, now = new Date() }) {

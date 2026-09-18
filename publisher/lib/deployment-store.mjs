@@ -4,8 +4,8 @@ import { join } from "node:path";
 
 import { completeDatabaseDeployment, failDatabaseDeployment, listActiveDatabaseDeployments, queueDatabaseDeployment, readDatabaseDeploymentState, startDatabaseDeployment } from "./database-deployments.mjs";
 import { queueDeployment, readDeploymentState, reconcileDeployment } from "./deployment-jobs.mjs";
+import { RUNNING_DEPLOYMENT_TIMEOUT_MS } from "./deployment-timeouts.mjs";
 
-const TIMEOUT_MS = 15 * 60 * 1000;
 
 async function optionalJson(path) { try { return JSON.parse(await readFile(path, "utf8")); } catch (error) { if (error.code === "ENOENT") return null; throw error; } }
 
@@ -53,7 +53,7 @@ export function databaseDeploymentStore({ database, queueRoot, releasesRoot }) {
       }
       if (failure) return failDatabaseDeployment(database, active.jobId, failure.error || "deployment failed", now);
       if (active.status === "queued" && await optionalJson(join(root, "production-request.json"))) startDatabaseDeployment(database, active.jobId, now);
-      if (active.status === "running" && active.startedAt && now.getTime() - Date.parse(active.startedAt) > TIMEOUT_MS) return failDatabaseDeployment(database, active.jobId, "La publicación excedió su límite automático y fue liberada.", now);
+      if (active.status === "running" && active.startedAt && now.getTime() - Date.parse(active.startedAt) > RUNNING_DEPLOYMENT_TIMEOUT_MS) return failDatabaseDeployment(database, active.jobId, "La publicación excedió su límite automático y fue liberada.", now);
       return readDatabaseDeploymentState(database, articleId);
     },
   };
