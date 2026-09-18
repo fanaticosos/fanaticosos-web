@@ -10,9 +10,9 @@ export const ESPN_TEAM_URL = "https://www.espn.com/nfl/team/_/name/chi/chicago-b
 export const BEARS_SCHEDULE_URL = "https://www.chicagobears.com/schedule/";
 export const PFN_PROJECTIONS = {
   season: 2026,
-  playoffPercent: 62.2,
-  divisionWinPercent: 32.6,
-  averageWins: 9.8,
+  playoffPercent: 69.5,
+  divisionWinPercent: 37.2,
+  averageWins: 10.5,
   sourceUrl: "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
   asOf: "2026-09-18",
 };

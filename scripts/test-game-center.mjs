@@ -4,9 +4,9 @@ import { gameCenterSchema } from "../src/lib/gameCenterSchema.mjs";
 import source from "../src/data/game-center.json" with { type: "json" };
 
 assert.doesNotThrow(() => gameCenterSchema.parse(source));
-assert.equal(source.projections.playoffPercent, 62.2);
-assert.equal(source.projections.divisionWinPercent, 32.6);
-assert.equal(source.projections.averageWins, 9.8);
+assert.equal(source.projections.playoffPercent, 69.5);
+assert.equal(source.projections.divisionWinPercent, 37.2);
+assert.equal(source.projections.averageWins, 10.5);
 
 assert.throws(() => gameCenterSchema.parse({
   ...source,

@@ -19,7 +19,7 @@ test("Game Center respects provider backoff", () => {
 });
 
 test("Game Center preserves verified venue metadata omitted by ESPN team markup", () => {
-  const projections = { season: 2026, playoffPercent: 62.2, divisionWinPercent: 32.6, averageWins: 9.8 };
+  const projections = { season: 2026, playoffPercent: 69.5, divisionWinPercent: 37.2, averageWins: 10.5 };
   const candidate = { previousGame: { id: "game-1", venue: null }, nextGame: null, recentResults: [{ id: "game-1", venue: null }] };
   const prior = { previousGame: { id: "game-1", venue: "Soldier Field" }, nextGame: null, recentResults: [], projections };
   preserveVenues(candidate, prior);
