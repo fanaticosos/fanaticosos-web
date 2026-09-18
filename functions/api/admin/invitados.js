@@ -14,5 +14,13 @@ export async function onRequestGet({ request, env }) {
     FROM participation_requests r
     JOIN participation_slots s ON s.id = r.slot_id
     ORDER BY s.stream_date, r.submitted_at`).all();
-  return json({ requests: result.results ?? [] });
+  const slots = await env.DB.prepare(`SELECT
+    s.id, s.stream_date AS streamDate, s.status, s.previous_game AS previousGame,
+    s.next_game AS nextGame, COUNT(r.id) AS requestCount,
+    GROUP_CONCAT(r.full_name, '|||') AS requestNames
+    FROM participation_slots s
+    LEFT JOIN participation_requests r ON r.slot_id = s.id
+    GROUP BY s.id
+    ORDER BY s.stream_date`).all();
+  return json({ requests: result.results ?? [], slots: slots.results ?? [] });
 }

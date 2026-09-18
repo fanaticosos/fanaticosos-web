@@ -1,5 +1,6 @@
 import { json, sameOrigin } from "../lib/http.js";
 import {
+  isParticipationSlotPast,
   sendParticipationEmails,
   validateParticipationForm,
   verifyTurnstile,
@@ -40,6 +41,7 @@ export async function onRequestPost({ request, env }) {
     "SELECT id, stream_date, previous_game, next_game, special_topic, status FROM participation_slots WHERE id = ?",
   ).bind(submission.slotId).first();
   if (!slot) return json({ error: "slot_not_found" }, 404);
+  if (isParticipationSlotPast(slot.stream_date)) return json({ error: "slot_past" }, 409);
   if (slot.status === "confirmed") return json({ error: "slot_unavailable" }, 409);
 
   const id = crypto.randomUUID();

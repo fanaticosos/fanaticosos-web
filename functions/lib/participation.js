@@ -47,6 +47,17 @@ export function validateParticipationForm(form, today) {
   return result;
 }
 
+export function isParticipationSlotPast(streamDate, now = new Date(), timeZone = "America/Mexico_City") {
+  if (!SLOT.test(streamDate)) return true;
+  const currentDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  return streamDate < currentDate;
+}
+
 export function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",

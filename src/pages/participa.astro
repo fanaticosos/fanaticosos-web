@@ -11,7 +11,9 @@ const statusCopy = {
   available: { label: "Disponible", detail: "Puedes solicitar esta fecha" },
   pending: { label: "Lista de espera", detail: "Ya existe una solicitud; aún puedes anotarte" },
   confirmed: { label: "No disponible", detail: "Invitado confirmado" },
+  past: { label: "Fecha pasada", detail: "Esta fecha ya no acepta solicitudes" },
 };
+const todayInMexico = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 ---
 
 <BaseLayout
@@ -53,10 +55,11 @@ const statusCopy = {
           </div>
           <div class="slot-grid">
             {participationSchedule.slots.map((slot) => {
-              const state = statusCopy[slot.status];
-              const unavailable = slot.status === "confirmed";
+              const effectiveStatus = slot.date < todayInMexico ? "past" : slot.status;
+              const state = statusCopy[effectiveStatus];
+              const unavailable = effectiveStatus === "confirmed" || effectiveStatus === "past";
               return (
-                <label class:list={["slot-card", `slot-${slot.status}`, { disabled: unavailable }]} data-slot-card={slot.id}>
+                <label class:list={["slot-card", `slot-${effectiveStatus}`, { disabled: unavailable }]} data-slot-card={slot.id}>
                   <input
                     type="radio"
                     name="streamSlot"
@@ -67,7 +70,7 @@ const statusCopy = {
                     data-previous={slot.previousGame}
                     data-next={slot.nextGame}
                     data-topic={slot.specialTopic ?? ""}
-                    data-status={slot.status}
+                    data-status={effectiveStatus}
                   />
                   <span class="slot-topline"><time datetime={slot.date}>{dateFormatter.format(new Date(`${slot.date}T12:00:00Z`))}</time><b>{state.label}</b></span>
                   <span class="slot-detail"><small>Revisión</small><strong>{slot.previousGame}</strong></span>
@@ -219,6 +222,7 @@ const statusCopy = {
     available: ["Disponible", "Puedes solicitar esta fecha"],
     pending: ["Lista de espera", "Ya existe una solicitud; aún puedes anotarte"],
     confirmed: ["No disponible", "Invitado confirmado"],
+    past: ["Fecha pasada", "Esta fecha ya no acepta solicitudes"],
   } as const;
 
   fetch("/api/participa/slots", { headers: { accept: "application/json" } })
@@ -227,10 +231,10 @@ const statusCopy = {
       const card = document.querySelector<HTMLElement>(`[data-slot-card="${CSS.escape(id)}"]`);
       const input = card?.querySelector<HTMLInputElement>('input[name="streamSlot"]');
       if (!card || !input || !statusCopy[status]) return;
-      card.classList.remove("slot-available", "slot-pending", "slot-confirmed", "disabled");
+      card.classList.remove("slot-available", "slot-pending", "slot-confirmed", "slot-past", "disabled");
       card.classList.add(`slot-${status}`);
       input.dataset.status = status;
-      input.disabled = status === "confirmed";
+      input.disabled = status === "confirmed" || status === "past";
       if (input.disabled) card.classList.add("disabled");
       const badge = card.querySelector<HTMLElement>(".slot-topline b");
       const detail = card.querySelector<HTMLElement>(".slot-state-detail");
@@ -339,6 +343,7 @@ const statusCopy = {
       const messages: Record<string, string> = {
         duplicate_request: "Ya existe una solicitud activa con este email para esa fecha.",
         slot_unavailable: "La fecha acaba de quedar ocupada. Selecciona otra.",
+        slot_past: "Esa fecha ya pasó. Selecciona una fecha futura.",
         turnstile_failed: "La verificación anti-spam venció. Recarga la página e inténtalo nuevamente.",
       };
       if (message) message.textContent = messages[code] ?? "No pudimos enviar la solicitud. Inténtalo nuevamente.";

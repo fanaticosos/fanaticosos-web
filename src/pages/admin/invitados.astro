@@ -12,12 +12,19 @@ import "../../styles/admin-invitados.css";
   <main class="admin-wrap">
     <header class="admin-header">
       <div><p>Administración</p><h1>Invitados</h1></div>
-      <a href="/">Ver sitio</a>
+      <nav aria-label="Navegación administrativa">
+        <a href="/participa">Ver Participa</a>
+        <a href="/">Inicio</a>
+      </nav>
     </header>
     <div class="admin-notice" data-admin-status role="status">Cargando solicitudes…</div>
+    <section class="schedule-overview" aria-labelledby="schedule-heading">
+      <div class="section-heading"><p>Calendario</p><h2 id="schedule-heading">Fechas e invitados</h2></div>
+      <div class="schedule-list" data-schedule-list></div>
+    </section>
     <div class="admin-filters" aria-label="Filtrar solicitudes">
-      <button class="active" type="button" data-filter="active">Pendientes</button>
-      <button type="button" data-filter="all">Todas</button>
+      <button class="active" type="button" data-filter="all">Todas</button>
+      <button type="button" data-filter="active">Pendientes</button>
       <button type="button" data-filter="confirmed">Confirmadas</button>
     </div>
     <section class="request-list" data-request-list aria-label="Solicitudes de invitados"></section>
@@ -31,12 +38,19 @@ import "../../styles/admin-invitados.css";
     emailStatus: string; decisionEmailStatus: string | null; submittedAt: string; streamDate: string;
     previousGame: string; nextGame: string; specialTopic: string | null;
   };
+  type GuestSlot = {
+    id: string; streamDate: string; status: string; previousGame: string; nextGame: string;
+    requestCount: number; requestNames: string | null;
+  };
   const list = document.querySelector<HTMLElement>("[data-request-list]");
+  const scheduleList = document.querySelector<HTMLElement>("[data-schedule-list]");
   const status = document.querySelector<HTMLElement>("[data-admin-status]");
   let requests: GuestRequest[] = [];
-  let filter = "active";
+  let slots: GuestSlot[] = [];
+  let filter = "all";
   const labels: Record<string, string> = { pending: "Pendiente", waitlisted: "Espera", confirmed: "Confirmada", rejected: "Rechazada", canceled: "Cancelada" };
   const formatDate = (value: string) => new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  const formatStreamDate = (value: string) => new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
 
   function element(tag: string, className?: string, content?: string) {
     const node = document.createElement(tag);
@@ -64,12 +78,9 @@ import "../../styles/admin-invitados.css";
       schedule.append(element("strong", "", `${item.streamDate} · 8:00 p.m. CDMX`), element("span", "", `Revisión: ${item.previousGame}`), element("span", "", `Próximo: ${item.nextGame}`));
       if (item.specialTopic) schedule.append(element("span", "", `Tema: ${item.specialTopic}`));
       const contact = element("p", "request-contact", `${item.email} · ${item.phone} · Nacimiento: ${item.birthDate}`);
-      const story = element("details");
-      story.append(element("summary", "", "Historia y canción"));
       const storyBody = element("div", "request-story");
       storyBody.append(element("h3", "", "Cómo se hizo fan"), element("p", "", item.bearsStory), element("h3", "", "Canción"), element("p", "", `${item.songTitle} — ${item.songArtist}`), element("p", "", item.songReason));
-      story.append(storyBody);
-      article.append(heading, schedule, contact, story);
+      article.append(heading, schedule, contact, storyBody);
       if (["pending", "waitlisted"].includes(item.status)) {
         const actions = element("div", "request-actions");
         for (const [action, copy] of [["confirm", "Confirmar fecha"], ["reject", "Rechazar"]]) {
@@ -87,12 +98,31 @@ import "../../styles/admin-invitados.css";
     }
   }
 
+  function renderSchedule() {
+    if (!scheduleList) return;
+    scheduleList.replaceChildren();
+    for (const slot of slots) {
+      const row = element("article", "schedule-row");
+      const date = element("div", "schedule-date");
+      date.append(element("strong", "", formatStreamDate(slot.streamDate)), element("span", "", "8:00 p.m. CDMX"));
+      const guests = element("div", "schedule-guests");
+      const names = slot.requestNames?.split("|||").filter(Boolean) ?? [];
+      guests.append(
+        element("strong", "", names.length ? names.join(", ") : "Sin solicitudes"),
+        element("span", "", `${slot.previousGame} → ${slot.nextGame}`),
+      );
+      row.append(date, guests, element("span", `schedule-count ${names.length ? "has-requests" : ""}`, `${slot.requestCount} solicitud${slot.requestCount === 1 ? "" : "es"}`));
+      scheduleList.append(row);
+    }
+  }
+
   async function load() {
     try {
       const response = await fetch("/api/admin/invitados", { headers: { accept: "application/json" } });
       if (!response.ok) throw new Error(response.status === 401 ? "Acceso administrativo no autorizado." : "No se pudieron cargar las solicitudes.");
-      ({ requests } = await response.json());
+      ({ requests, slots } = await response.json());
       if (status) status.textContent = `${requests.length} solicitud${requests.length === 1 ? "" : "es"}.`;
+      renderSchedule();
       render();
     } catch (error) {
       if (status) status.textContent = error instanceof Error ? error.message : "No se pudieron cargar las solicitudes.";

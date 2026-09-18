@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import {
   escapeHtml,
+  isParticipationSlotPast,
   sendDecisionEmail,
   sendParticipationEmails,
   validateParticipationForm,
@@ -25,6 +26,9 @@ for (const [name, value] of Object.entries({
 })) validForm.set(name, value);
 const submission = validateParticipationForm(validForm, new Date("2026-09-10T12:00:00Z"));
 assert.equal(submission.email, "ana@example.com");
+assert.equal(isParticipationSlotPast("2026-09-16", new Date("2026-09-18T12:00:00Z")), true);
+assert.equal(isParticipationSlotPast("2026-09-18", new Date("2026-09-18T12:00:00Z")), false);
+assert.equal(isParticipationSlotPast("2026-09-19", new Date("2026-09-18T12:00:00Z")), false);
 const shortStory = new FormData();
 for (const [name, value] of validForm.entries()) shortStory.set(name, value);
 shortStory.set("bearsStory", "1234567890123456789012345678901234567890");
