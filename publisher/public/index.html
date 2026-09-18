@@ -36,8 +36,20 @@
           <div id="notification-list">No hay notificaciones pendientes.</div>
         </details>
         <div id="message" class="message" role="alert" hidden></div>
+        <nav class="workflow-dock" aria-label="Navegación y acciones del artículo">
+          <div class="workflow-dock-links">
+            <button type="button" data-scroll-target="article-section">Artículo</button>
+            <button type="button" data-scroll-target="image-section">Imagen</button>
+            <button type="button" data-scroll-target="workflow-section">Publicación</button>
+          </div>
+          <div class="workflow-dock-actions">
+            <button id="dock-save" type="button">Guardar</button>
+            <button id="dock-preview" type="button" disabled>Vista previa</button>
+            <button id="dock-publish" class="dock-publish" type="button" disabled>Publicar</button>
+          </div>
+        </nav>
         <form id="article-form">
-          <section class="panel">
+          <section id="article-section" class="panel workflow-anchor">
             <h2>Artículo en español</h2>
             <label>Título<input id="article-title" name="title" maxlength="300" required></label>
             <label>Resumen para buscadores y redes<textarea name="description" rows="3" maxlength="500" required></textarea></label>
@@ -64,7 +76,7 @@
               <p class="markdown-help">Usa los botones de formato o Markdown. La vista previa no publica ni guarda cambios.</p>
             </div>
           </section>
-          <section class="panel">
+          <section id="image-section" class="panel workflow-anchor">
             <h2>Imagen destacada <span>opcional</span></h2>
             <label id="drop-zone" class="drop-zone">
               <strong>Arrastra una imagen aquí</strong>
@@ -98,7 +110,7 @@
             <p class="seo-keywords"><strong>Temas detectados:</strong> <span id="seo-keywords"></span></p>
             <ul id="seo-warnings" class="seo-warnings"></ul>
           </details>
-          <section class="panel future">
+          <section id="workflow-section" class="panel future workflow-anchor">
             <h2>Crear versiones y vista previa</h2>
             <p class="workflow-explanation">El español se prepara primero y permanece independiente. Después se crea y revisa la versión en inglés.</p>
             <ol class="workflow-steps" aria-label="Pasos de publicación">

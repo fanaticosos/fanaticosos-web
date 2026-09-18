@@ -319,6 +319,10 @@ test("editor shell is served with private security headers", async (context) => 
   const html = await response.text();
   assert.match(html, /Publicador privado/);
   assert.match(html, /id="article-title"/);
+  assert.match(html, /class="workflow-dock"/);
+  assert.match(html, /id="dock-save"/);
+  assert.match(html, /id="dock-preview"/);
+  assert.match(html, /id="dock-publish"/);
   assert.match(html, />Crear traducción al inglés</);
   assert.match(html, /No se gastarán créditos hasta que pulses/);
   assert.match(html, /<details class="activity-panel">/);

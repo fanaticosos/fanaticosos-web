@@ -35,6 +35,9 @@ const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
 const publishRelease = document.querySelector("#publish-release");
+const dockSave = document.querySelector("#dock-save");
+const dockPreview = document.querySelector("#dock-preview");
+const dockPublish = document.querySelector("#dock-publish");
 const articleBody = document.querySelector("#article-body");
 const bodyPreview = document.querySelector("#body-preview");
 let translationTimer = null;
@@ -45,6 +48,22 @@ let previewRequestedArticleId = null;
 let audiogramTimer = null;
 let deploymentTimer = null;
 let markdownPreviewTimer = null;
+
+function syncWorkflowDock() {
+  dockSave.disabled = document.querySelector("#save-draft").disabled;
+  dockPreview.disabled = openPreview.disabled;
+  dockPublish.disabled = publishRelease.disabled;
+}
+
+for (const source of [document.querySelector("#save-draft"), openPreview, publishRelease]) {
+  new MutationObserver(syncWorkflowDock).observe(source, { attributes: true, attributeFilter: ["disabled"] });
+}
+document.querySelectorAll("[data-scroll-target]").forEach((button) => button.addEventListener("click", () => {
+  document.querySelector(`#${button.dataset.scrollTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}));
+dockSave.addEventListener("click", () => form.requestSubmit());
+dockPreview.addEventListener("click", () => openPreview.click());
+dockPublish.addEventListener("click", () => publishRelease.click());
 
 function stopTranslationClock() {
   if (translationClockTimer) clearInterval(translationClockTimer);
@@ -867,8 +886,9 @@ prepareRelease.addEventListener("click", async () => {
 });
 
 publishRelease.addEventListener("click", async () => {
-  if (!current || !window.confirm("¿Publicar ahora las versiones en español e inglés en fanaticosos.com?")) return;
+  if (!current) return;
   publishRelease.disabled = true;
+  workflowState.textContent = "Solicitando publicación…";
   try {
     await request(`/api/drafts/${current.articleId}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: current.revision }) });
     workflowState.textContent = "Publicación iniciada… el sitio actual permanece activo durante la validación.";

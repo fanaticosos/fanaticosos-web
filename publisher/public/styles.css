@@ -87,6 +87,13 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 #article-title { scroll-margin-block: 28px; }
 .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .message { margin-bottom: 18px; padding: 13px 16px; border: 1px solid #c44; border-radius: 8px; background: #451a1a; }
+.workflow-dock { position: sticky; top: 12px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 18px; padding: 10px 12px; border: 1px solid #36536d; border-radius: 12px; background: #091724f2; box-shadow: 0 10px 28px #0008; backdrop-filter: blur(12px); }
+.workflow-dock-links, .workflow-dock-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.workflow-dock button { padding: 8px 11px; border: 1px solid #3a5871; border-radius: 7px; color: #d8e3ec; background: #102438; cursor: pointer; }
+.workflow-dock button:hover:not(:disabled), .workflow-dock button:focus-visible { border-color: #ff7b2f; color: #fff; }
+.workflow-dock button:disabled { color: #63798b; cursor: not-allowed; }
+.workflow-dock .dock-publish:not(:disabled) { border-color: #ff6a13; background: #ff6a13; color: #fff; font-weight: 850; }
+.workflow-anchor { scroll-margin-top: 88px; }
 .drop-zone { place-items: center; padding: 28px; border: 1px dashed #42617d; border-radius: 10px; color: #b9cad7; background: #0a1622; cursor: pointer; }
 .drop-zone:hover, .drop-zone.dragging { border-color: #ff7b2f; background: #152334; }
 .drop-zone span { color: #7f94a8; font-weight: 500; }
@@ -137,4 +144,4 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .english-result > button { margin: 14px 0 18px; padding: 9px 12px; border: 1px solid #ff6a13; border-radius: 7px; color: #fff; background: transparent; cursor: pointer; }
 .english-result > button:disabled { border-color: #32495f; color: #8799a8; cursor: wait; }
 @media (max-width: 1050px) { .markdown-workspace { grid-template-columns: 1fr; } .markdown-preview { min-height: 320px; } }
-@media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid #24364a; } main { padding: 26px 18px 60px; } .editor-header, .actions { align-items: flex-start; flex-direction: column; } .two-columns, .seo-preview-grid { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid #24364a; } main { padding: 26px 18px 60px; } .editor-header, .actions { align-items: flex-start; flex-direction: column; } .two-columns, .seo-preview-grid { grid-template-columns: 1fr; } .workflow-dock { align-items: stretch; flex-direction: column; top: 6px; } .workflow-dock-links, .workflow-dock-actions { display: grid; grid-template-columns: repeat(3, 1fr); } }
