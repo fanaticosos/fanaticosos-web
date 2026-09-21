@@ -34,6 +34,8 @@ const copyArticleLink = document.querySelector("#copy-article-link");
 let audiogramMetadata = null;
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
+const retranslateEnglish = document.querySelector("#retranslate-english");
+const englishReviewNote = document.querySelector("#english-review-note");
 const prepareRelease = document.querySelector("#prepare-release");
 const publishRelease = document.querySelector("#publish-release");
 const dockSave = document.querySelector("#dock-save");
@@ -51,6 +53,7 @@ let audiogramTimer = null;
 let deploymentTimer = null;
 let markdownPreviewTimer = null;
 let hasUnsavedChanges = false;
+let translationNeedsConfirmation = false;
 
 function markSaved() {
   hasUnsavedChanges = false;
@@ -68,21 +71,25 @@ window.addEventListener("beforeunload", (event) => {
 
 function syncWorkflowDock() {
   dockSave.disabled = document.querySelector("#save-draft").disabled;
-  dockTranslate.disabled = generateEnglish.disabled;
-  dockTranslate.textContent = generateEnglish.textContent;
+  dockTranslate.disabled = translationNeedsConfirmation ? saveEnglish.disabled : generateEnglish.disabled;
+  dockTranslate.textContent = translationNeedsConfirmation ? "Revisar inglés" : generateEnglish.textContent;
   dockPreview.disabled = openPreview.disabled;
   dockPublish.disabled = publishRelease.disabled;
   dockPublish.textContent = publishRelease.textContent;
 }
 
-for (const source of [document.querySelector("#save-draft"), generateEnglish, openPreview, publishRelease]) {
+for (const source of [document.querySelector("#save-draft"), generateEnglish, saveEnglish, openPreview, publishRelease]) {
   new MutationObserver(syncWorkflowDock).observe(source, { attributes: true, attributeFilter: ["disabled"], childList: true });
 }
 document.querySelectorAll("[data-scroll-target]").forEach((button) => button.addEventListener("click", () => {
   document.querySelector(`#${button.dataset.scrollTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }));
 dockSave.addEventListener("click", () => form.requestSubmit());
-dockTranslate.addEventListener("click", () => generateEnglish.click());
+dockTranslate.addEventListener("click", () => {
+  if (translationNeedsConfirmation) englishResult.scrollIntoView({ behavior: "smooth", block: "start" });
+  else generateEnglish.click();
+});
+retranslateEnglish.addEventListener("click", () => generateEnglish.click());
 dockPreview.addEventListener("click", () => openPreview.click());
 dockPublish.addEventListener("click", () => publishRelease.click());
 
@@ -288,8 +295,12 @@ function setFields(draft) {
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
   generateEnglish.disabled = !canStartTranslation({ draft });
+  translationNeedsConfirmation = false;
   workflowState.textContent = draft ? "Borrador guardado · puedes generar el audio español y crear la traducción cuando quieras." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
+  englishReviewNote.hidden = true;
+  retranslateEnglish.hidden = true;
+  saveEnglish.textContent = "Guardar corrección en inglés";
   audioResult.hidden = !draft;
   ttsPreflightPanel.hidden = !draft;
   audiogramResult.hidden = true;
@@ -554,12 +565,17 @@ async function pollTranslation() {
     const { translation } = await request(`/api/drafts/${articleId}/translation`);
     if (current?.articleId !== articleId) return null;
     if (!translation) {
+      translationNeedsConfirmation = false;
       generateEnglish.disabled = !canStartTranslation({ draft: current, translation, unsavedChanges: hasUnsavedChanges });
       generateEnglish.textContent = "Crear traducción al inglés";
       return null;
     }
     if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
+      translationNeedsConfirmation = false;
+      englishReviewNote.hidden = true;
+      retranslateEnglish.hidden = true;
+      saveEnglish.textContent = "Guardar corrección en inglés";
       stopTranslationClock();
       workflowState.textContent = "Etapa 2 · traducción lista; revisa el guion inglés y genera únicamente su audio.";
       clearInterval(translationTimer);
@@ -583,23 +599,28 @@ async function pollTranslation() {
       }
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
+      translationNeedsConfirmation = true;
       stopTranslationClock();
-      workflowState.textContent = "El artículo cambió · conserva o corrige la traducción existente, o crea una nueva.";
+      workflowState.textContent = "Para habilitar Vista previa: revisa y confirma el inglés existente o crea una nueva traducción. El audio español se conserva.";
       document.querySelector("#english-title").value = translation.result?.title ?? "";
       document.querySelector("#english-description").value = translation.result?.description ?? "";
       document.querySelector("#english-body").value = translation.result?.body ?? "";
       if (!form.elements.narrationEn.value) form.elements.narrationEn.value = translation.result?.narrationScript ?? narrationScriptFromMarkdown(translation.result?.body ?? "");
       englishResult.hidden = false;
-      saveEnglish.textContent = "Conservar o guardar esta versión en inglés";
+      englishReviewNote.hidden = false;
+      retranslateEnglish.hidden = false;
+      saveEnglish.textContent = "Confirmar inglés revisado";
       audioResult.hidden = false;
       generateSpanishAudio.disabled = true;
       regenerateEnglishAudio.disabled = true;
       audiogramResult.hidden = true;
       generateEnglish.disabled = false;
       generateEnglish.textContent = "Crear nueva traducción al inglés";
+      syncWorkflowDock();
       openPreview.disabled = true;
       publishRelease.disabled = true;
     } else if (translation.status === "failed") {
+      translationNeedsConfirmation = false;
       stopTranslationClock();
       workflowState.textContent = "La traducción se detuvo.";
       clearInterval(translationTimer);
@@ -685,13 +706,15 @@ async function pollAudio() {
       audioTimer = null;
       const staleLocales = audio.staleLocales ?? ["es", "en"];
       const bothStale = staleLocales.includes("es") && staleLocales.includes("en");
-      workflowState.textContent = bothStale
+      workflowState.textContent = translationNeedsConfirmation
+        ? "Vista previa bloqueada: revisa y confirma el inglés actual antes de continuar. El audio español se conserva."
+        : bothStale
         ? "La política o los guiones cambiaron · regenera cada idioma afectado o ambos audios."
         : `El audio en ${staleLocales[0] === "es" ? "español" : "inglés"} cambió · regenera solamente ese audio.`;
       generateAudio.hidden = !bothStale;
       generateAudio.disabled = !bothStale;
       generateSpanishAudio.disabled = !staleLocales.includes("es");
-      regenerateEnglishAudio.disabled = !staleLocales.includes("en");
+      regenerateEnglishAudio.disabled = translationNeedsConfirmation || !staleLocales.includes("en");
       openPreview.disabled = true;
       prepareRelease.disabled = true;
       publishRelease.disabled = true;

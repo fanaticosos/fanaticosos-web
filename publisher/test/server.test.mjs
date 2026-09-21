@@ -324,6 +324,9 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /id="dock-translate"/);
   assert.match(html, /id="dock-preview"/);
   assert.match(html, /id="dock-publish"/);
+  assert.match(html, /id="workflow-state" role="status" aria-live="polite"/);
+  assert.match(html, /id="english-review-note" hidden/);
+  assert.match(html, /id="retranslate-english" type="button" hidden/);
   assert.match(html, /class="future-actions" hidden/);
   assert.match(html, /id="save-draft"[^>]* hidden/);
   assert.match(html, />Crear traducción al inglés</);
@@ -357,6 +360,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Preparar y abrir vista previa/);
 
   const app = await (await fetch(`${base}/app.js`)).text();
+  assert.match(app, /translationNeedsConfirmation \|\| !staleLocales\.includes\("en"\)/);
+  assert.match(app, /englishResult\.scrollIntoView/);
   assert.doesNotMatch(app, /window\.open\(`\/preview/);
   assert.match(app, /window\.location\.assign\(`\/preview/);
   assert.match(app, /canStartTranslation\(\{ draft: current, translation, unsavedChanges: hasUnsavedChanges \}\)/);

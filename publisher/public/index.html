@@ -48,6 +48,7 @@
             <button id="dock-preview" type="button" disabled>Vista previa</button>
             <button id="dock-publish" class="dock-publish" type="button" disabled>Publicar</button>
           </div>
+          <p id="workflow-state" role="status" aria-live="polite">Guarda un borrador válido para comenzar.</p>
         </nav>
         <form id="article-form">
           <section id="article-section" class="panel workflow-anchor">
@@ -114,7 +115,6 @@
           <section id="workflow-section" class="panel future workflow-anchor">
             <h2>Crear versiones y vista previa</h2>
             <p class="workflow-explanation">El español se prepara primero y permanece independiente. Después se crea y revisa la versión en inglés.</p>
-            <p id="workflow-state">Guarda un borrador válido para comenzar.</p>
             <section id="tts-preflight" class="tts-preflight" hidden>
               <h3 id="tts-preflight-title">Revisión de nombres y lugares</h3>
               <p id="tts-preflight-summary"></p>
@@ -133,10 +133,12 @@
             </div>
             <section id="english-result" class="english-result" hidden>
               <h3>Versión en inglés · editable</h3>
+              <p id="english-review-note" hidden>El artículo español cambió después de esta traducción. Revisa el inglés: si aún corresponde al artículo, confírmalo; si no, crea una nueva traducción. El audio español se conserva.</p>
               <label>Título<input id="english-title" maxlength="300"></label>
               <label>Descripción<textarea id="english-description" rows="2" maxlength="500"></textarea></label>
               <label>Artículo<textarea id="english-body" rows="14" maxlength="100000"></textarea></label>
               <button id="save-english" type="button">Guardar corrección en inglés</button>
+              <button id="retranslate-english" type="button" hidden>Crear nueva traducción</button>
             </section>
             <section id="audio-result" class="english-result" hidden>
               <h3>Audios · escuchar antes de publicar</h3>
