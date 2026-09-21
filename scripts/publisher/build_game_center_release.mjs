@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, lstat, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -34,6 +34,8 @@ async function main() {
   const candidate = gameCenterSchema.parse(JSON.parse(await readFile(candidatePath, "utf8")));
   const selected = join(releasesRoot, "current");
   if (!await lstat(selected).then((value) => value.isSymbolicLink()).catch(() => false)) throw new Error("a validated selected release is required");
+  const baseReleaseJobId = basename(dirname(await realpath(selected)));
+  if (!/^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/.test(baseReleaseJobId)) throw new Error("selected release has an invalid job ID");
   const previousManifest = JSON.parse(await readFile(join(selected, "release-manifest.json"), "utf8"));
   const temporary = `${output}.building`;
   await lstat(output).then(() => { throw new Error("game-center release output already exists"); }, (error) => { if (error.code !== "ENOENT") throw error; });
@@ -65,6 +67,7 @@ async function main() {
     ...previousManifest,
     commit: commit.trim(),
     releaseKind: "game-center",
+    baseReleaseJobId,
     gameCenterUpdatedAt: candidate.updatedAt,
     gameCenterSha256: await sha256(join(temporary, "src/data/game-center.json")),
     homepageSha256: createHash("sha256").update(homepage).digest("hex"),

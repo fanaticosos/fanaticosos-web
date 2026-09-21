@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+readonly repository="/opt/fanaticosos-blog/repository"
+readonly service_account="fanaticosos-blog"
+readonly ready="/opt/fanaticosos-blog/publisher/game-center/deploy-ready"
+[[ "$(hostname)" == "papabear" && "$(id -u)" == 0 ]] || { echo "STOP: expected root on papabear." >&2; exit 1; }
+[[ -f "$ready" && ! -L "$ready" ]] || exit 0
+expected_commit="$(runuser -u "$service_account" -- git -C "$repository" rev-parse HEAD)"
+/usr/local/sbin/fanaticosos-blog-admin publish-game-center "$expected_commit"

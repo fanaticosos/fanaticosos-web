@@ -91,7 +91,7 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /canonical_deployment/);
   assert.match(production, /The previous validated deployment was restored/);
   assert.match(articleBuild, /homepageSha256: await sha256\(join\(temporary, "dist", "index\.html"\)\)/);
-  assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases(?:\n|$)/);
+  assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases \/run\/lock/);
   assert.match(productionUnit, /TimeoutStartSec=35min/);
   assert.match(productionUnit, /TimeoutStopSec=2min/);
   const deploymentTimeouts = await readFile(new URL("../lib/deployment-timeouts.mjs", import.meta.url), "utf8");
@@ -160,16 +160,21 @@ test("Game Center automation is adaptive, bounded, and production-safe", async (
   const service = await readFile(new URL("../../deploy/systemd/fanaticosos-game-center-update.service", import.meta.url), "utf8");
   const timer = await readFile(new URL("../../deploy/systemd/fanaticosos-game-center-update.timer", import.meta.url), "utf8");
   const runner = await readFile(new URL("../../deploy/publisher/fanaticosos-game-center-automation", import.meta.url), "utf8");
+  const publishService = await readFile(new URL("../../deploy/systemd/fanaticosos-game-center-publish.service", import.meta.url), "utf8");
+  const publishRunner = await readFile(new URL("../../deploy/publisher/fanaticosos-game-center-publish", import.meta.url), "utf8");
   const automation = await readFile(new URL("../../scripts/publisher/run_game_center_automation.mjs", import.meta.url), "utf8");
   assert.match(timer, /OnUnitActiveSec=10min/);
   assert.match(timer, /RandomizedDelaySec=45s/);
   assert.match(timer, /Persistent=true/);
   assert.match(service, /ProtectSystem=strict/);
   assert.match(service, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher/);
+  assert.match(service, /OnSuccess=fanaticosos-game-center-publish\.service/);
+  assert.match(publishService, /ExecStart=\/usr\/local\/sbin\/fanaticosos-game-center-publish/);
+  assert.match(publishRunner, /fanaticosos-blog-admin publish-game-center/);
   assert.doesNotMatch(runner, /deploy_cloudflare_production\.sh/);
   assert.doesNotMatch(runner, /record_game_center_deployment/);
   assert.match(runner, /\[\[ -f "\$ready" \]\] \|\| exit 0/);
-  assert.match(runner, /awaiting manual publication/);
+  assert.match(runner, /validated for automatic publication/);
   assert.match(automation, /GAME_INTERVAL_MS = 10 \* 60 \* 1000/);
   assert.match(automation, /DAILY_INTERVAL_MS = 24 \* 60 \* 60 \* 1000/);
   assert.match(automation, /Producción permanece intacta/);
@@ -180,19 +185,25 @@ test("Game Center automation is adaptive, bounded, and production-safe", async (
   assert.match(helper, /publish-game-center EXPECTED_COMMIT/);
 });
 
-test("Game Center automation reuses a matching validated proposal instead of rebuilding", async () => {
+test("Game Center automation reuses only proposals based on the current published release", async () => {
   const { pendingProposal } = await import("../../scripts/publisher/run_game_center_automation.mjs");
-  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { mkdtemp, mkdir, symlink, writeFile, rm } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
   const releasesRoot = await mkdtemp(join(tmpdir(), "fanaticosos-gc-"));
   try {
     const jobId = `release-${"a".repeat(32)}-r1-deadbeef`;
+    const baseJobId = `release-${"b".repeat(32)}-r1-deadbeef`;
     await mkdir(join(releasesRoot, jobId, "release"), { recursive: true });
+    await mkdir(join(releasesRoot, baseJobId, "release"), { recursive: true });
+    await symlink(join(baseJobId, "release"), join(releasesRoot, "current"));
     const candidate = { schemaVersion: 1, updatedAt: "2026-09-14T00:00:00Z", nextGame: { id: "next" } };
     await writeFile(join(releasesRoot, jobId, "game-center.json"), JSON.stringify({ ...candidate, updatedAt: "2026-09-13T00:00:00Z" }));
-    await writeFile(join(releasesRoot, jobId, "release", "release-manifest.json"), JSON.stringify({ releaseKind: "game-center", deployment: "disabled" }));
+    await writeFile(join(releasesRoot, jobId, "release", "release-manifest.json"), JSON.stringify({ releaseKind: "game-center", deployment: "disabled", baseReleaseJobId: baseJobId }));
     assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: jobId }, candidate }), jobId);
+    await rm(join(releasesRoot, "current"));
+    await symlink(join(jobId, "release"), join(releasesRoot, "current"));
+    assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: jobId }, candidate }), null);
     assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: jobId }, candidate: { ...candidate, nextGame: { id: "other" } } }), null);
     assert.equal(await pendingProposal({ releasesRoot, state: { pendingJobId: "release-bad" }, candidate }), null);
     assert.equal(await pendingProposal({ releasesRoot, state: {}, candidate }), null);

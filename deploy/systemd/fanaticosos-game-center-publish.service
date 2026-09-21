@@ -1,0 +1,15 @@
+[Unit]
+Description=Publish validated FanaticOSOS Game Center update
+After=network-online.target fanaticosos-game-center-update.service
+Wants=network-online.target
+ConditionPathExists=/opt/fanaticosos-blog/publisher/game-center/deploy-ready
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fanaticosos-game-center-publish
+TimeoutStartSec=35min
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/fanaticosos-blog/publisher /run/lock

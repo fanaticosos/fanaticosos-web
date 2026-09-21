@@ -2,6 +2,7 @@
 Description=FanaticOSOS verified Game Center update
 After=network-online.target fanaticosos-publisher.service
 Wants=network-online.target
+OnSuccess=fanaticosos-game-center-publish.service
 
 [Service]
 Type=oneshot

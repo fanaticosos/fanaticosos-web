@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, open, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -44,7 +44,8 @@ export async function pendingProposal({ releasesRoot, state, candidate }) {
   if (!/^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/.test(jobId ?? "")) return null;
   const proposal = await optionalJson(join(releasesRoot, jobId, "game-center.json"));
   const manifest = await optionalJson(join(releasesRoot, jobId, "release", "release-manifest.json"));
-  if (!proposal || manifest?.releaseKind !== "game-center") return null;
+  const selectedJobId = basename(dirname(await realpath(join(releasesRoot, "current"))));
+  if (!proposal || manifest?.releaseKind !== "game-center" || manifest.baseReleaseJobId !== selectedJobId) return null;
   return content(proposal) === content(candidate) ? jobId : null;
 }
 
@@ -77,8 +78,8 @@ async function main() {
       await rm(candidatePath, { force: true });
       return;
     }
-    // A validated proposal that still matches the sources is kept; the owner
-    // publishes it explicitly. Nothing here uploads to Cloudflare.
+    // Reuse only proposals built from the currently selected release. The
+    // separate OnSuccess service publishes the validated bundle.
     const pending = await pendingProposal({ releasesRoot, state, candidate });
     if (pending) {
       await rm(candidatePath, { force: true });
@@ -99,7 +100,7 @@ async function main() {
     await atomicJson(statePath, { ...state, lastSuccessfulCheckAt: now.toISOString(), lastMode: decision.mode, consecutiveFailures: 0, backoffUntil: null, pendingJobId: jobId, pendingSince: now.toISOString() });
     await createNotification(notificationsRoot, {
       level: "info", event: "game-center-ready",
-      message: `Game Center tiene una actualización validada pendiente de publicación manual (${jobId}). Producción no cambia hasta ejecutar publish-game-center.`,
+      message: `Game Center tiene una actualización validada (${jobId}) que el servicio de publicación aplicará automáticamente.`,
       replacePending: true,
     });
   } catch (error) {

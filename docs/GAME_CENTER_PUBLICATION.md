@@ -1,6 +1,6 @@
-# Game Center: refresco automático, publicación manual
+# Game Center: refresco y publicación automáticos
 
-Estado desde 2026-09-14. Sustituye el comportamiento anterior en el que el timer desplegaba a producción por sí solo.
+Estado desde 2026-09-21. La propuesta validada se publica automáticamente mediante el mismo despliegue protegido que usa el blog.
 
 ## Qué hace la automatización
 
@@ -10,10 +10,11 @@ Estado desde 2026-09-14. Sustituye el comportamiento anterior en el que el timer
 2. Si el marcador o el calendario cambiaron, construye un release privado completo a partir del release seleccionado (`releases/current`) y valida la página de inicio.
 3. Deja el identificador del release en `/opt/fanaticosos-blog/publisher/game-center/deploy-ready` y crea la notificación `game-center-ready` en el publicador.
 4. Si ya existe una propuesta validada con el mismo contenido, la reutiliza y no vuelve a construir.
+5. El servicio de publicación separado publica el paquete completo, valida las rutas y audios públicos, y restaura el despliegue anterior si falla la validación.
 
-El runner **no** sube nada a Cloudflare. Producción no cambia por acción del timer.
+Una propuesta construida antes de un artículo más reciente se considera obsoleta y se reconstruye desde el paquete actualmente seleccionado. Los despliegues se serializan para evitar que dos publicaciones se pisen.
 
-## Cómo publicar la propuesta
+## Publicación manual de recuperación
 
 Desde Papabear, con el commit esperado del repositorio:
 
@@ -21,7 +22,7 @@ Desde Papabear, con el commit esperado del repositorio:
 sudo /usr/local/sbin/fanaticosos-blog-admin publish-game-center EXPECTED_COMMIT
 ```
 
-El comando comprueba que el repositorio esté limpio y en el commit indicado, que exista `deploy-ready`, que el manifest sea de tipo `game-center` y `deployment: disabled`, y entonces ejecuta el mismo `deploy_cloudflare_production.sh` que usan los artículos: sube el bundle, valida los dominios públicos y hace rollback si algo falla. El resultado se registra con `record_game_center_deployment.mjs` y aparece como notificación `game-center-updated` o `game-center-update-failed`.
+Normalmente no hace falta ejecutarlo: el temporizador lo hace. Este comando queda para recuperación y comprueba que el repositorio esté limpio, que el paquete incluya el artículo actualmente seleccionado y que sea una propuesta validada de Game Center.
 
 ## Cómo ver si hay algo pendiente
 
@@ -37,7 +38,7 @@ Muestra `pendingJobId` y `pendingSince` cuando hay una propuesta esperando.
 sudo /usr/local/sbin/fanaticosos-blog-admin run-game-center-update EXPECTED_COMMIT
 ```
 
-Solo construye o reutiliza la propuesta; sigue sin publicar.
+Construye o reutiliza y publica la propuesta por la misma ruta protegida.
 
 ## Instalación
 
@@ -48,4 +49,4 @@ sudo /usr/local/sbin/fanaticosos-blog-admin install-game-center-automation EXPEC
 sudo /usr/local/sbin/fanaticosos-blog-admin update-admin EXPECTED_COMMIT
 ```
 
-El primer comando instala el runner nuevo; el segundo instala el helper con `publish-game-center`. Sin ambos, el timer seguiría usando el runner anterior.
+El primer comando instala el runner nuevo; el segundo instala el helper con la protección frente a propuestas obsoletas. Sin ambos, el temporizador seguiría usando el comportamiento anterior.

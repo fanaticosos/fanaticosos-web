@@ -45,8 +45,12 @@ readonly publisher_retention_timer_source="$repository/deploy/systemd/fanaticoso
 readonly publisher_retention_timer_installed="/etc/systemd/system/fanaticosos-release-retention.timer"
 readonly game_center_runner_source="$repository/deploy/publisher/fanaticosos-game-center-automation"
 readonly game_center_runner_installed="/usr/local/sbin/fanaticosos-game-center-automation"
+readonly game_center_publish_source="$repository/deploy/publisher/fanaticosos-game-center-publish"
+readonly game_center_publish_installed="/usr/local/sbin/fanaticosos-game-center-publish"
 readonly game_center_service_source="$repository/deploy/systemd/fanaticosos-game-center-update.service"
 readonly game_center_service_installed="/etc/systemd/system/fanaticosos-game-center-update.service"
+readonly game_center_publish_service_source="$repository/deploy/systemd/fanaticosos-game-center-publish.service"
+readonly game_center_publish_service_installed="/etc/systemd/system/fanaticosos-game-center-publish.service"
 readonly game_center_timer_source="$repository/deploy/systemd/fanaticosos-game-center-update.timer"
 readonly game_center_timer_installed="/etc/systemd/system/fanaticosos-game-center-update.timer"
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
@@ -1341,20 +1345,29 @@ command_install_game_center_automation() {
   local expected="$1" diagnostics
   require_repository_commit "$expected"
   [[ -x "$game_center_runner_source" ]] || stop "Game Center automation runner is missing or not executable."
-  [[ -f "$game_center_service_source" && -f "$game_center_timer_source" ]] || stop "Game Center systemd units are missing."
+  [[ -x "$game_center_publish_source" ]] || stop "Game Center publish runner is missing or not executable."
+  [[ -f "$game_center_service_source" && -f "$game_center_timer_source" && -f "$game_center_publish_service_source" ]] || stop "Game Center systemd units are missing."
   install -o root -g root -m 0755 "$game_center_runner_source" "$game_center_runner_installed"
-  if ! diagnostics="$(systemd-analyze verify "$game_center_service_source" "$game_center_timer_source" 2>&1)"; then
+  install -o root -g root -m 0755 "$game_center_publish_source" "$game_center_publish_installed"
+  if ! diagnostics="$(systemd-analyze verify "$game_center_service_source" "$game_center_timer_source" "$game_center_publish_service_source" "$publisher_production_deploy_source" "$publisher_music_deploy_source" 2>&1)"; then
     stop "Game Center systemd units failed verification: $diagnostics"
   fi
   [[ -z "$diagnostics" ]] || stop "Game Center systemd units produced diagnostics: $diagnostics"
   install -d -o "$service_account" -g "$service_account" -m 0700 "$publisher_data/game-center"
   install -o root -g root -m 0644 "$game_center_service_source" "$game_center_service_installed"
   install -o root -g root -m 0644 "$game_center_timer_source" "$game_center_timer_installed"
+  install -o root -g root -m 0644 "$game_center_publish_service_source" "$game_center_publish_service_installed"
+  install -o root -g root -m 0644 "$publisher_production_deploy_source" "$publisher_production_deploy_installed"
+  install -o root -g root -m 0644 "$publisher_music_deploy_source" "$publisher_music_deploy_installed"
   systemctl daemon-reload
   systemctl enable --now fanaticosos-game-center-update.timer
   cmp -s "$game_center_runner_source" "$game_center_runner_installed" || stop "Installed Game Center runner differs from Git."
   cmp -s "$game_center_service_source" "$game_center_service_installed" || stop "Installed Game Center service differs from Git."
   cmp -s "$game_center_timer_source" "$game_center_timer_installed" || stop "Installed Game Center timer differs from Git."
+  cmp -s "$game_center_publish_source" "$game_center_publish_installed" || stop "Installed Game Center publish runner differs from Git."
+  cmp -s "$game_center_publish_service_source" "$game_center_publish_service_installed" || stop "Installed Game Center publish service differs from Git."
+  cmp -s "$publisher_production_deploy_source" "$publisher_production_deploy_installed" || stop "Installed production deploy service differs from Git."
+  cmp -s "$publisher_music_deploy_source" "$publisher_music_deploy_installed" || stop "Installed music deploy service differs from Git."
   [[ "$(systemctl is-active fanaticosos-game-center-update.timer)" == "active" ]] || stop "Game Center timer is not active."
   echo "PASS: Adaptive Game Center automation installed and active."
 }
@@ -1384,7 +1397,10 @@ command_run_game_center_update() {
   systemctl stop fanaticosos-game-center-update.service || true
   systemctl reset-failed fanaticosos-game-center-update.service || true
   "$game_center_runner_installed" --force
-  echo "PASS: Forced Game Center refresh completed; any validated proposal awaits publish-game-center."
+  if [[ -f "$publisher_data/game-center/deploy-ready" ]]; then
+    command_publish_game_center "$expected"
+  fi
+  echo "PASS: Forced Game Center refresh and publication completed."
 }
 
 command_publish_game_center() {
@@ -1395,15 +1411,17 @@ command_publish_game_center() {
   job_id="$(tr -d '\n' < "$ready")"
   [[ "$job_id" =~ ^release-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$ ]] || stop "Invalid Game Center release proposal."
   [[ -f "$publisher_data/releases/$job_id/release/release-manifest.json" ]] || stop "Game Center release bundle is missing."
-  run_as_service python3 - "$publisher_data/releases/$job_id/release/release-manifest.json" <<'PY'
+  run_as_service python3 - "$publisher_data/releases/$job_id/release/release-manifest.json" "$publisher_data/releases/current" <<'PY'
 import json, sys
+from pathlib import Path
 with open(sys.argv[1], encoding="utf-8") as handle:
     manifest = json.load(handle)
 if manifest.get("releaseKind") != "game-center" or manifest.get("deployment") != "disabled":
     raise SystemExit("release is not a validated Game Center proposal")
+if manifest.get("baseReleaseJobId") != Path(sys.argv[2]).resolve().parent.name:
+    raise SystemExit("Game Center proposal is stale; rebuild it from the selected published article")
 print(f"Game Center data through {manifest.get('gameCenterUpdatedAt')} from commit {manifest.get('commit', '')[:7]}")
 PY
-  systemctl stop fanaticosos-game-center-update.service || true
   if "$cloudflare_production_script" "$repository" "$data_root" "$job_id"; then
     run_as_service /opt/nodejs/current/bin/node "$repository/scripts/publisher/record_game_center_deployment.mjs" \
       --publisher-root "$publisher_data" --job-id "$job_id" --result success

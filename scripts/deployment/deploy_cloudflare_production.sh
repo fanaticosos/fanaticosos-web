@@ -28,10 +28,12 @@ readonly wrangler="$repository/node_modules/.bin/wrangler"
 [[ -f "$manifest" && -d "$dist_root" ]] || stop "Validated release bundle is missing."
 [[ ! -e "$receipt" && ! -e "$log_file" ]] || stop "This release already has a Cloudflare production record."
 [[ -x "$wrangler" ]] || stop "Pinned Wrangler runtime is missing."
+exec 9> /run/lock/fanaticosos-cloudflare-production.lock
+flock -n 9 || stop "Another production deployment is in progress."
 
-mapfile -t manifest_values < <(python3 - "$manifest" "$dist_root" <<'PY'
+mapfile -t manifest_values < <(python3 - "$manifest" "$dist_root" "$data_root/publisher/releases/current" <<'PY'
 import hashlib, json, os, sys
-manifest_path, dist_root = sys.argv[1:]
+manifest_path, dist_root, selected = sys.argv[1:]
 release_root = os.path.dirname(dist_root)
 
 def directory_sha256(root):
@@ -53,6 +55,10 @@ with open(manifest_path, encoding="utf-8") as handle:
     manifest = json.load(handle)
 if manifest.get("schemaVersion") != 1 or manifest.get("deployment") != "disabled":
     raise SystemExit("release manifest is not deployment-disabled schema version 1")
+if manifest.get("releaseKind") == "game-center":
+    selected_job_id = os.path.basename(os.path.dirname(os.path.realpath(selected)))
+    if manifest.get("baseReleaseJobId") != selected_job_id:
+        raise SystemExit("Game Center release is stale; rebuild from current production content")
 commit = manifest.get("commit", "")
 if len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
     raise SystemExit("release manifest commit is invalid")
