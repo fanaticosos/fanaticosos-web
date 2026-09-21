@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
-import { cp, lstat, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import { siteSettingsSchema } from "../../src/lib/siteSettingsSchema.mjs";
@@ -24,8 +24,9 @@ async function main() {
   await lstat(output).then(() => { throw new Error("music release output already exists"); }, (e) => { if (e.code !== "ENOENT") throw e; });
   await cp(repository, temporary, { recursive: true, filter: (source) => ![".git", "node_modules", ".astro", "dist"].includes(basename(source)) });
   const selected = join(releasesRoot, "current");
+  const baseReleaseJobId = basename(dirname(await realpath(selected)));
   const manifest = JSON.parse(await readFile(join(selected, "release-manifest.json"), "utf8"));
-  for (const relative of ["src/content/articles", "public/audio", "public/images", "public/uploads"]) {
+  for (const relative of ["src/content/articles", "src/data/game-center.json", "public/audio", "public/images", "public/uploads"]) {
     const source = join(selected, relative);
     const exists = await lstat(source).then(() => true).catch((error) => { if (error.code === "ENOENT") return false; throw error; });
     if (exists) await cp(source, join(temporary, relative), { recursive: true, force: true });
@@ -43,7 +44,7 @@ async function main() {
     if (!homepage.includes(expected.replaceAll("&", "&amp;")) && !homepage.includes(expected)) throw new Error(`homepage is missing weekly-song value: ${expected}`);
   }
   const { stdout: commit } = await execute("git", ["-C", repository, "rev-parse", "HEAD"]);
-  Object.assign(manifest, { commit: commit.trim(), releaseKind: "music", musicUpdatedAt: new Date().toISOString(), homepageSha256: createHash("sha256").update(homepage).digest("hex"), deployment: "disabled" });
+  Object.assign(manifest, { commit: commit.trim(), releaseKind: "music", baseReleaseJobId, musicUpdatedAt: new Date().toISOString(), homepageSha256: createHash("sha256").update(homepage).digest("hex"), deployment: "disabled" });
   await writeFile(join(temporary, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });
   await mkdir(resolve(output, ".."), { recursive: true, mode: 0o700 });
   await rename(temporary, output);

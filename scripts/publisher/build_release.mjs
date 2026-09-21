@@ -2,7 +2,7 @@
 
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, lstat, mkdir, readFile, readdir, rename, stat, symlink, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, realpath, rename, stat, symlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -119,8 +119,9 @@ async function main() {
     if (error.code === "ENOENT") return false;
     throw error;
   });
+  const baseReleaseJobId = hasSelectedRelease ? basename(dirname(await realpath(selected))) : null;
   if (hasSelectedRelease) {
-    for (const relative of ["src/content/articles", "public/audio", "public/images", "public/uploads"]) {
+    for (const relative of ["src/content/articles", "src/data/game-center.json", "public/audio", "public/images", "public/uploads"]) {
       const source = join(selected, relative);
       const exists = await lstat(source).then(() => true).catch((error) => {
         if (error.code === "ENOENT") return false;
@@ -200,6 +201,7 @@ async function main() {
   const functionsSha256 = await directorySha256(join(temporary, "functions"));
   const manifest = {
     schemaVersion: 1, articleId: request.articleId, draftRevision: request.draftRevision,
+    baseReleaseJobId,
     publishedAt: request.publishedAt, timezone: settings.timezone, commit: request.sourceCommit,
     routes: { es: `/blog/${slugs.es}/`, en: `/en/blog/${slugs.en}/` },
     assets: copiedAssets,

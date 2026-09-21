@@ -47,6 +47,7 @@ const resultForBears = (game: NonNullable<typeof previousGame>) => {
             title="Horario mostrado inicialmente en Ciudad de México"
           >{formatDate(nextGame.startsAt)}</time>
           {nextGame.venue && <p class="game-venue">{nextGame.venue}</p>}
+          {nextGame.winProbability && <a class="win-probability-source" href={nextGame.winProbability.sourceUrl} target="_blank" rel="noopener">Fuente: ESPN Analytics <span aria-hidden="true">↗</span></a>}
         </>
       ) : <p class="empty-state">Próximo partido por anunciar.</p>}
     </article>

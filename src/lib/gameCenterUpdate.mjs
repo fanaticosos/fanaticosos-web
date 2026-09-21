@@ -5,7 +5,8 @@ import {
   extractOfficialBearsSchedule,
   verifyGameCenterAgainstOfficialSchedule,
 } from "./bearsScheduleVerification.mjs";
-import { extractPfnGameCenter } from "./pfnGameCenter.mjs";
+import { extractPfnProjections } from "./pfnGameCenter.mjs";
+import { espnPredictorUrl, extractEspnPredictor } from "./espnPredictor.mjs";
 
 export const ESPN_TEAM_URL = "https://www.espn.com/nfl/team/_/name/chi/chicago-bears";
 export const BEARS_SCHEDULE_URL = "https://www.chicagobears.com/schedule/";
@@ -58,9 +59,11 @@ export async function updateGameCenter({
     : "";
   const candidate = buildVerifiedGameCenter({ teamHtml, officialHtml, boxScoreHtml, updatedAt });
   const asOf = new Date(updatedAt).toISOString().slice(0, 10);
-  const pfn = extractPfnGameCenter(pfnHtml, candidate.nextGame, asOf);
-  candidate.projections = pfn.projections;
-  candidate.nextGame.winProbability = pfn.winProbability;
+  candidate.projections = extractPfnProjections(pfnHtml, asOf);
+  if (candidate.nextGame) {
+    const predictor = JSON.parse(await fetchText(fetchImplementation, espnPredictorUrl(candidate.nextGame.id)));
+    candidate.nextGame.winProbability = extractEspnPredictor(predictor, candidate.nextGame, asOf);
+  }
 
   await mkdir(dirname(outputPath), { recursive: true });
   const temporaryPath = `${outputPath}.${process.pid}.tmp`;

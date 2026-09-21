@@ -91,6 +91,7 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /canonical_deployment/);
   assert.match(production, /The previous validated deployment was restored/);
   assert.match(articleBuild, /homepageSha256: await sha256\(join\(temporary, "dist", "index\.html"\)\)/);
+  assert.match(articleBuild, /"src\/data\/game-center\.json"/);
   assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases \/run\/lock/);
   assert.match(productionUnit, /TimeoutStartSec=35min/);
   assert.match(productionUnit, /TimeoutStopSec=2min/);
@@ -100,13 +101,13 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /readonly validation_deadline=\$\(\(SECONDS \+ 20 \* 60\)\)/);
   assert.match(failureRecorder, /await chown\(temporary, owner\.uid, owner\.gid\)/);
   assert.doesNotMatch(music, /select_release\.mjs/);
-  assert.match(musicBuild, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);
+  assert.match(musicBuild, /"src\/content\/articles", "src\/data\/game-center\.json", "public\/audio", "public\/images", "public\/uploads"/);
 });
 
 test("article releases preserve the selected production content set", async () => {
   const build = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");
   const releaseUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-release@.service", import.meta.url), "utf8");
-  assert.match(build, /"src\/content\/articles", "public\/audio", "public\/images", "public\/uploads"/);
+  assert.match(build, /"src\/content\/articles", "src\/data\/game-center\.json", "public\/audio", "public\/images", "public\/uploads"/);
   assert.match(build, /join\(releasesRoot, "current"\)/);
   assert.match(releaseUnit, /--releases-root \/opt\/fanaticosos-blog\/publisher\/releases/);
 });

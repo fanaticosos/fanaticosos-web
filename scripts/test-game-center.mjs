@@ -7,9 +7,10 @@ assert.doesNotThrow(() => gameCenterSchema.parse(source));
 assert.equal(source.projections.playoffPercent, 69.5);
 assert.equal(source.projections.divisionWinPercent, 37.2);
 assert.equal(source.projections.averageWins, 10.5);
-assert.equal(source.nextGame.winProbability.awayPercent, 34);
-assert.equal(source.nextGame.winProbability.homePercent, 66);
-assert.equal(source.nextGame.winProbability.awayPercent + source.nextGame.winProbability.homePercent, 100);
+assert.equal(source.nextGame.winProbability.awayPercent, 57.1);
+assert.equal(source.nextGame.winProbability.homePercent, 42.5);
+assert.equal(source.nextGame.winProbability.sourceUrl, "https://www.espn.com/nfl/game/_/gameId/401872963");
+assert.ok(source.nextGame.winProbability.awayPercent + source.nextGame.winProbability.homePercent < 100);
 
 assert.throws(() => gameCenterSchema.parse({
   ...source,
@@ -34,5 +35,6 @@ assert.match(component, /Predicciones \{projections\.season\}/);
 assert.match(component, /% de ganar división/);
 assert.doesNotMatch(component, /Playoff %|Div Win %|Avg Wins/);
 assert.match(component, /winProbability\.awayPercent/);
+assert.match(component, /Fuente: ESPN Analytics/);
 
 console.log("Passed Game Center contract tests.");

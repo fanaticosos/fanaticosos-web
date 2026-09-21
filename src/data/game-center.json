@@ -1,16 +1,42 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-18T23:13:33.057Z",
+  "updatedAt": "2026-09-21T17:51:25.981Z",
   "source": {
     "primary": "https://www.espn.com/nfl/team/_/name/chi/chicago-bears",
     "verification": "https://www.chicagobears.com/schedule/"
   },
   "nextGame": {
-    "id": "401872937",
+    "id": "401872963",
     "status": "scheduled",
+    "startsAt": "2026-09-29T00:15:00.000Z",
+    "timeZone": "America/Chicago",
+    "venue": null,
+    "home": {
+      "id": "3",
+      "name": "Chicago Bears",
+      "abbreviation": "CHI"
+    },
+    "away": {
+      "id": "PHI",
+      "name": "Philadelphia Eagles",
+      "abbreviation": "PHI"
+    },
+    "homeScore": null,
+    "awayScore": null,
+    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872963",
+    "winProbability": {
+      "awayPercent": 57.1,
+      "homePercent": 42.5,
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872963",
+      "asOf": "2026-09-21"
+    }
+  },
+  "previousGame": {
+    "id": "401872937",
+    "status": "final",
     "startsAt": "2026-09-20T17:00:00.000Z",
     "timeZone": "America/Chicago",
-    "venue": "Soldier Field",
+    "venue": null,
     "home": {
       "id": "3",
       "name": "Chicago Bears",
@@ -21,43 +47,37 @@
       "name": "Minnesota Vikings",
       "abbreviation": "MIN"
     },
-    "homeScore": null,
-    "awayScore": null,
-    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872937",
-    "winProbability": {
-      "awayPercent": 34,
-      "homePercent": 66,
-      "sourceUrl": "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
-      "asOf": "2026-09-18"
-    }
-  },
-  "previousGame": {
-    "id": "401872661",
-    "status": "final",
-    "startsAt": "2026-09-13T17:00:00.000Z",
-    "timeZone": "America/Chicago",
-    "venue": "Bank of America Stadium",
-    "home": {
-      "id": "CAR",
-      "name": "Carolina Panthers",
-      "abbreviation": "CAR"
-    },
-    "away": {
-      "id": "3",
-      "name": "Chicago Bears",
-      "abbreviation": "CHI"
-    },
-    "homeScore": 37,
-    "awayScore": 59,
-    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872661"
+    "homeScore": 3,
+    "awayScore": 9,
+    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872937"
   },
   "recentResults": [
+    {
+      "id": "401872937",
+      "status": "final",
+      "startsAt": "2026-09-20T17:00:00.000Z",
+      "timeZone": "America/Chicago",
+      "venue": null,
+      "home": {
+        "id": "3",
+        "name": "Chicago Bears",
+        "abbreviation": "CHI"
+      },
+      "away": {
+        "id": "MIN",
+        "name": "Minnesota Vikings",
+        "abbreviation": "MIN"
+      },
+      "homeScore": 3,
+      "awayScore": 9,
+      "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872937"
+    },
     {
       "id": "401872661",
       "status": "final",
       "startsAt": "2026-09-13T17:00:00.000Z",
       "timeZone": "America/Chicago",
-      "venue": "Bank of America Stadium",
+      "venue": null,
       "home": {
         "id": "CAR",
         "name": "Carolina Panthers",
@@ -77,7 +97,7 @@
       "status": "final",
       "startsAt": "2026-08-29T22:00:00.000Z",
       "timeZone": "America/Chicago",
-      "venue": "Nissan Stadium",
+      "venue": null,
       "home": {
         "id": "TEN",
         "name": "Tennessee Titans",
@@ -97,7 +117,7 @@
       "status": "final",
       "startsAt": "2026-08-22T23:00:00.000Z",
       "timeZone": "America/Chicago",
-      "venue": "Paycor Stadium",
+      "venue": null,
       "home": {
         "id": "CIN",
         "name": "Cincinnati Bengals",
@@ -111,26 +131,6 @@
       "homeScore": 27,
       "awayScore": 9,
       "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401873289"
-    },
-    {
-      "id": "401874393",
-      "status": "final",
-      "startsAt": "2026-08-15T17:00:00.000Z",
-      "timeZone": "America/Chicago",
-      "venue": "Soldier Field",
-      "home": {
-        "id": "3",
-        "name": "Chicago Bears",
-        "abbreviation": "CHI"
-      },
-      "away": {
-        "id": "CLE",
-        "name": "Cleveland Browns",
-        "abbreviation": "CLE"
-      },
-      "homeScore": 34,
-      "awayScore": 10,
-      "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401874393"
     }
   ],
   "nfcNorth": [
@@ -140,17 +140,7 @@
         "name": "Minnesota Vikings",
         "abbreviation": "MIN"
       },
-      "wins": 1,
-      "losses": 0,
-      "ties": 0
-    },
-    {
-      "team": {
-        "id": "CHI",
-        "name": "Chicago Bears",
-        "abbreviation": "CHI"
-      },
-      "wins": 1,
+      "wins": 2,
       "losses": 0,
       "ties": 0
     },
@@ -166,11 +156,21 @@
     },
     {
       "team": {
+        "id": "CHI",
+        "name": "Chicago Bears",
+        "abbreviation": "CHI"
+      },
+      "wins": 1,
+      "losses": 1,
+      "ties": 0
+    },
+    {
+      "team": {
         "id": "GB",
         "name": "Green Bay Packers",
         "abbreviation": "GB"
       },
-      "wins": 0,
+      "wins": 1,
       "losses": 1,
       "ties": 0
     }
@@ -181,6 +181,6 @@
     "divisionWinPercent": 37.2,
     "averageWins": 10.5,
     "sourceUrl": "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
-    "asOf": "2026-09-18"
+    "asOf": "2026-09-21"
   }
 }

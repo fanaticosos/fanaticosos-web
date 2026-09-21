@@ -9,11 +9,11 @@ const team = z.object({
 const gameStatus = z.enum(["scheduled", "in_progress", "final", "postponed", "canceled", "tbd"]);
 
 const winProbability = z.object({
-  awayPercent: z.number().int().min(0).max(100),
-  homePercent: z.number().int().min(0).max(100),
-  sourceUrl: z.url().refine((value) => new URL(value).hostname === "www.profootballnetwork.com", "Win probability source must use profootballnetwork.com"),
+  awayPercent: z.number().min(0).max(100),
+  homePercent: z.number().min(0).max(100),
+  sourceUrl: z.url().refine((value) => ["www.espn.com", "www.profootballnetwork.com"].includes(new URL(value).hostname), "Win probability source must use ESPN or PFN"),
   asOf: z.iso.date(),
-}).refine((value) => value.awayPercent + value.homePercent === 100, "Win probabilities must add up to 100");
+}).refine((value) => value.awayPercent + value.homePercent >= 98 && value.awayPercent + value.homePercent <= 100.1, "Win probabilities must allow at most 2% for a tie");
 
 const game = z.object({
   id: z.string().min(1),
