@@ -10,3 +10,8 @@ export function deploymentStateForRevision(deployment, revision) {
 export function canStartTranslation({ draft, translation, unsavedChanges = false }) {
   return Boolean(draft) && !unsavedChanges && !translation;
 }
+
+export function audioActionLabel(locale, ready) {
+  const language = locale === "es" ? "español" : "inglés";
+  return `${ready ? "Volver a generar" : "Generar"} audio en ${language}`;
+}

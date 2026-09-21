@@ -102,9 +102,6 @@ input:focus, textarea:focus { border-color: #ff8a3d; box-shadow: 0 0 0 3px #ff6a
 .secondary-action { border: 1px solid #42617d; border-radius: 7px; color: #dce6ee; background: transparent; cursor: pointer; margin: -7px 0 18px; padding: 8px 11px; }
 .future { opacity: 1; }
 .workflow-explanation { max-width: 720px; margin: -8px 0 16px; }
-.workflow-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; counter-reset: workflow; }
-.workflow-steps li { counter-increment: workflow; padding: 7px 11px; border: 1px solid #32495f; border-radius: 999px; color: #b6c7d5; }
-.workflow-steps li::before { content: counter(workflow) " · "; color: #ff8a3d; font-weight: 900; }
 .future p { color: #9bb0c1; }
 .tts-preflight { background: #0b2030; border: 1px solid #31536b; border-radius: 9px; margin: 0 0 18px; padding: 14px 16px; }
 .tts-preflight.ready { border-color: #39855a; }

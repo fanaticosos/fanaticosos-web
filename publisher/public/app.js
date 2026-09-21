@@ -1,5 +1,5 @@
 import { generateSeoPreview } from "/seo.js";
-import { canStartTranslation, deploymentStateForRevision } from "/workflow-state.js";
+import { audioActionLabel, canStartTranslation, deploymentStateForRevision } from "/workflow-state.js";
 
 const form = document.querySelector("#article-form");
 const list = document.querySelector("#draft-list");
@@ -301,12 +301,16 @@ function setFields(draft) {
   publishRelease.textContent = "Publicar";
   generateEnglish.textContent = "Crear traducción al inglés";
   generateSpanishAudio.disabled = !draft;
+  generateSpanishAudio.textContent = audioActionLabel("es", false);
   regenerateEnglishAudio.disabled = true;
+  regenerateEnglishAudio.textContent = audioActionLabel("en", false);
   document.querySelector("#english-title").value = "";
   document.querySelector("#english-description").value = "";
   document.querySelector("#english-body").value = "";
   document.querySelector("#audio-es").removeAttribute("src");
   document.querySelector("#audio-en").removeAttribute("src");
+  document.querySelector("#audio-es-player").hidden = true;
+  document.querySelector("#audio-en-player").hidden = true;
   spanishAudioFile.value = "";
   audiogramMetadata = null;
   renderSeoPreview();
@@ -644,6 +648,10 @@ async function pollAudio() {
     showSpanishAudioProgress(audio);
     const spanishReady = audio.jobs?.es?.status === "completed";
     const englishReady = audio.jobs?.en?.status === "completed";
+    generateSpanishAudio.textContent = audioActionLabel("es", spanishReady);
+    regenerateEnglishAudio.textContent = audioActionLabel("en", englishReady);
+    document.querySelector("#audio-es-player").hidden = !spanishReady;
+    document.querySelector("#audio-en-player").hidden = !englishReady;
     const spanishPlayer = document.querySelector("#audio-es");
     const englishPlayer = document.querySelector("#audio-en");
     if (spanishReady) {
