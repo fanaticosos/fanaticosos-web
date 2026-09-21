@@ -414,15 +414,18 @@ export function createPublisherServer({
       if (previewMatch && request.method === "GET") {
         try {
           const draft = await draftStore.read(previewMatch[1]);
-          await artifactRebaser(draft);
+          const draftOnly = url.searchParams.get("draft") === "1";
+          if (!draftOnly) await artifactRebaser(draft);
           const [translation, audio, settings] = await Promise.all([
-            translationStore.read(previewMatch[1]),
-            audioStore.read(previewMatch[1]),
+            draftOnly ? readOptionalState(() => translationStore.read(previewMatch[1])) : translationStore.read(previewMatch[1]),
+            draftOnly ? readOptionalState(() => audioStore.read(previewMatch[1])) : audioStore.read(previewMatch[1]),
             readFile(settingsPath, "utf8").then(JSON.parse),
           ]);
-          const requests = ttsRequestsForDraft(draft, translation);
-          if (staleAudioLocales(audio, requests, await currentTtsPolicyRevision()).length) throw new Error("preview audio is stale");
-          const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings }));
+          if (!draftOnly) {
+            const requests = ttsRequestsForDraft(draft, translation);
+            if (staleAudioLocales(audio, requests, await currentTtsPolicyRevision()).length) throw new Error("preview audio is stale");
+          }
+          const body = Buffer.from(previewPage({ draft, translation, audio, locale: previewMatch[2], settings, draftOnly }));
           response.writeHead(200, {
             "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length,
             "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self'; script-src 'none'",

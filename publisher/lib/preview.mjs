@@ -42,10 +42,11 @@ export function previewErrorPage() {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Vista previa no disponible</title><link rel="stylesheet" href="/preview.css"></head><body><header><a class="brand" href="/">FANATICOSOS</a><a class="editor-return" href="/">← Volver al editor</a></header><main><article><h1>La vista previa todavía no está lista</h1><p class="description">Regresa al editor. Allí verás el paso pendiente y podrás continuar sin perder tu trabajo.</p><p><a class="primary-link" href="/">Volver al editor</a></p></article></main></body></html>`;
 }
 
-export function previewPage({ draft, translation, audio, locale, settings }) {
-  if (translation.status !== "completed" || audio.status !== "completed") throw new Error("preview requires accepted translation and audio");
-  if (translation.draftRevision !== draft.revision) throw new Error("preview translation is stale");
+export function previewPage({ draft, translation, audio, locale, settings, draftOnly = false }) {
+  if (!draftOnly && (translation?.status !== "completed" || audio?.status !== "completed")) throw new Error("preview requires accepted translation and audio");
+  if (!draftOnly && translation.draftRevision !== draft.revision) throw new Error("preview translation is stale");
   const english = locale === "en";
+  if (english && !translation?.result) throw new Error("English preview requires a translation");
   const content = english ? translation.result : draft;
   const alternate = english ? "es" : "en";
   const editorPath = `/?draft=${encodeURIComponent(draft.articleId)}`;
@@ -61,9 +62,12 @@ export function previewPage({ draft, translation, audio, locale, settings }) {
   const tags = draft.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join(" ");
   const imageCredit = draft.featuredImage.caption || draft.featuredImage.credit;
   const image = draft.featuredImage.path ? `<figure><img src="${escapeHtml(draft.featuredImage.path)}" alt="${escapeHtml(draft.featuredImage.alt || content.title)}">${imageCredit ? `<figcaption>${escapeHtml(imageCredit)}</figcaption>` : ""}</figure>` : "";
-  const player = `<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/${english ? "en" : "es"}"></audio>`;
+  const audioReady = draftOnly ? audio?.jobs?.[locale]?.status === "completed" : true;
+  const player = audioReady ? `<audio controls preload="metadata" src="/api/drafts/${draft.articleId}/audio/${english ? "en" : "es"}"></audio>` : "";
+  const draftNotice = draftOnly ? `<aside class="draft-notice" role="status">Vista previa del borrador. Puedes revisar el artículo ahora; todavía no está validado para publicar.</aside>` : "";
+  const alternateLink = draftOnly ? `/preview/${draft.articleId}/${alternate}?draft=1` : `/preview/${draft.articleId}/${alternate}`;
   return `<!doctype html>
 <html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(content.title)} · Vista previa</title><link rel="stylesheet" href="/preview.css"></head>
-<body><header><a class="brand" href="${editorPath}">FANATICOSOS</a><nav class="preview-navigation" aria-label="${english ? "Preview navigation" : "Navegación de vista previa"}"><a class="editor-return" href="${editorPath}">← ${english ? "Back to editor" : "Volver al editor"}</a><div class="language-control"><span aria-current="${english ? "false" : "page"}">ES</span><a href="/preview/${draft.articleId}/${alternate}">${english ? "EN → ES" : "ES → EN"}</a><span aria-current="${english ? "page" : "false"}">EN</span></div></nav></header>
-<main><article><p class="eyebrow">${escapeHtml(draft.category)} · ${draft.season}</p><h1>${escapeHtml(content.title)}</h1><p class="description">${escapeHtml(content.description)}</p><p class="byline">${escapeHtml(settings.author.name)} · ${escapeHtml(settings.author.socialHandle)}</p>${image}${player}<div class="story">${renderMarkdown(content.body)}</div><div class="tags">${tags}</div><footer><strong>${escapeHtml(promoHeading)}</strong><p>${escapeHtml(promoLabel)}</p><nav class="social-bar" aria-label="${english ? "Social media" : "Redes sociales"}">${platforms}</nav></footer></article></main></body></html>`;
+<body><header><a class="brand" href="${editorPath}">FANATICOSOS</a><nav class="preview-navigation" aria-label="${english ? "Preview navigation" : "Navegación de vista previa"}"><a class="editor-return" href="${editorPath}">← ${english ? "Back to editor" : "Volver al editor"}</a><div class="language-control"><span aria-current="${english ? "false" : "page"}">ES</span>${!draftOnly || translation?.result ? `<a href="${alternateLink}">${english ? "EN → ES" : "ES → EN"}</a>` : ""}<span aria-current="${english ? "page" : "false"}">EN</span></div></nav></header>
+<main><article>${draftNotice}<p class="eyebrow">${escapeHtml(draft.category)} · ${draft.season}</p><h1>${escapeHtml(content.title)}</h1><p class="description">${escapeHtml(content.description)}</p><p class="byline">${escapeHtml(settings.author.name)} · ${escapeHtml(settings.author.socialHandle)}</p>${image}${player}<div class="story">${renderMarkdown(content.body)}</div><div class="tags">${tags}</div><footer><strong>${escapeHtml(promoHeading)}</strong><p>${escapeHtml(promoLabel)}</p><nav class="social-bar" aria-label="${english ? "Social media" : "Redes sociales"}">${platforms}</nav></footer></article></main></body></html>`;
 }

@@ -37,6 +37,16 @@ test("private preview switches the complete article and escapes owner text", () 
   assert.match(spanish, /\?draft=00000000-0000-4000-8000-000000000001/);
 });
 
+test("draft preview opens before English and audio are ready without implying publication readiness", () => {
+  const html = previewPage({ draft, translation: null, audio: null, locale: "es", settings, draftOnly: true });
+  assert.match(html, /Vista previa del borrador/);
+  assert.match(html, /todavía no está validado para publicar/);
+  assert.match(html, /Los Bears &lt;ganan&gt;/);
+  assert.doesNotMatch(html, /<audio controls/);
+  assert.doesNotMatch(html, /ES → EN/);
+  assert.throws(() => previewPage({ draft, translation: null, audio: null, locale: "es", settings }));
+});
+
 test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes safely", () => {
   const html = renderMarkdown("## Una defensa\n\nPrimer párrafo.\n\n**Importante**\n\n- Uno\n- Dos\n\n> Una cita\n\n<script>alert(1)</script>");
   assert.match(html, /<h2>Una defensa<\/h2>/);

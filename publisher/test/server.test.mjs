@@ -362,7 +362,7 @@ test("editor shell is served with private security headers", async (context) => 
   const app = await (await fetch(`${base}/app.js`)).text();
   assert.match(app, /translationNeedsConfirmation \|\| !staleLocales\.includes\("en"\)/);
   assert.match(app, /englishResult\.scrollIntoView/);
-  assert.doesNotMatch(app, /window\.open\(`\/preview/);
+  assert.match(app, /window\.location\.assign\(`\/preview\/\$\{current\.articleId\}\/es\?draft=1`\)/);
   assert.match(app, /window\.location\.assign\(`\/preview/);
   assert.match(app, /canStartTranslation\(\{ draft: current, translation, unsavedChanges: hasUnsavedChanges \}\)/);
   assert.match(app, /dockTranslate\.addEventListener\("click"/);
@@ -401,6 +401,18 @@ test("editor shell is served with private security headers", async (context) => 
 
   const styles = await (await fetch(`${base}/styles.css`)).text();
   assert.match(styles, /#notification-list[^}]*max-height:[^}]*overflow-y: auto/);
+});
+
+test("saved Spanish draft has a private preview before translation and audio", async (context) => {
+  const { server, base } = await fixture();
+  context.after(() => server.close());
+  const created = (await (await fetch(`${base}/api/drafts`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields),
+  })).json()).draft;
+  const preview = await fetch(`${base}/preview/${created.articleId}/es?draft=1`);
+  assert.equal(preview.status, 200);
+  assert.match(await preview.text(), /Vista previa del borrador/);
+  assert.equal((await fetch(`${base}/preview/${created.articleId}/es`)).status, 409);
 });
 
 test("draft can be created, listed, reopened, and updated", async (context) => {

@@ -54,6 +54,8 @@ let deploymentTimer = null;
 let markdownPreviewTimer = null;
 let hasUnsavedChanges = false;
 let translationNeedsConfirmation = false;
+let latestAudioStatus = null;
+let latestReleaseStatus = null;
 
 function markSaved() {
   hasUnsavedChanges = false;
@@ -61,6 +63,11 @@ function markSaved() {
 
 function confirmDiscardChanges() {
   return !hasUnsavedChanges || window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos?");
+}
+
+function explainPublicationBlocker(detail) {
+  workflowState.textContent = detail;
+  showError(detail);
 }
 
 window.addEventListener("beforeunload", (event) => {
@@ -73,8 +80,8 @@ function syncWorkflowDock() {
   dockSave.disabled = document.querySelector("#save-draft").disabled;
   dockTranslate.disabled = translationNeedsConfirmation ? saveEnglish.disabled : generateEnglish.disabled;
   dockTranslate.textContent = translationNeedsConfirmation ? "Revisar inglés" : generateEnglish.textContent;
-  dockPreview.disabled = openPreview.disabled;
-  dockPublish.disabled = publishRelease.disabled;
+  dockPreview.disabled = !current;
+  dockPublish.disabled = !current || ["Publicando…", "Publicado"].includes(publishRelease.textContent);
   dockPublish.textContent = publishRelease.textContent;
 }
 
@@ -90,8 +97,31 @@ dockTranslate.addEventListener("click", () => {
   else generateEnglish.click();
 });
 retranslateEnglish.addEventListener("click", () => generateEnglish.click());
-dockPreview.addEventListener("click", () => openPreview.click());
-dockPublish.addEventListener("click", () => publishRelease.click());
+dockPreview.addEventListener("click", () => {
+  if (!current) return;
+  if (hasUnsavedChanges) return explainPublicationBlocker("Guarda los cambios antes de abrir la vista previa; así verás exactamente el borrador guardado.");
+  window.location.assign(`/preview/${current.articleId}/es?draft=1`);
+});
+dockPublish.addEventListener("click", () => {
+  if (!current) return;
+  if (hasUnsavedChanges) return explainPublicationBlocker("Guarda los cambios antes de publicar.");
+  if (translationNeedsConfirmation) {
+    explainPublicationBlocker("Antes de publicar, revisa el inglés y pulsa «Confirmar inglés revisado», o crea una nueva traducción.");
+    englishResult.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (latestAudioStatus !== "completed") {
+    explainPublicationBlocker("Antes de publicar, completa los audios indicados en esta sección. La vista previa del borrador ya está disponible.");
+    audioResult.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (latestReleaseStatus !== "completed") {
+    explainPublicationBlocker("Primero se debe validar la vista previa. La preparación privada comenzará ahora; vuelve al editor para publicar después de revisarla.");
+    openPreview.click();
+    return;
+  }
+  publishRelease.click();
+});
 
 function stopTranslationClock() {
   if (translationClockTimer) clearInterval(translationClockTimer);
@@ -296,6 +326,8 @@ function setFields(draft) {
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
   generateEnglish.disabled = !canStartTranslation({ draft });
   translationNeedsConfirmation = false;
+  latestAudioStatus = null;
+  latestReleaseStatus = null;
   workflowState.textContent = draft ? "Borrador guardado · puedes generar el audio español y crear la traducción cuando quieras." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
   englishReviewNote.hidden = true;
@@ -327,6 +359,7 @@ function setFields(draft) {
   renderSeoPreview();
   scheduleBodyPreview();
   markSaved();
+  syncWorkflowDock();
 }
 
 async function refreshTtsPreflight() {
@@ -665,6 +698,7 @@ async function pollAudio() {
     const { audio } = await request(`/api/drafts/${articleId}/audio`);
     if (current?.articleId !== articleId) return null;
     if (!audio) return null;
+    latestAudioStatus = audio.status;
     audioResult.hidden = false;
     showSpanishAudioProgress(audio);
     const spanishReady = audio.jobs?.es?.status === "completed";
@@ -918,6 +952,7 @@ async function pollRelease() {
     const { release } = await request(`/api/drafts/${articleId}/release`);
     if (current?.articleId !== articleId) return null;
     if (!release) return null;
+    latestReleaseStatus = release.status;
     if (release.status === "completed") {
       if (releaseTimer) clearInterval(releaseTimer);
       releaseTimer = null;
