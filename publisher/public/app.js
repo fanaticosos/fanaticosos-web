@@ -1,5 +1,5 @@
 import { generateSeoPreview } from "/seo.js";
-import { deploymentStateForRevision } from "/workflow-state.js";
+import { canStartTranslation, deploymentStateForRevision } from "/workflow-state.js";
 
 const form = document.querySelector("#article-form");
 const list = document.querySelector("#draft-list");
@@ -37,6 +37,7 @@ const saveEnglish = document.querySelector("#save-english");
 const prepareRelease = document.querySelector("#prepare-release");
 const publishRelease = document.querySelector("#publish-release");
 const dockSave = document.querySelector("#dock-save");
+const dockTranslate = document.querySelector("#dock-translate");
 const dockPreview = document.querySelector("#dock-preview");
 const dockPublish = document.querySelector("#dock-publish");
 const articleBody = document.querySelector("#article-body");
@@ -67,18 +68,21 @@ window.addEventListener("beforeunload", (event) => {
 
 function syncWorkflowDock() {
   dockSave.disabled = document.querySelector("#save-draft").disabled;
+  dockTranslate.disabled = generateEnglish.disabled;
+  dockTranslate.textContent = generateEnglish.textContent;
   dockPreview.disabled = openPreview.disabled;
   dockPublish.disabled = publishRelease.disabled;
   dockPublish.textContent = publishRelease.textContent;
 }
 
-for (const source of [document.querySelector("#save-draft"), openPreview, publishRelease]) {
+for (const source of [document.querySelector("#save-draft"), generateEnglish, openPreview, publishRelease]) {
   new MutationObserver(syncWorkflowDock).observe(source, { attributes: true, attributeFilter: ["disabled"], childList: true });
 }
 document.querySelectorAll("[data-scroll-target]").forEach((button) => button.addEventListener("click", () => {
   document.querySelector(`#${button.dataset.scrollTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }));
 dockSave.addEventListener("click", () => form.requestSubmit());
+dockTranslate.addEventListener("click", () => generateEnglish.click());
 dockPreview.addEventListener("click", () => openPreview.click());
 dockPublish.addEventListener("click", () => publishRelease.click());
 
@@ -283,8 +287,8 @@ function setFields(draft) {
   removeImage.hidden = !draft?.featuredImage?.path;
   pageTitle.textContent = draft?.title || "Nuevo artículo";
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
-  generateEnglish.disabled = true;
-  workflowState.textContent = draft ? "Etapa 1 · revisa el guion español y genera únicamente su audio." : "Guarda un borrador válido para comenzar.";
+  generateEnglish.disabled = !canStartTranslation({ draft });
+  workflowState.textContent = draft ? "Borrador guardado · puedes generar el audio español y crear la traducción cuando quieras." : "Guarda un borrador válido para comenzar.";
   englishResult.hidden = true;
   audioResult.hidden = !draft;
   ttsPreflightPanel.hidden = !draft;
@@ -478,6 +482,7 @@ form.addEventListener("input", (event) => {
     workflowState.textContent = `Guion ${language} sin guardar · solo se actualizará su propio audio.`;
     generateSpanishAudio.disabled = true;
     regenerateEnglishAudio.disabled = true;
+    generateEnglish.disabled = true;
     openPreview.disabled = true;
     prepareRelease.disabled = true;
     publishRelease.disabled = true;
@@ -544,7 +549,11 @@ async function pollTranslation() {
   try {
     const { translation } = await request(`/api/drafts/${articleId}/translation`);
     if (current?.articleId !== articleId) return null;
-    if (!translation) return null;
+    if (!translation) {
+      generateEnglish.disabled = !canStartTranslation({ draft: current, translation, unsavedChanges: hasUnsavedChanges });
+      generateEnglish.textContent = "Crear traducción al inglés";
+      return null;
+    }
     if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
       stopTranslationClock();
@@ -857,6 +866,7 @@ saveEnglish.addEventListener("click", async () => {
         narrationScript: form.elements.narrationEn.value,
       } }),
     });
+    markSaved();
     workflowState.textContent = "Corrección en inglés guardada · regenera los audios.";
     openPreview.disabled = true;
     prepareRelease.disabled = true;

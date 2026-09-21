@@ -26,7 +26,7 @@
           </div>
           <div class="actions">
             <span id="save-state" role="status">Sin guardar</span>
-            <button id="save-draft" class="primary" type="submit" form="article-form">Guardar borrador</button>
+            <button id="save-draft" class="primary" type="submit" form="article-form" hidden>Guardar borrador</button>
           </div>
         </div>
         <div class="owner-line"><span id="owner-name">Antonio Contreras</span> · <span id="owner-social">@imcontreras</span> · <span id="owner-timezone">America/Chicago</span></div>
@@ -44,6 +44,7 @@
           </div>
           <div class="workflow-dock-actions">
             <button id="dock-save" type="button">Guardar</button>
+            <button id="dock-translate" type="button" disabled>Crear traducción</button>
             <button id="dock-preview" type="button" disabled>Vista previa</button>
             <button id="dock-publish" class="dock-publish" type="button" disabled>Publicar</button>
           </div>
@@ -126,7 +127,7 @@
                 <ul id="tts-preflight-detected"></ul>
               </details>
             </section>
-            <div class="future-actions">
+            <div class="future-actions" hidden>
               <button id="generate-english" class="workflow-primary" disabled type="button">Crear traducción al inglés</button>
               <button id="generate-audio" disabled hidden type="button">Generar ambos audios</button>
               <button id="open-preview" disabled type="button">Preparar y abrir vista previa</button>

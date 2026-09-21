@@ -321,8 +321,11 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /id="article-title"/);
   assert.match(html, /class="workflow-dock"/);
   assert.match(html, /id="dock-save"/);
+  assert.match(html, /id="dock-translate"/);
   assert.match(html, /id="dock-preview"/);
   assert.match(html, /id="dock-publish"/);
+  assert.match(html, /class="future-actions" hidden/);
+  assert.match(html, /id="save-draft"[^>]* hidden/);
   assert.match(html, />Crear traducción al inglés</);
   assert.match(html, /No se gastarán créditos hasta que pulses/);
   assert.match(html, /<details class="activity-panel">/);
@@ -352,6 +355,8 @@ test("editor shell is served with private security headers", async (context) => 
   const app = await (await fetch(`${base}/app.js`)).text();
   assert.doesNotMatch(app, /window\.open\(`\/preview/);
   assert.match(app, /window\.location\.assign\(`\/preview/);
+  assert.match(app, /canStartTranslation\(\{ draft: current, translation, unsavedChanges: hasUnsavedChanges \}\)/);
+  assert.match(app, /dockTranslate\.addEventListener\("click"/);
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /Esto no bloquea la traducción, el audio ni la publicación/);

@@ -6,3 +6,7 @@ export function deploymentStateForRevision(deployment, revision) {
   if (deployment.status === "failed") return "failed";
   return "unknown";
 }
+
+export function canStartTranslation({ draft, translation, unsavedChanges = false }) {
+  return Boolean(draft) && !unsavedChanges && !translation;
+}
