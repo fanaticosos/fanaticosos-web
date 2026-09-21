@@ -79,6 +79,14 @@ export function translationSourceRevision(draft) {
   return createHash("sha256").update(canonicalJson(normalized)).digest("hex");
 }
 
+export function translationAcceptedForDraft(translation, draft) {
+  if (translation?.status !== "completed") return false;
+  if (translation.draftRevision === draft.revision || translation.sourceRevision === translationSourceRevision(draft)) return true;
+  return Number.isInteger(translation.ownerRevision) && translation.ownerRevision > 0
+    && Number.isFinite(Date.parse(translation.ownerReviewedAt ?? ""))
+    && translation.artifact?.status === "accepted";
+}
+
 export async function writeTranslationRequest({ request, jobId, queueRoot }) {
   if (!JOB_ID.test(jobId)) throw new Error("translation job identity is invalid");
   await mkdir(queueRoot, { recursive: true, mode: 0o700 });

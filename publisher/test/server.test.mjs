@@ -181,6 +181,16 @@ test("translation freshness follows its dependency across metadata-only revision
   assert.equal(translationWithFreshness(translation, { ...draft, description: "Changed" }).status, "stale");
 });
 
+test("owner-reviewed English remains accepted when Spanish is edited later", () => {
+  const draft = { ...fields, articleId: "00000000-0000-4000-8000-000000000001", revision: 6 };
+  const reviewed = {
+    status: "completed", draftRevision: 4, sourceRevision: "a".repeat(64),
+    ownerRevision: 1, ownerReviewedAt: "2026-09-21T16:33:24Z", artifact: { status: "accepted" },
+  };
+  assert.deepEqual(translationWithFreshness(reviewed, draft), { ...reviewed, sourceChangedSinceReview: true });
+  assert.equal(translationWithFreshness({ ...reviewed, ownerReviewedAt: null }, draft).status, "stale");
+});
+
 test("audiogram freshness follows the draft image and Spanish audio", () => {
   const draft = { revision: 2 };
   const audio = { jobs: { es: { result: { sha256: "current" } } } };
@@ -366,6 +376,8 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /window\.location\.assign\(`\/preview/);
   assert.match(app, /canStartTranslation\(\{ draft: current, translation, unsavedChanges: hasUnsavedChanges \}\)/);
   assert.match(app, /dockTranslate\.addEventListener\("click"/);
+  assert.match(app, /latestReleaseStatus === "completed" \? "Publicar" : "Preparar publicación"/);
+  assert.match(app, /latestAudioStatus === "completed" && !translationNeedsConfirmation && !openPreview\.disabled/);
   assert.match(app, /articleTitle\.scrollIntoView/);
   assert.match(app, /articleTitle\.focus/);
   assert.match(app, /Esto no bloquea la traducción, el audio ni la publicación/);

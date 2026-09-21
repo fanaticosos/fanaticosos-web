@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-import { translationSourceRevision } from "./translation-jobs.mjs";
+import { translationAcceptedForDraft } from "./translation-jobs.mjs";
 import { markdownToNarrationScript, narrationSegmentsFromScript, normalizeNarrationCadence, normalizeNarrationScript, plainNarrationText } from "./narration-scripts.mjs";
 
 const JOB_TIMEOUT_MS = 17 * 60 * 1000;
@@ -148,9 +148,7 @@ export function ttsRequestForLocale(draft, translation, locale) {
     };
   }
   if (locale !== "en") throw new Error("audio locale is invalid");
-  const translationMatchesDraft = translation?.draftRevision === draft.revision
-    || translation?.sourceRevision === translationSourceRevision(draft);
-  if (translation?.status !== "completed" || !translationMatchesDraft) {
+  if (!translationAcceptedForDraft(translation, draft)) {
     throw new Error("the current draft revision needs an accepted English translation");
   }
   const englishScript = normalizeNarrationScript(draft.narrationEn ?? "")

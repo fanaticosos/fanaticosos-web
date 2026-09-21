@@ -36,6 +36,13 @@ test("accepted draft serializes as a bilingual publishable pair", () => {
   assert.equal(release.assets.esAudio.publicPath, `public/audio/es-${draft.articleId}.mp3`);
 });
 
+test("owner-reviewed English and existing audio remain publishable after Spanish revision", () => {
+  const reviewed = { ...translation, draftRevision: 1, ownerRevision: 1,
+    ownerReviewedAt: "2026-09-21T16:33:24Z", artifact: { status: "accepted" } };
+  const release = serializeArticlePair({ draft, translation: reviewed, audio, settings, publishedAt: "2026-07-31T09:00:00-05:00" });
+  assert.match(release.files[`src/content/articles/en/${draft.articleId}.md`], /The Bears win in Chicago/);
+});
+
 test("release repairs duplicated Markdown list markers", () => {
   const release = serializeArticlePair({
     draft: { ...draft, body: "1. 1. Primera jugada" },

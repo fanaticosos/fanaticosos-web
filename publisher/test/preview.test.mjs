@@ -47,6 +47,13 @@ test("draft preview opens before English and audio are ready without implying pu
   assert.throws(() => previewPage({ draft, translation: null, audio: null, locale: "es", settings }));
 });
 
+test("final preview warns when owner-reviewed English predates Spanish edits", () => {
+  const reviewed = { ...translation, draftRevision: 0, sourceRevision: "a".repeat(64),
+    ownerRevision: 1, ownerReviewedAt: "2026-09-21T16:33:24Z", artifact: { status: "accepted" } };
+  const html = previewPage({ draft, translation: reviewed, audio, locale: "es", settings });
+  assert.match(html, /Compara ambos idiomas antes de publicar/);
+});
+
 test("article Markdown renders headings, paragraphs, emphasis, lists, and quotes safely", () => {
   const html = renderMarkdown("## Una defensa\n\nPrimer párrafo.\n\n**Importante**\n\n- Uno\n- Dos\n\n> Una cita\n\n<script>alert(1)</script>");
   assert.match(html, /<h2>Una defensa<\/h2>/);

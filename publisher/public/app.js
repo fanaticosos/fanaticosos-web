@@ -54,6 +54,7 @@ let deploymentTimer = null;
 let markdownPreviewTimer = null;
 let hasUnsavedChanges = false;
 let translationNeedsConfirmation = false;
+let translationSourceChangedSinceReview = false;
 let latestAudioStatus = null;
 let latestReleaseStatus = null;
 
@@ -82,7 +83,9 @@ function syncWorkflowDock() {
   dockTranslate.textContent = translationNeedsConfirmation ? "Revisar inglés" : generateEnglish.textContent;
   dockPreview.disabled = !current;
   dockPublish.disabled = !current || ["Publicando…", "Publicado"].includes(publishRelease.textContent);
-  dockPublish.textContent = publishRelease.textContent;
+  dockPublish.textContent = ["Publicando…", "Publicado", "Reintentar publicación"].includes(publishRelease.textContent)
+    ? publishRelease.textContent
+    : latestReleaseStatus === "completed" ? "Publicar" : "Preparar publicación";
 }
 
 for (const source of [document.querySelector("#save-draft"), generateEnglish, saveEnglish, openPreview, publishRelease]) {
@@ -100,7 +103,8 @@ retranslateEnglish.addEventListener("click", () => generateEnglish.click());
 dockPreview.addEventListener("click", () => {
   if (!current) return;
   if (hasUnsavedChanges) return explainPublicationBlocker("Guarda los cambios antes de abrir la vista previa; así verás exactamente el borrador guardado.");
-  window.location.assign(`/preview/${current.articleId}/es?draft=1`);
+  if (latestAudioStatus === "completed" && !translationNeedsConfirmation && !openPreview.disabled) openPreview.click();
+  else window.location.assign(`/preview/${current.articleId}/es?draft=1`);
 });
 dockPublish.addEventListener("click", () => {
   if (!current) return;
@@ -326,6 +330,7 @@ function setFields(draft) {
   saveState.textContent = draft ? `Guardado · revisión ${draft.revision}` : "Sin guardar";
   generateEnglish.disabled = !canStartTranslation({ draft });
   translationNeedsConfirmation = false;
+  translationSourceChangedSinceReview = false;
   latestAudioStatus = null;
   latestReleaseStatus = null;
   workflowState.textContent = draft ? "Borrador guardado · puedes generar el audio español y crear la traducción cuando quieras." : "Guarda un borrador válido para comenzar.";
@@ -599,6 +604,7 @@ async function pollTranslation() {
     if (current?.articleId !== articleId) return null;
     if (!translation) {
       translationNeedsConfirmation = false;
+      translationSourceChangedSinceReview = false;
       generateEnglish.disabled = !canStartTranslation({ draft: current, translation, unsavedChanges: hasUnsavedChanges });
       generateEnglish.textContent = "Crear traducción al inglés";
       return null;
@@ -606,11 +612,14 @@ async function pollTranslation() {
     if (["queued", "running"].includes(translation.status)) showTranslationProgress(translation);
     if (translation.status === "completed") {
       translationNeedsConfirmation = false;
+      translationSourceChangedSinceReview = Boolean(translation.sourceChangedSinceReview);
       englishReviewNote.hidden = true;
       retranslateEnglish.hidden = true;
       saveEnglish.textContent = "Guardar corrección en inglés";
       stopTranslationClock();
-      workflowState.textContent = "Etapa 2 · traducción lista; revisa el guion inglés y genera únicamente su audio.";
+      workflowState.textContent = translationSourceChangedSinceReview
+        ? "El inglés que revisaste y sus audios se conservan. El español cambió después: compara ambos idiomas en Vista previa antes de publicar."
+        : "Traducción lista; revisa el guion inglés y genera su audio cuando estés listo.";
       clearInterval(translationTimer);
       translationTimer = null;
       document.querySelector("#english-title").value = translation.result.title;
@@ -633,6 +642,7 @@ async function pollTranslation() {
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
       translationNeedsConfirmation = true;
+      translationSourceChangedSinceReview = false;
       stopTranslationClock();
       workflowState.textContent = "Puedes abrir Vista previa. Para publicar: revisa y confirma el inglés existente o crea una nueva traducción. El audio español se conserva.";
       document.querySelector("#english-title").value = translation.result?.title ?? "";
@@ -654,6 +664,7 @@ async function pollTranslation() {
       publishRelease.disabled = true;
     } else if (translation.status === "failed") {
       translationNeedsConfirmation = false;
+      translationSourceChangedSinceReview = false;
       stopTranslationClock();
       workflowState.textContent = "La traducción se detuvo.";
       clearInterval(translationTimer);
@@ -721,7 +732,9 @@ async function pollAudio() {
     if (audio.status === "completed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
-      workflowState.textContent = "Los audios en español e inglés están listos.";
+      workflowState.textContent = translationSourceChangedSinceReview
+        ? "Ambos audios están listos y se conservaron. El español cambió tras tu revisión del inglés: compara ambos idiomas en Vista previa antes de publicar."
+        : "Los audios en español e inglés están listos.";
       pollAudiogram();
       uploadSpanishAudio.disabled = false;
       generateSpanishAudio.disabled = false;
@@ -951,8 +964,9 @@ async function pollRelease() {
   try {
     const { release } = await request(`/api/drafts/${articleId}/release`);
     if (current?.articleId !== articleId) return null;
-    if (!release) return null;
-    latestReleaseStatus = release.status;
+  if (!release) return null;
+  latestReleaseStatus = release.status;
+  syncWorkflowDock();
     if (release.status === "completed") {
       if (releaseTimer) clearInterval(releaseTimer);
       releaseTimer = null;

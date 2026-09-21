@@ -1,6 +1,7 @@
 import { extname } from "node:path";
 import yaml from "js-yaml";
 import { normalizeArticleMarkdown } from "./article-markdown.mjs";
+import { translationAcceptedForDraft } from "./translation-jobs.mjs";
 
 export function slugify(value) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -12,7 +13,7 @@ function frontmatter(data) {
 
 export function serializeArticlePair({ draft, translation, audio, settings, publishedAt }) {
   if (translation.status !== "completed" || audio.status !== "completed") throw new Error("release requires accepted translation and audio");
-  if (translation.draftRevision !== draft.revision) throw new Error("release translation is stale");
+  if (!translationAcceptedForDraft(translation, draft)) throw new Error("release translation is stale");
   if (!translation.provenance || !translation.sourceRevision) throw new Error("translation provenance is incomplete");
   const categoryId = slugify(draft.category);
   const imageExtension = draft.featuredImage.path ? extname(draft.featuredImage.path).toLowerCase() : "";

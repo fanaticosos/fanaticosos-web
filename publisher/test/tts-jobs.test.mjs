@@ -145,6 +145,14 @@ test("TTS requests bind approved Spanish and English text to one revision", () =
   assert.notEqual(ttsRequestsForDraft(draft, corrected).en.sourceRevision, requests.en.sourceRevision);
 });
 
+test("later Spanish edits do not regenerate owner-reviewed English audio", () => {
+  const reviewed = { ...translation, draftRevision: 3, ownerRevision: 1,
+    ownerReviewedAt: "2026-09-21T16:33:24Z", artifact: { status: "accepted" } };
+  const before = ttsRequestForLocale(draft, reviewed, "en");
+  const after = ttsRequestForLocale({ ...draft, revision: 5, body: "Texto español corregido." }, reviewed, "en");
+  assert.equal(after.sourceRevision, before.sourceRevision);
+});
+
 test("explicit narration scripts isolate audio from editorial article changes", () => {
   const scriptedDraft = { ...draft, narrationEs: "Guion español.\n<pause=0.7s>\nFinal." , narrationEn: "English script.\n<pause=0.9s>\nEnd." };
   const first = ttsRequestsForDraft(scriptedDraft, translation);
