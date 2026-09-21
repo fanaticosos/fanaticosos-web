@@ -634,7 +634,7 @@ async function pollTranslation() {
     } else if (translation.status === "stale") {
       translationNeedsConfirmation = true;
       stopTranslationClock();
-      workflowState.textContent = "Para habilitar Vista previa: revisa y confirma el inglés existente o crea una nueva traducción. El audio español se conserva.";
+      workflowState.textContent = "Puedes abrir Vista previa. Para publicar: revisa y confirma el inglés existente o crea una nueva traducción. El audio español se conserva.";
       document.querySelector("#english-title").value = translation.result?.title ?? "";
       document.querySelector("#english-description").value = translation.result?.description ?? "";
       document.querySelector("#english-body").value = translation.result?.body ?? "";
@@ -741,7 +741,7 @@ async function pollAudio() {
       const staleLocales = audio.staleLocales ?? ["es", "en"];
       const bothStale = staleLocales.includes("es") && staleLocales.includes("en");
       workflowState.textContent = translationNeedsConfirmation
-        ? "Vista previa bloqueada: revisa y confirma el inglés actual antes de continuar. El audio español se conserva."
+        ? "Vista previa disponible. Para publicar, revisa y confirma el inglés actual; el audio español se conserva."
         : bothStale
         ? "La política o los guiones cambiaron · regenera cada idioma afectado o ambos audios."
         : `El audio en ${staleLocales[0] === "es" ? "español" : "inglés"} cambió · regenera solamente ese audio.`;
