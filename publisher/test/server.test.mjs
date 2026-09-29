@@ -330,7 +330,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(html, /Publicador privado/);
   assert.match(html, /id="article-title"/);
   assert.match(html, /class="workflow-dock"/);
-  assert.match(html, /id="dock-save"/);
+  assert.match(html, /id="dock-save" type="submit" form="article-form"/);
   assert.match(html, /id="dock-translate"/);
   assert.match(html, /id="dock-preview"/);
   assert.match(html, /id="dock-publish"/);
@@ -376,6 +376,7 @@ test("editor shell is served with private security headers", async (context) => 
   assert.match(app, /window\.location\.assign\(`\/preview/);
   assert.match(app, /canStartTranslation\(\{ draft: current, translation, unsavedChanges: hasUnsavedChanges \}\)/);
   assert.match(app, /dockTranslate\.addEventListener\("click"/);
+  assert.match(app, /hasUnsavedChanges && !\(await saveDraft\(\)\)/);
   assert.match(app, /latestReleaseStatus === "completed" \? "Publicar" : "Preparar publicación"/);
   assert.match(app, /latestAudioStatus === "completed" && !translationNeedsConfirmation && !openPreview\.disabled/);
   assert.match(app, /articleTitle\.scrollIntoView/);

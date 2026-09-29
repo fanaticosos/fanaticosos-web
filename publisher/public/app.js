@@ -94,7 +94,6 @@ for (const source of [document.querySelector("#save-draft"), generateEnglish, sa
 document.querySelectorAll("[data-scroll-target]").forEach((button) => button.addEventListener("click", () => {
   document.querySelector(`#${button.dataset.scrollTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }));
-dockSave.addEventListener("click", () => form.requestSubmit());
 dockTranslate.addEventListener("click", () => {
   if (translationNeedsConfirmation) englishResult.scrollIntoView({ behavior: "smooth", block: "start" });
   else generateEnglish.click();
@@ -106,9 +105,9 @@ dockPreview.addEventListener("click", () => {
   if (latestAudioStatus === "completed" && !translationNeedsConfirmation && !openPreview.disabled) openPreview.click();
   else window.location.assign(`/preview/${current.articleId}/es?draft=1`);
 });
-dockPublish.addEventListener("click", () => {
+dockPublish.addEventListener("click", async () => {
   if (!current) return;
-  if (hasUnsavedChanges) return explainPublicationBlocker("Guarda los cambios antes de publicar.");
+  if (hasUnsavedChanges && !(await saveDraft())) return;
   if (translationNeedsConfirmation) {
     explainPublicationBlocker("Antes de publicar, revisa el inglés y pulsa «Confirmar inglés revisado», o crea una nueva traducción.");
     englishResult.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -561,8 +560,7 @@ form.addEventListener("input", (event) => {
   renderSeoPreview();
 });
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
+async function saveDraft() {
   message.hidden = true;
   saveState.textContent = "Guardando…";
   try {
@@ -584,7 +582,7 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     saveState.textContent = "No guardado";
     showError(error.message);
-    return;
+    return false;
   }
   // The save above is authoritative. Follow-up status panels are useful but
   // must never turn a successful save into a false "No guardado" result.
@@ -594,6 +592,12 @@ form.addEventListener("submit", async (event) => {
   if (audioRefresh.status === "fulfilled" && ["queued", "running"].includes(audioRefresh.value) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
   const failed = refreshes.find((result) => result.status === "rejected");
   if (failed) showError(`El borrador quedó guardado, pero no se pudo actualizar todo el estado: ${failed.reason?.message ?? "error desconocido"}`);
+  return true;
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await saveDraft();
 });
 
 async function pollTranslation() {
