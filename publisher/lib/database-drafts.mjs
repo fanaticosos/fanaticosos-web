@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { withTransaction } from "./database.mjs";
 import { validateOwnerFields } from "./drafts.mjs";
+import { synchronizeAutomaticSpanishNarration } from "./narration-from-markdown.mjs";
 import { slugify } from "./release.mjs";
 
 const SELECT_DRAFT = `
@@ -80,13 +81,15 @@ export function listDatabaseDrafts(database) {
 }
 
 export function updateDatabaseDraft(database, articleId, expectedRevision, ownerFields, now = new Date()) {
-  const owner = validateOwnerFields(ownerFields);
+  let owner = validateOwnerFields(ownerFields);
   return withTransaction(database, (connection) => {
     const existing = readDatabaseDraft(connection, articleId);
     if (existing.revision !== expectedRevision) {
       throw new Error("draft was changed in another browser session");
     }
-    if (JSON.stringify(validateOwnerFields(existing)) === JSON.stringify(owner)) return existing;
+    const existingOwner = validateOwnerFields(existing);
+    owner = synchronizeAutomaticSpanishNarration(existingOwner, owner);
+    if (JSON.stringify(existingOwner) === JSON.stringify(owner)) return existing;
 
     const timestamp = now.toISOString();
     const current = connection.prepare("SELECT current_revision_id FROM articles WHERE id = ?").get(articleId);

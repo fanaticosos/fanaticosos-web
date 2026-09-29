@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 import { createDatabaseDraft, listDatabaseDrafts, readDatabaseDraft, updateDatabaseDraft } from "../lib/database-drafts.mjs";
+import { narrationScriptFromMarkdown } from "../lib/narration-from-markdown.mjs";
 
 const owner = {
   title: "Bears 2026",
@@ -60,6 +61,37 @@ test("database draft update preserves no-ops and records revision history", asyn
       () => updateDatabaseDraft(database, created.articleId, 1, owner),
       /another browser session/,
     );
+  } finally {
+    closeDatabase(database);
+  }
+});
+
+test("database save synchronizes automatic Spanish narration without overwriting manual adaptations", async () => {
+  const database = await fixture();
+  try {
+    const automaticOwner = {
+      ...owner,
+      body: "Texto original.",
+      narrationEs: narrationScriptFromMarkdown("Texto original."),
+    };
+    const created = createDatabaseDraft(database, automaticOwner);
+    const synchronized = updateDatabaseDraft(database, created.articleId, 1, {
+      ...automaticOwner,
+      body: "Texto corregido con áreas y aún.",
+    });
+    assert.equal(synchronized.narrationEs, "Texto corregido con áreas y aún.");
+
+    const manual = updateDatabaseDraft(database, created.articleId, 2, {
+      ...automaticOwner,
+      body: synchronized.body,
+      narrationEs: "Adaptación manual para voz.",
+    });
+    const preserved = updateDatabaseDraft(database, created.articleId, 3, {
+      ...automaticOwner,
+      body: "Otro cambio en el artículo.",
+      narrationEs: manual.narrationEs,
+    });
+    assert.equal(preserved.narrationEs, "Adaptación manual para voz.");
   } finally {
     closeDatabase(database);
   }

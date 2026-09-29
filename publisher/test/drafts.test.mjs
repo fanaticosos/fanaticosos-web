@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { listDrafts, newDraft, readDraft, updateDraft, validateOwnerFields, writeDraft } from "../lib/drafts.mjs";
+import { narrationScriptFromMarkdown } from "../lib/narration-from-markdown.mjs";
 
 const valid = {
   title: "Los Bears ganan",
@@ -75,4 +76,41 @@ test("saving an unchanged draft preserves its revision and completed artifacts",
   const saved = await updateDraft(root, draft.articleId, 1, valid, new Date("2026-08-25T13:00:00Z"));
   assert.equal(saved.revision, 1);
   assert.equal(saved.updatedAt, "2026-08-25T12:00:00.000Z");
+});
+
+test("editing Spanish article text updates an unchanged automatic narration", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-drafts-"));
+  const originalBody = "Primer párrafo.\n\nTexto anterior.";
+  const changedBody = "Primer párrafo.\n\nTexto corregido con áreas y aún.";
+  const original = { ...valid, body: originalBody, narrationEs: narrationScriptFromMarkdown(originalBody) };
+  const draft = newDraft(original);
+  await writeDraft(root, draft);
+  const saved = await updateDraft(root, draft.articleId, 1, { ...original, body: changedBody });
+  assert.equal(saved.narrationEs, narrationScriptFromMarkdown(changedBody));
+});
+
+test("editing Spanish article text preserves a manually adapted narration", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-drafts-"));
+  const manualNarration = "Adaptación creada expresamente para voz.";
+  const original = { ...valid, narrationEs: manualNarration };
+  const draft = newDraft(original);
+  await writeDraft(root, draft);
+  const saved = await updateDraft(root, draft.articleId, 1, {
+    ...original,
+    body: "Contenido corregido del artículo.",
+  });
+  assert.equal(saved.narrationEs, manualNarration);
+});
+
+test("an explicit narration edit wins when article text changes in the same save", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fanaticosos-drafts-"));
+  const original = { ...valid, narrationEs: narrationScriptFromMarkdown(valid.body) };
+  const draft = newDraft(original);
+  await writeDraft(root, draft);
+  const saved = await updateDraft(root, draft.articleId, 1, {
+    ...original,
+    body: "Contenido corregido del artículo.",
+    narrationEs: "Guion nuevo adaptado por el autor.",
+  });
+  assert.equal(saved.narrationEs, "Guion nuevo adaptado por el autor.");
 });

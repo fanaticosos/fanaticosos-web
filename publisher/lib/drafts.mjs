@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { normalizeNarrationScript } from "./narration-scripts.mjs";
+import { synchronizeAutomaticSpanishNarration } from "./narration-from-markdown.mjs";
 
 const draftUpdates = new Map();
 
@@ -126,8 +127,9 @@ export async function updateDraft(root, articleId, expectedRevision, ownerFields
     if (existing.revision !== expectedRevision) {
       throw new Error("draft was changed in another browser session");
     }
-    const normalized = validateOwnerFields(ownerFields);
+    let normalized = validateOwnerFields(ownerFields);
     const existingOwnerFields = validateOwnerFields(existing);
+    normalized = synchronizeAutomaticSpanishNarration(existingOwnerFields, normalized);
     if (JSON.stringify(normalized) === JSON.stringify(existingOwnerFields)) return existing;
     return writeDraft(root, {
       ...existing,
