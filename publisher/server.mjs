@@ -70,9 +70,10 @@ async function readOptionalState(readState) {
   }
 }
 
-export function releaseWithFreshness(release, audio) {
+export function releaseWithFreshness(release, audio, draft) {
   if (!release || release.status !== "completed") return release;
   const current = audio?.status === "completed"
+    && release.draftRevision === draft?.revision
     && release.draftRevision === audio.draftRevision
     && (!release.manifest?.assets?.esAudio || release.manifest.assets.esAudio.sha256 === audio.jobs?.es?.result?.sha256)
     && release.manifest?.assets?.enAudio?.sha256 === audio.jobs?.en?.result?.sha256;
@@ -624,11 +625,12 @@ export function createPublisherServer({
       }
       if (releaseMatch && request.method === "GET") {
         await releaseStore.reconcile({ onComplete: releaseCompleted, onFailure: releaseFailed });
-        const [release, audio] = await Promise.all([
+        const [release, audio, draft] = await Promise.all([
           readOptionalState(() => releaseStore.read(releaseMatch[1])),
           readOptionalState(() => audioStore.read(releaseMatch[1])),
+          draftStore.read(releaseMatch[1]),
         ]);
-        return json(response, 200, { release: releaseWithFreshness(release, audio) });
+        return json(response, 200, { release: releaseWithFreshness(release, audio, draft) });
       }
       const publishMatch = PUBLISH_PATH.exec(url.pathname);
       if (publishMatch && request.method === "POST") {

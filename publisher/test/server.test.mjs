@@ -88,12 +88,13 @@ test("completed preview becomes stale when either accepted audio changes", () =>
       en: { result: { sha256: "same-en" } },
     },
   };
-  assert.equal(releaseWithFreshness(release, audio).status, "stale");
+  assert.equal(releaseWithFreshness(release, audio, { revision: 1 }).status, "stale");
   audio.jobs.es.result.sha256 = "old-es";
-  assert.equal(releaseWithFreshness(release, audio).status, "completed");
+  assert.equal(releaseWithFreshness(release, audio, { revision: 1 }).status, "completed");
   delete release.manifest.assets.esAudio;
   audio.jobs.es.result.sha256 = "ignored-es";
-  assert.equal(releaseWithFreshness(release, audio).status, "completed");
+  assert.equal(releaseWithFreshness(release, audio, { revision: 1 }).status, "completed");
+  assert.equal(releaseWithFreshness(release, audio, { revision: 2 }).status, "stale");
 });
 
 test("completed audio reports stale locales when narration sources or policy change", () => {
