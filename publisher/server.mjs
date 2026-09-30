@@ -74,7 +74,6 @@ export function releaseWithFreshness(release, audio, draft) {
   if (!release || release.status !== "completed") return release;
   const current = audio?.status === "completed"
     && release.draftRevision === draft?.revision
-    && release.draftRevision === audio.draftRevision
     && (!release.manifest?.assets?.esAudio || release.manifest.assets.esAudio.sha256 === audio.jobs?.es?.result?.sha256)
     && release.manifest?.assets?.enAudio?.sha256 === audio.jobs?.en?.result?.sha256;
   return current ? release : { ...release, status: "stale" };
