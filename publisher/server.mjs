@@ -42,6 +42,7 @@ const PUBLISH_PATH = /^\/api\/drafts\/([0-9a-f-]{36})\/publish$/;
 const STATIC_FILES = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/narration-from-markdown.js", ["narration-from-markdown.js", "text/javascript; charset=utf-8"]],
   ["/music.html", ["music.html", "text/html; charset=utf-8"]],
   ["/music.js", ["music.js", "text/javascript; charset=utf-8"]],
   ["/seo.js", ["seo.js", "text/javascript; charset=utf-8"]],
