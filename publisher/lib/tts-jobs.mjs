@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 
 import { translationAcceptedForDraft } from "./translation-jobs.mjs";
 import { markdownToNarrationScript, narrationSegmentsFromScript, normalizeNarrationCadence, normalizeNarrationScript, plainNarrationText } from "./narration-scripts.mjs";
+import { narrationScriptFromMarkdown } from "./narration-from-markdown.mjs";
 
 const JOB_TIMEOUT_MS = 17 * 60 * 1000;
 const JOB_ID = /^tts-(es|en)-[0-9a-f]{32}-r[1-9][0-9]*-[0-9a-f]{8}$/;
@@ -138,8 +139,16 @@ function englishNameSuffixes(text) {
 }
 
 export function ttsRequestForLocale(draft, translation, locale) {
-  const spanishScript = normalizeNarrationCadence(normalizeNarrationScript(draft.narrationEs ?? "")
-    || markdownToNarrationScript(draft.body, narrationText, { quoteCadence: true }));
+  const savedSpanishScript = normalizeNarrationScript(draft.narrationEs ?? "");
+  const displayedAutomaticScript = narrationScriptFromMarkdown(draft.body);
+  // The editor displays the automatic narration in the textarea even when the
+  // draft stores an empty script. Saving that displayed value must not turn it
+  // into a different TTS source: the fallback adds the canonical quote cadence.
+  const spanishScript = normalizeNarrationCadence(
+    !savedSpanishScript || savedSpanishScript === displayedAutomaticScript
+      ? markdownToNarrationScript(draft.body, narrationText, { quoteCadence: true })
+      : savedSpanishScript,
+  );
   if (locale === "es") {
     const source = { articleId: draft.articleId, title: draft.title, narrationScript: spanishScript };
     return {

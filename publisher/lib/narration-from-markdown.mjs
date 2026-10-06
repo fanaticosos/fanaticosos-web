@@ -24,8 +24,13 @@ export function narrationScriptFromMarkdown(markdown) {
 }
 
 export function synchronizeAutomaticSpanishNarration(existing, submitted) {
-  if (submitted.body === existing.body) return submitted;
   const oldAutomaticNarration = narrationScriptFromMarkdown(existing.body);
+  if (submitted.body === existing.body) {
+    if (!existing.narrationEs && submitted.narrationEs === oldAutomaticNarration) {
+      return { ...submitted, narrationEs: "" };
+    }
+    return submitted;
+  }
   const existingNarrationWasAutomatic = !existing.narrationEs
     || existing.narrationEs === oldAutomaticNarration;
   const submittedNarrationWasUnchanged = submitted.narrationEs === existing.narrationEs

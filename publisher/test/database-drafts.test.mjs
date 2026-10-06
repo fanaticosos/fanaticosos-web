@@ -96,3 +96,18 @@ test("database save synchronizes automatic Spanish narration without overwriting
     closeDatabase(database);
   }
 });
+
+test("saving the displayed automatic narration does not create a draft revision", async () => {
+  const database = await fixture();
+  try {
+    const created = createDatabaseDraft(database, { ...owner, narrationEs: "" });
+    const saved = updateDatabaseDraft(database, created.articleId, 1, {
+      ...owner,
+      narrationEs: narrationScriptFromMarkdown(owner.body),
+    });
+    assert.equal(saved.revision, 1);
+    assert.equal(saved.narrationEs, "");
+  } finally {
+    closeDatabase(database);
+  }
+});

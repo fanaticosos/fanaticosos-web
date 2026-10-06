@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { audioPolicyIsCurrent, narrationText, normalizePolicyRevisions, queueTts, queueTtsLocale, readTtsState, reconcileTts, sanitizeWorkerProgress, ttsPolicyRevision, ttsPolicyRevisions, ttsRequestForLocale, ttsRequestsForDraft } from "../lib/tts-jobs.mjs";
+import { narrationScriptFromMarkdown } from "../lib/narration-from-markdown.mjs";
 
 const draft = {
   articleId: "00000000-0000-4000-8000-000000000001", revision: 4,
@@ -173,6 +174,16 @@ test("SEO and social summaries are never narrated or included in TTS source revi
   assert.equal(changed.en.sourceRevision, requests.en.sourceRevision);
   assert.equal(requests.es.segments.some(({ text }) => text.includes("Resumen")), false);
   assert.equal(requests.en.segments.some(({ text }) => text.includes("summary")), false);
+});
+
+test("displayed automatic Spanish narration keeps the canonical TTS source revision", () => {
+  const body = "> Cita principal.\n> — Autor\n\nCierre.";
+  const automaticDraft = { ...draft, body, narrationEs: "" };
+  const displayedDraft = { ...automaticDraft, narrationEs: narrationScriptFromMarkdown(body) };
+  assert.equal(
+    ttsRequestForLocale(displayedDraft, translation, "es").sourceRevision,
+    ttsRequestForLocale(automaticDraft, translation, "es").sourceRevision,
+  );
 });
 
 test("TTS requests never send inline Markdown to either narrator", () => {
