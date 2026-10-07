@@ -12,7 +12,10 @@ test("music settings use fallback and persist an atomically resolved song", asyn
   const fallbackPath = join(root, "fallback.json");
   const path = join(root, "saved", "site-settings.json");
   await writeFile(fallbackPath, JSON.stringify(fallback));
-  assert.equal((await readMusicSettings(path, fallbackPath)).music.weeklySong.title, "Send Me An Angel");
+  assert.equal(
+    (await readMusicSettings(path, fallbackPath)).music.weeklySong.title,
+    fallback.music.weeklySong.title,
+  );
   const settings = await saveWeeklySong({
     path,
     fallbackPath,

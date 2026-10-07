@@ -1,12 +1,19 @@
 const generatedMediaPattern = /\.(?:mp3|wav|flac)$/i;
 const articleIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export function validateGeneratedMedia(outputFiles, environment = process.env) {
+export function validateGeneratedMedia(outputFiles, environment = process.env, committedMedia = []) {
   const generatedMedia = outputFiles.filter((file) => generatedMediaPattern.test(file)).sort();
   const privateReleaseBuild = environment.FANATICOSOS_PRIVATE_RELEASE_BUILD === "1";
 
   if (!privateReleaseBuild) {
-    return generatedMedia.map((file) => `Phase 1 dist unexpectedly contains generated audio: ${file}`);
+    const expected = [...new Set(committedMedia)].sort();
+    const failures = generatedMedia
+      .filter((file) => !expected.includes(file))
+      .map((file) => `normal build contains unreferenced generated audio: ${file}`);
+    for (const file of expected) {
+      if (!generatedMedia.includes(file)) failures.push(`normal build is missing referenced generated audio: ${file}`);
+    }
+    return failures;
   }
 
   const articleId = environment.FANATICOSOS_RELEASE_ARTICLE_ID;

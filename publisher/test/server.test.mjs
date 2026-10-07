@@ -276,7 +276,8 @@ test("weekly song can be resolved, previewed, and persisted", async (context) =>
   const { server, base, siteSettingsPath } = await fixture();
   context.after(() => server.close());
   const initial = (await (await fetch(`${base}/api/music`)).json()).settings;
-  assert.equal(initial.music.weeklySong.title, "Send Me An Angel");
+  const defaults = JSON.parse(await readFile(new URL("../../src/data/site-settings.json", import.meta.url), "utf8"));
+  assert.equal(initial.music.weeklySong.title, defaults.music.weeklySong.title);
   const response = await fetch(`${base}/api/music`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

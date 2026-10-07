@@ -1,40 +1,40 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-21T17:51:25.981Z",
+  "updatedAt": "2026-10-07T01:37:23.603Z",
   "source": {
     "primary": "https://www.espn.com/nfl/team/_/name/chi/chicago-bears",
     "verification": "https://www.chicagobears.com/schedule/"
   },
   "nextGame": {
-    "id": "401872963",
+    "id": "401872990",
     "status": "scheduled",
-    "startsAt": "2026-09-29T00:15:00.000Z",
+    "startsAt": "2026-10-11T17:00:00.000Z",
     "timeZone": "America/Chicago",
     "venue": null,
     "home": {
+      "id": "GB",
+      "name": "Green Bay Packers",
+      "abbreviation": "GB"
+    },
+    "away": {
       "id": "3",
       "name": "Chicago Bears",
       "abbreviation": "CHI"
-    },
-    "away": {
-      "id": "PHI",
-      "name": "Philadelphia Eagles",
-      "abbreviation": "PHI"
     },
     "homeScore": null,
     "awayScore": null,
-    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872963",
+    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872990",
     "winProbability": {
-      "awayPercent": 57.1,
-      "homePercent": 42.5,
-      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872963",
-      "asOf": "2026-09-21"
+      "awayPercent": 57.6,
+      "homePercent": 42.1,
+      "sourceUrl": "https://www.espn.com/nfl/game/_/gameId/401872990",
+      "asOf": "2026-10-07"
     }
   },
   "previousGame": {
-    "id": "401872937",
+    "id": "401872972",
     "status": "final",
-    "startsAt": "2026-09-20T17:00:00.000Z",
+    "startsAt": "2026-10-04T17:00:00.000Z",
     "timeZone": "America/Chicago",
     "venue": null,
     "home": {
@@ -43,21 +43,61 @@
       "abbreviation": "CHI"
     },
     "away": {
-      "id": "MIN",
-      "name": "Minnesota Vikings",
-      "abbreviation": "MIN"
+      "id": "NYJ",
+      "name": "New York Jets",
+      "abbreviation": "NYJ"
     },
-    "homeScore": 3,
-    "awayScore": 9,
-    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872937"
+    "homeScore": 23,
+    "awayScore": 12,
+    "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872972"
   },
   "recentResults": [
+    {
+      "id": "401872972",
+      "status": "final",
+      "startsAt": "2026-10-04T17:00:00.000Z",
+      "timeZone": "America/Chicago",
+      "venue": null,
+      "home": {
+        "id": "3",
+        "name": "Chicago Bears",
+        "abbreviation": "CHI"
+      },
+      "away": {
+        "id": "NYJ",
+        "name": "New York Jets",
+        "abbreviation": "NYJ"
+      },
+      "homeScore": 23,
+      "awayScore": 12,
+      "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872972"
+    },
+    {
+      "id": "401872963",
+      "status": "final",
+      "startsAt": "2026-09-29T00:15:00.000Z",
+      "timeZone": "America/Chicago",
+      "venue": null,
+      "home": {
+        "id": "3",
+        "name": "Chicago Bears",
+        "abbreviation": "CHI"
+      },
+      "away": {
+        "id": "PHI",
+        "name": "Philadelphia Eagles",
+        "abbreviation": "PHI"
+      },
+      "homeScore": 27,
+      "awayScore": 7,
+      "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872963"
+    },
     {
       "id": "401872937",
       "status": "final",
       "startsAt": "2026-09-20T17:00:00.000Z",
       "timeZone": "America/Chicago",
-      "venue": null,
+      "venue": "Soldier Field",
       "home": {
         "id": "3",
         "name": "Chicago Bears",
@@ -77,7 +117,7 @@
       "status": "final",
       "startsAt": "2026-09-13T17:00:00.000Z",
       "timeZone": "America/Chicago",
-      "venue": null,
+      "venue": "Bank of America Stadium",
       "home": {
         "id": "CAR",
         "name": "Carolina Panthers",
@@ -91,46 +131,6 @@
       "homeScore": 37,
       "awayScore": 59,
       "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401872661"
-    },
-    {
-      "id": "401874394",
-      "status": "final",
-      "startsAt": "2026-08-29T22:00:00.000Z",
-      "timeZone": "America/Chicago",
-      "venue": null,
-      "home": {
-        "id": "TEN",
-        "name": "Tennessee Titans",
-        "abbreviation": "TEN"
-      },
-      "away": {
-        "id": "3",
-        "name": "Chicago Bears",
-        "abbreviation": "CHI"
-      },
-      "homeScore": 15,
-      "awayScore": 24,
-      "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401874394"
-    },
-    {
-      "id": "401873289",
-      "status": "final",
-      "startsAt": "2026-08-22T23:00:00.000Z",
-      "timeZone": "America/Chicago",
-      "venue": null,
-      "home": {
-        "id": "CIN",
-        "name": "Cincinnati Bengals",
-        "abbreviation": "CIN"
-      },
-      "away": {
-        "id": "3",
-        "name": "Chicago Bears",
-        "abbreviation": "CHI"
-      },
-      "homeScore": 27,
-      "awayScore": 9,
-      "boxScoreUrl": "https://www.espn.com/nfl/boxscore/_/gameId/401873289"
     }
   ],
   "nfcNorth": [
@@ -140,18 +140,8 @@
         "name": "Minnesota Vikings",
         "abbreviation": "MIN"
       },
-      "wins": 2,
+      "wins": 4,
       "losses": 0,
-      "ties": 0
-    },
-    {
-      "team": {
-        "id": "DET",
-        "name": "Detroit Lions",
-        "abbreviation": "DET"
-      },
-      "wins": 1,
-      "losses": 1,
       "ties": 0
     },
     {
@@ -160,8 +150,18 @@
         "name": "Chicago Bears",
         "abbreviation": "CHI"
       },
-      "wins": 1,
+      "wins": 3,
       "losses": 1,
+      "ties": 0
+    },
+    {
+      "team": {
+        "id": "DET",
+        "name": "Detroit Lions",
+        "abbreviation": "DET"
+      },
+      "wins": 2,
+      "losses": 2,
       "ties": 0
     },
     {
@@ -170,8 +170,8 @@
         "name": "Green Bay Packers",
         "abbreviation": "GB"
       },
-      "wins": 1,
-      "losses": 1,
+      "wins": 2,
+      "losses": 2,
       "ties": 0
     }
   ],
@@ -181,6 +181,6 @@
     "divisionWinPercent": 37.2,
     "averageWins": 10.5,
     "sourceUrl": "https://www.profootballnetwork.com/nfl-hq/teams/chicago-bears/schedule/",
-    "asOf": "2026-09-21"
+    "asOf": "2026-10-07"
   }
 }

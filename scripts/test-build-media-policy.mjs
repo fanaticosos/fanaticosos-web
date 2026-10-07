@@ -13,8 +13,15 @@ const releaseEnvironment = {
 
 assert.deepEqual(validateGeneratedMedia(["index.html"]), []);
 assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio]), [
-  `Phase 1 dist unexpectedly contains generated audio: audio/en-${articleId}.mp3`,
-  `Phase 1 dist unexpectedly contains generated audio: audio/es-${articleId}.mp3`,
+  `normal build contains unreferenced generated audio: audio/en-${articleId}.mp3`,
+  `normal build contains unreferenced generated audio: audio/es-${articleId}.mp3`,
+]);
+assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio], {}, expectedAudio), []);
+assert.deepEqual(validateGeneratedMedia(["index.html", expectedAudio[0]], {}, expectedAudio), [
+  `normal build is missing referenced generated audio: audio/en-${articleId}.mp3`,
+]);
+assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio, "audio/unrelated.mp3"], {}, expectedAudio), [
+  "normal build contains unreferenced generated audio: audio/unrelated.mp3",
 ]);
 assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio], releaseEnvironment), []);
 assert.deepEqual(validateGeneratedMedia(["index.html", ...expectedAudio, ...retainedAudio], releaseEnvironment), []);

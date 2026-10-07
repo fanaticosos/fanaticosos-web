@@ -6,6 +6,7 @@ import { validateGeneratedMedia } from "./build-media-policy.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(projectRoot, "dist");
+const articleRoot = path.join(projectRoot, "src", "content", "articles");
 const siteSettings = JSON.parse(await readFile(path.join(projectRoot, "src", "data", "site-settings.json"), "utf8"));
 
 const routes = [
@@ -291,13 +292,25 @@ async function listFiles(directory, prefix = "") {
   return files;
 }
 
+async function committedArticleAudio() {
+  const articleFiles = (await listFiles(articleRoot)).filter((file) => file.endsWith(".md"));
+  const references = [];
+  for (const articleFile of articleFiles) {
+    const markdown = await readFile(path.join(articleRoot, articleFile), "utf8");
+    for (const match of markdown.matchAll(/\/audio\/((?:en|es)-[0-9a-f-]{36}\.mp3)(?:\?[^\s]*)?/g)) {
+      references.push(`audio/${match[1]}`);
+    }
+  }
+  return [...new Set(references)].sort();
+}
+
 const outputFiles = await listFiles(distRoot);
 const forbiddenNames = /(^|\/)(\.env(?:\.|$)|node_modules|.*\.(?:key|pem|psd|map|pyc))$/i;
 
 for (const outputFile of outputFiles) {
   record(!forbiddenNames.test(outputFile), `dist contains forbidden private or development file: ${outputFile}`);
 }
-for (const failure of validateGeneratedMedia(outputFiles)) record(false, failure);
+for (const failure of validateGeneratedMedia(outputFiles, process.env, await committedArticleAudio())) record(false, failure);
 
 async function requireOutput(relativeFile, expectedPatterns) {
   const absoluteFile = path.join(distRoot, relativeFile);
