@@ -40,6 +40,7 @@ class AdminHelperTests(unittest.TestCase):
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_preview.sh",
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh",
             ROOT / "scripts" / "deployment" / "configure_cloudflare_automatic_deployments.sh",
+            ROOT / "scripts" / "deployment" / "cloudflare_automatic_deployment_status.sh",
             ROOT / "scripts" / "backup" / "create_recovery_bundle.sh",
             ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh",
         ):
@@ -109,6 +110,7 @@ class AdminHelperTests(unittest.TestCase):
                 "pages-deployment-runtime-status",
                 "verify-cloudflare-pages-token",
                 "enable-cloudflare-automatic-deployments",
+                "cloudflare-automatic-deployment-status",
                 "repair-production-turnstile-binding",
                 "deploy-cloudflare-preview",
                 "cloudflare-preview-status",
@@ -331,6 +333,13 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('"production_deployments_enabled":true', script)
         self.assertIn('config.get("production_deployments_enabled") is not True', script)
         self.assertNotIn('preview_deployment_setting', script)
+
+        status = (
+            ROOT / "scripts" / "deployment" / "cloudflare_automatic_deployment_status.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('deployments?env=production&per_page=20', status)
+        self.assertIn('trigger.get("type") != "github:push"', status)
+        self.assertIn('stage.get("status") != "success"', status)
 
     def test_cloudflare_production_deployment_is_fixed_validated_and_recoverable(self):
         script = (ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh").read_text(encoding="utf-8")

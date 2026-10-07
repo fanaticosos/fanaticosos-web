@@ -56,6 +56,7 @@ readonly game_center_timer_installed="/etc/systemd/system/fanaticosos-game-cente
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
 readonly cloudflare_automatic_deployments_script="$repository/scripts/deployment/configure_cloudflare_automatic_deployments.sh"
+readonly cloudflare_automatic_deployment_status_script="$repository/scripts/deployment/cloudflare_automatic_deployment_status.sh"
 readonly publisher_data="$data_root/publisher"
 readonly publisher_database_root="$publisher_data/database"
 readonly publisher_database_backup_root="$publisher_data/backups/database"
@@ -151,6 +152,7 @@ Commands:
   pages-deployment-runtime-status
   verify-cloudflare-pages-token EXPECTED_COMMIT
   enable-cloudflare-automatic-deployments EXPECTED_COMMIT
+  cloudflare-automatic-deployment-status EXPECTED_COMMIT
   repair-production-turnstile-binding EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   cloudflare-preview-status RELEASE_JOB_ID
@@ -275,6 +277,12 @@ command_enable_cloudflare_automatic_deployments() {
   local expected="$1"
   require_repository_commit "$expected"
   exec "$cloudflare_automatic_deployments_script"
+}
+
+command_cloudflare_automatic_deployment_status() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  exec "$cloudflare_automatic_deployment_status_script" "$expected"
 }
 
 command_install_translation_template() {
@@ -2442,6 +2450,10 @@ case "$command" in
   enable-cloudflare-automatic-deployments)
     [[ $# == 1 ]] || stop "enable-cloudflare-automatic-deployments requires EXPECTED_COMMIT."
     command_enable_cloudflare_automatic_deployments "$1"
+    ;;
+  cloudflare-automatic-deployment-status)
+    [[ $# == 1 ]] || stop "cloudflare-automatic-deployment-status requires EXPECTED_COMMIT."
+    command_cloudflare_automatic_deployment_status "$1"
     ;;
   repair-production-turnstile-binding)
     [[ $# == 1 ]] || stop "repair-production-turnstile-binding requires EXPECTED_COMMIT."
