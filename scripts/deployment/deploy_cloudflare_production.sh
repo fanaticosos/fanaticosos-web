@@ -253,6 +253,12 @@ runuser -u "$service_account" -- /opt/nodejs/current/bin/node \
   "$repository/scripts/publisher/select_release.mjs" \
   --releases-root "$data_root/publisher/releases" --job-id "$job_id"
 
+# A validated direct upload may contain newly published articles and generated
+# media that do not yet exist in Git. Preserve that exact production source in
+# main so later code deployments cannot replace it with an older snapshot.
+"$repository/scripts/deployment/sync_validated_release_to_git.sh" \
+  "$repository" "$release_root" "$job_id"
+
 mv "$temporary_log" "$log_file"; chown "$service_account:$service_account" "$log_file"; chmod 0600 "$log_file"
 python3 - "$receipt" "$job_id" "$deployment_url" "$commit" "$rollback_id" "$rollback_url" <<'PY'
 import json, os, sys, tempfile

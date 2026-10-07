@@ -41,6 +41,7 @@ class AdminHelperTests(unittest.TestCase):
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh",
             ROOT / "scripts" / "deployment" / "configure_cloudflare_automatic_deployments.sh",
             ROOT / "scripts" / "deployment" / "cloudflare_automatic_deployment_status.sh",
+            ROOT / "scripts" / "deployment" / "sync_validated_release_to_git.sh",
             ROOT / "scripts" / "backup" / "create_recovery_bundle.sh",
             ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh",
         ):
@@ -111,6 +112,7 @@ class AdminHelperTests(unittest.TestCase):
                 "verify-cloudflare-pages-token",
                 "enable-cloudflare-automatic-deployments",
                 "cloudflare-automatic-deployment-status",
+                "sync-current-production-source",
                 "repair-production-turnstile-binding",
                 "deploy-cloudflare-preview",
                 "cloudflare-preview-status",
@@ -364,11 +366,21 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('[[ -s "$temporary_body"', script)
         self.assertIn('items = [("/", ""), (routes.get("es"), ""), (routes.get("en"), "")]', script)
         self.assertIn('scripts/publisher/select_release.mjs', script)
+        self.assertIn('scripts/deployment/sync_validated_release_to_git.sh', script)
         self.assertIn('--releases-root "$data_root/publisher/releases" --job-id "$job_id"', script)
         self.assertIn("trap 'rollback_on_signal SIGTERM' TERM", script)
         self.assertIn('production_changed=true', script)
         self.assertIn('readonly validation_deadline=$((SECONDS + 20 * 60))', script)
         self.assertNotIn("eval ", script)
+
+        sync = (ROOT / "scripts" / "deployment" / "sync_validated_release_to_git.sh").read_text(encoding="utf-8")
+        self.assertIn('readonly production_branch="main"', sync)
+        self.assertIn('rsync -a --delete', sync)
+        self.assertIn('[CI Skip] Sync validated production', sync)
+        self.assertIn('git -C "$repository" push "$remote" "HEAD:$production_branch"', sync)
+        self.assertIn('src/content/articles', sync)
+        self.assertIn('public/audio', sync)
+        self.assertIn('public/images', sync)
 
         self.assertNotIn('readonly release_root="$job_root/release" dist_root=', script)
         self.assertNotIn('readonly repository="$1" data_root=', script)

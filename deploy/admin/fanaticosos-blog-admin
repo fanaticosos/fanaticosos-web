@@ -57,6 +57,7 @@ readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudf
 readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
 readonly cloudflare_automatic_deployments_script="$repository/scripts/deployment/configure_cloudflare_automatic_deployments.sh"
 readonly cloudflare_automatic_deployment_status_script="$repository/scripts/deployment/cloudflare_automatic_deployment_status.sh"
+readonly sync_validated_release_to_git_script="$repository/scripts/deployment/sync_validated_release_to_git.sh"
 readonly publisher_data="$data_root/publisher"
 readonly publisher_database_root="$publisher_data/database"
 readonly publisher_database_backup_root="$publisher_data/backups/database"
@@ -153,6 +154,7 @@ Commands:
   verify-cloudflare-pages-token EXPECTED_COMMIT
   enable-cloudflare-automatic-deployments EXPECTED_COMMIT
   cloudflare-automatic-deployment-status EXPECTED_COMMIT
+  sync-current-production-source EXPECTED_COMMIT
   repair-production-turnstile-binding EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   cloudflare-preview-status RELEASE_JOB_ID
@@ -283,6 +285,18 @@ command_cloudflare_automatic_deployment_status() {
   local expected="$1"
   require_repository_commit "$expected"
   exec "$cloudflare_automatic_deployment_status_script" "$expected"
+}
+
+command_sync_current_production_source() {
+  local expected="$1"
+  local selected="$publisher_data/releases/current"
+  local release_root job_id
+  require_repository_commit "$expected"
+  [[ -L "$selected" ]] || stop "Selected production release is missing."
+  release_root="$(readlink -f "$selected")"
+  job_id="$(basename "$(dirname "$release_root")")"
+  validate_job_id "$job_id"
+  exec "$sync_validated_release_to_git_script" "$repository" "$release_root" "$job_id"
 }
 
 command_install_translation_template() {
@@ -2454,6 +2468,10 @@ case "$command" in
   cloudflare-automatic-deployment-status)
     [[ $# == 1 ]] || stop "cloudflare-automatic-deployment-status requires EXPECTED_COMMIT."
     command_cloudflare_automatic_deployment_status "$1"
+    ;;
+  sync-current-production-source)
+    [[ $# == 1 ]] || stop "sync-current-production-source requires EXPECTED_COMMIT."
+    command_sync_current_production_source "$1"
     ;;
   repair-production-turnstile-binding)
     [[ $# == 1 ]] || stop "repair-production-turnstile-binding requires EXPECTED_COMMIT."
