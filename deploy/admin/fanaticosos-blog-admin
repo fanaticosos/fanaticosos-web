@@ -11,7 +11,7 @@ else
   readonly repository="$legacy_repository"
   readonly data_root="/var/lib/fanaticosos-blog"
 fi
-readonly branch="feature/multilingual-audio-blog"
+readonly branch="main"
 readonly source_unit="$repository/deploy/systemd/fanaticosos-translation@.service"
 readonly installed_unit="/etc/systemd/system/fanaticosos-translation@.service"
 readonly tts_source_unit="$repository/deploy/systemd/fanaticosos-tts@.service"
@@ -55,6 +55,7 @@ readonly game_center_timer_source="$repository/deploy/systemd/fanaticosos-game-c
 readonly game_center_timer_installed="/etc/systemd/system/fanaticosos-game-center-update.timer"
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
+readonly cloudflare_automatic_deployments_script="$repository/scripts/deployment/configure_cloudflare_automatic_deployments.sh"
 readonly publisher_data="$data_root/publisher"
 readonly publisher_database_root="$publisher_data/database"
 readonly publisher_database_backup_root="$publisher_data/backups/database"
@@ -149,6 +150,7 @@ Commands:
   install-pages-deployment-runtime EXPECTED_COMMIT
   pages-deployment-runtime-status
   verify-cloudflare-pages-token EXPECTED_COMMIT
+  enable-cloudflare-automatic-deployments EXPECTED_COMMIT
   repair-production-turnstile-binding EXPECTED_COMMIT
   deploy-cloudflare-preview EXPECTED_COMMIT RELEASE_JOB_ID
   cloudflare-preview-status RELEASE_JOB_ID
@@ -267,6 +269,12 @@ command_preflight() {
   exec "$repository/scripts/deployment/preflight_translation_acceptance.sh" \
     --expected-commit "$expected" \
     --job-id "$job_id"
+}
+
+command_enable_cloudflare_automatic_deployments() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  exec "$cloudflare_automatic_deployments_script"
 }
 
 command_install_translation_template() {
@@ -2430,6 +2438,10 @@ case "$command" in
   verify-cloudflare-pages-token)
     [[ $# == 1 ]] || stop "verify-cloudflare-pages-token requires EXPECTED_COMMIT."
     command_verify_cloudflare_pages_token "$1"
+    ;;
+  enable-cloudflare-automatic-deployments)
+    [[ $# == 1 ]] || stop "enable-cloudflare-automatic-deployments requires EXPECTED_COMMIT."
+    command_enable_cloudflare_automatic_deployments "$1"
     ;;
   repair-production-turnstile-binding)
     [[ $# == 1 ]] || stop "repair-production-turnstile-binding requires EXPECTED_COMMIT."

@@ -39,6 +39,7 @@ class AdminHelperTests(unittest.TestCase):
             HELPER,
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_preview.sh",
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh",
+            ROOT / "scripts" / "deployment" / "configure_cloudflare_automatic_deployments.sh",
             ROOT / "scripts" / "backup" / "create_recovery_bundle.sh",
             ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh",
         ):
@@ -107,6 +108,7 @@ class AdminHelperTests(unittest.TestCase):
                 "install-pages-deployment-runtime",
                 "pages-deployment-runtime-status",
                 "verify-cloudflare-pages-token",
+                "enable-cloudflare-automatic-deployments",
                 "repair-production-turnstile-binding",
                 "deploy-cloudflare-preview",
                 "cloudflare-preview-status",
@@ -319,6 +321,16 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('chmod 0600 "$log_file"', script)
         self.assertNotIn('--branch "$production_branch"', script)
         self.assertNotIn("eval ", script)
+
+    def test_cloudflare_automatic_deployments_are_main_only_and_verified(self):
+        script = (
+            ROOT / "scripts" / "deployment" / "configure_cloudflare_automatic_deployments.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('readonly production_branch="main"', script)
+        self.assertIn('readonly project_name="fanaticosos-web"', script)
+        self.assertIn('"production_deployments_enabled":true', script)
+        self.assertIn('config.get("production_deployments_enabled") is not True', script)
+        self.assertNotIn('preview_deployment_setting', script)
 
     def test_cloudflare_production_deployment_is_fixed_validated_and_recoverable(self):
         script = (ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh").read_text(encoding="utf-8")
