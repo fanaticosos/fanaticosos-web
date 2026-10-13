@@ -188,7 +188,11 @@ if [[ ${#temporary_logs[@]} == 1 ]]; then
     temporary_log="$job_root/.cloudflare-production.log.$$"
     echo "Re-uploading the immutable release after a completed rollback."
   else
-    stop "Production recovery state is ambiguous; refusing another upload."
+    # The marker can refer to an older candidate after more than one rollback.
+    # Archive it and start a clean upload of the already validated bundle.
+    mv "$temporary_log" "$job_root/cloudflare-production-interrupted-$(date -u +%Y%m%dT%H%M%SZ).log"
+    temporary_log="$job_root/.cloudflare-production.log.$$"
+    echo "Re-uploading the immutable release after an interrupted retry."
   fi
   [[ -n "$deployment_url" ]] && echo "Resuming validation of the already-uploaded production deployment."
 elif [[ ${#temporary_logs[@]} == 0 ]]; then
