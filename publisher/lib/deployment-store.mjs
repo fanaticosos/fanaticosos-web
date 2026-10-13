@@ -24,7 +24,7 @@ export function databaseDeploymentStore({ database, queueRoot, releasesRoot }) {
     async queue(value) {
       try {
         const existing = readDatabaseDeploymentState(database, value.articleId);
-        if (existing.releaseJobId === value.releaseJobId) return existing;
+        if (existing.releaseJobId === value.releaseJobId && existing.status !== "failed") return existing;
       } catch (error) { if (error.code !== "ENOENT") throw error; }
       const state = queueDatabaseDeployment(database, value);
       const temporary = join(queueRoot, `.${state.jobId}.${randomUUID()}.queuing`); const target = join(queueRoot, state.jobId);

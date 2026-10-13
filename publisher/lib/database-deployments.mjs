@@ -53,10 +53,20 @@ export function queueDatabaseDeployment(database, { articleId, draftRevision, re
     failStale(connection, now);
     const id = `deploy-${releaseJobId}`;
     const existing = connection.prepare(`${SELECT_DEPLOYMENT} WHERE d.id = ?`).get(id);
-    if (existing) return state(existing);
+    if (existing && existing.deployment_status !== "failed" && existing.deployment_status !== "rolled_back") return state(existing);
     const active = connection.prepare(`SELECT 1 FROM deployments WHERE status IN ('queued','uploading','verifying')
       UNION ALL SELECT 1 FROM jobs WHERE type = 'music_release' AND status IN ('queued','leased','retry_wait') LIMIT 1`).get();
     if (active) throw new Error("Ya hay una publicación en curso.");
+    if (existing) {
+      const timestamp = now.toISOString();
+      connection.prepare(`UPDATE deployments SET status='queued', cloudflare_deployment_id=NULL, immutable_url=NULL,
+        verification_json=NULL, previous_deployment_id=NULL, published_at=NULL, finished_at=NULL, error_message=NULL,
+        created_at=? WHERE id=?`).run(timestamp, id);
+      connection.prepare(`UPDATE jobs SET status='queued', available_at=?, started_at=NULL, heartbeat_at=NULL,
+        finished_at=NULL, error_message=NULL, lease_owner=NULL, lease_expires_at=NULL WHERE id=? AND type='deployment'`)
+        .run(timestamp, id);
+      return state(connection.prepare(`${SELECT_DEPLOYMENT} WHERE d.id = ?`).get(id));
+    }
     const release = connection.prepare(`SELECT rel.manifest_checksum_sha256, release_job.revision_id
       FROM releases rel JOIN jobs release_job ON release_job.id = rel.id
       JOIN revisions r ON r.id = release_job.revision_id
