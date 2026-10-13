@@ -51,7 +51,10 @@ export function databaseDeploymentStore({ database, queueRoot, releasesRoot }) {
         if (error.code !== "EACCES") throw error;
         return failDatabaseDeployment(database, active.jobId, "La publicación pública no pudo completarse. El sitio anterior permanece activo.", now);
       }
-      if (failure) return failDatabaseDeployment(database, active.jobId, failure.error || "deployment failed", now);
+      if (failure && (!Number.isFinite(Date.parse(failure.failedAt ?? ""))
+        || Date.parse(failure.failedAt) >= Date.parse(active.createdAt))) {
+        return failDatabaseDeployment(database, active.jobId, failure.error || "deployment failed", now);
+      }
       if (active.status === "queued" && await optionalJson(join(root, "production-request.json"))) startDatabaseDeployment(database, active.jobId, now);
       if (active.status === "running" && active.startedAt && now.getTime() - Date.parse(active.startedAt) > RUNNING_DEPLOYMENT_TIMEOUT_MS) return failDatabaseDeployment(database, active.jobId, "La publicación excedió su límite automático y fue liberada.", now);
       return readDatabaseDeploymentState(database, articleId);

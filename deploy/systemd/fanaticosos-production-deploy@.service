@@ -6,6 +6,7 @@ ConditionPathExists=/opt/fanaticosos-blog/publisher/releases/%i/production-reque
 
 [Service]
 Type=oneshot
+ExecStartPre=/usr/bin/rm -f /opt/fanaticosos-blog/publisher/releases/%i/production-failure.json
 ExecStart=/opt/fanaticosos-blog/repository/scripts/deployment/deploy_cloudflare_production.sh /opt/fanaticosos-blog/repository /opt/fanaticosos-blog %i
 ExecStopPost=/opt/nodejs/current/bin/node /opt/fanaticosos-blog/repository/scripts/publisher/record_production_deploy_exit.mjs --release-root /opt/fanaticosos-blog/publisher/releases/%i --service-result ${SERVICE_RESULT} --exit-status ${EXIT_STATUS}
 TimeoutStartSec=35min
