@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { completeDatabaseDeployment, failDatabaseDeployment, listActiveDatabaseDeployments, queueDatabaseDeployment, readDatabaseDeploymentState, startDatabaseDeployment } from "./database-deployments.mjs";
@@ -31,6 +31,7 @@ export function databaseDeploymentStore({ database, queueRoot, releasesRoot }) {
       try {
         await mkdir(queueRoot, { recursive: true, mode: 0o700 }); await mkdir(temporary, { mode: 0o700 });
         await writeFile(join(temporary, "request.json"), `${JSON.stringify({ schemaVersion: 1, articleId: state.articleId, draftRevision: state.draftRevision, releaseJobId: state.releaseJobId }, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+        await rm(target, { recursive: true, force: true });
         await rename(temporary, target); await writeFile(join(queueRoot, ".wake"), "\n", { mode: 0o600 });
       } catch (error) { failDatabaseDeployment(database, state.jobId, "deployment request could not be queued", value.now); throw error; }
       return state;
