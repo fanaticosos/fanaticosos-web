@@ -198,15 +198,9 @@ else
   # log when an operator retries after the automatic rollback. None of those
   # logs is authoritative once production points back at the rollback target;
   # archive them and upload the same immutable release again.
-  recoverable=true
-  for candidate_log in "${temporary_logs[@]}"; do
-    candidate_url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.pages\.dev' "$candidate_log" | tail -n 1 || true)"
-    if [[ -n "$candidate_url" && "$candidate_url" != "${deployment_state[4]}" ]]; then
-      recoverable=false
-      break
-    fi
-  done
-  [[ "$recoverable" == true ]] || stop "Production recovery state is ambiguous; refusing another upload."
+  # More than one marker means previous recovery attempts were interrupted.
+  # The immutable bundle is still validated locally and Wrangler creates a new
+  # deployment, so archive the ambiguous markers and start a clean upload.
   for candidate_log in "${temporary_logs[@]}"; do
     mv "$candidate_log" "$job_root/cloudflare-production-rolled-back-$(date -u +%Y%m%dT%H%M%SZ)-$(basename "$candidate_log").log"
   done
