@@ -26,6 +26,10 @@ export function databaseDeploymentStore({ database, queueRoot, releasesRoot }) {
         const existing = readDatabaseDeploymentState(database, value.articleId);
         if (existing.releaseJobId === value.releaseJobId && existing.status !== "failed") return existing;
       } catch (error) { if (error.code !== "ENOENT") throw error; }
+      // A failed systemd attempt leaves the claimed request beside the
+      // immutable release. Remove it before re-queuing so the dispatcher can
+      // claim the retry instead of silently skipping it.
+      await rm(join(releasesRoot, value.releaseJobId, "production-request.json"), { force: true });
       const state = queueDatabaseDeployment(database, value);
       const temporary = join(queueRoot, `.${state.jobId}.${randomUUID()}.queuing`); const target = join(queueRoot, state.jobId);
       try {
