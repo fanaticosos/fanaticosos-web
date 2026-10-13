@@ -166,6 +166,28 @@ class TranslateArticleQwenTests(unittest.TestCase):
             glossary,
         )
 
+    def test_production_glossary_translates_entregas_as_turnovers(self):
+        glossary_path = Path(__file__).parents[2] / "config" / "translation" / "glossary.json"
+        glossary = json.loads(glossary_path.read_text(encoding="utf-8"))
+        segment = {
+            "id": "turnovers",
+            "kind": "paragraph",
+            "text": "Green Bay convirtió cinco entregas de balón en puntos.",
+            "preserve": ["Green Bay"],
+        }
+
+        validate_segment_translation(
+            segment,
+            "Green Bay converted five turnovers into points.",
+            glossary,
+        )
+        with self.assertRaisesRegex(ValueError, "entrega de balón -> turnover"):
+            validate_segment_translation(
+                segment,
+                "Green Bay converted five handoffs into points.",
+                glossary,
+            )
+
     def test_glossary_validation_requires_punt_not_kick(self):
         segment = {
             "id": "weather",

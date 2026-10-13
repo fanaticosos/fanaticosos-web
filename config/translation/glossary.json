@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "sourceLocale": "es",
   "targetLocale": "en",
   "scope": "NFL and Chicago Bears sports journalism",
@@ -49,7 +49,7 @@
     { "category": "plays", "source": "pase completo", "target": "completion" },
     { "category": "plays", "source": "pase incompleto", "target": "incomplete pass" },
     { "category": "plays", "source": "pase de anotación", "target": "touchdown pass" },
-    { "category": "plays", "source": "entrega de balón", "target": "handoff" },
+    { "category": "plays", "source": "entrega de balón", "target": "turnover" },
     { "category": "plays", "source": "pase pantalla", "target": "screen pass" },
     { "category": "plays", "source": "acción de pase", "target": "play-action" },
     { "category": "plays", "source": "opción de lectura", "target": "read option" },
