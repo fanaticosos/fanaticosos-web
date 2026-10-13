@@ -33,7 +33,8 @@ El artículo y la canción sí quedaron publicados. Sin embargo, el sistema no d
   `git@github-fanaticosos:fanaticosos/fanaticosos-web.git`
 - Rama pública principal: `main`
 - Rama histórica que también se mantiene actualizada: `feature/multilingual-audio-blog`
-- Ambas ramas apuntaban al commit `e8fd7f5` al terminar el incidente.
+- Ambas ramas contienen además el hotfix `c9ca306`, que desactiva los builds
+  automáticos de producción disparados por pushes a GitHub.
 - Últimos commits relevantes:
 
 ```text
@@ -322,6 +323,12 @@ Script principal:
 scripts/deployment/deploy_cloudflare_production.sh
 ```
 
+**Estado obligatorio:** `production_deployments_enabled=false`. GitHub sigue
+siendo la fuente del software, pero un push a `main` no puede construir y
+reemplazar producción porque el checkout no contiene necesariamente los
+artículos y medios que viven en el release validado de Papabear. Solo el flujo
+de releases validados debe cambiar producción.
+
 Propiedades:
 
 - usa Wrangler fijado en el repositorio;
@@ -450,6 +457,17 @@ Después de publicar el artículo, `/api/music` mostró el job de la canción co
 - release actualmente activo que incorpora esos settings.
 
 No mostrar “stale” como fallo si los settings activos coinciden con producción.
+
+### 13.8 Un push de documentación borró el artículo de producción
+
+Después de validar el artículo, se empujó documentación a `main`. Cloudflare
+todavía tenía habilitados los despliegues automáticos desde GitHub, construyó el
+checkout —que no incluía el contenido privado del release— y reemplazó el sitio
+validado. La ruta del artículo volvió a responder 404 aunque SQLite indicaba
+`completed`. El hotfix `c9ca306` añadió comandos restringidos para desactivar
+esos builds y restaurar un deployment por ID. Se desactivaron los builds y se
+restauró `15a70615-1d3c-471f-80e6-dd463b87ff9a`; después se verificaron portada,
+índice del blog, artículos ES/EN y canción semanal.
 
 ## 14. Reparación que todavía falta
 
