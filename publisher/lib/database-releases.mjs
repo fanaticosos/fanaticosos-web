@@ -139,7 +139,11 @@ export function failDatabaseRelease(database, jobId, message, now = new Date()) 
   return withTransaction(database, (connection) => {
     const timestamp = now.toISOString();
     const job = connection.prepare(`UPDATE jobs SET status = 'failed', error_message = ?, finished_at = ?, heartbeat_at = ?, lease_owner = NULL, lease_expires_at = NULL WHERE id = ? AND type = 'release' AND status IN ('queued','leased','retry_wait')`).run(message, timestamp, timestamp, jobId);
-    if (job.changes !== 1) throw new Error("release job cannot be failed");
+    if (job.changes !== 1) {
+      const existing = connection.prepare(`${SELECT_RELEASE} WHERE j.id = ? AND j.type = 'release'`).get(jobId);
+      if (existing?.job_status === "failed") return state(existing);
+      throw new Error("release job cannot be failed");
+    }
     connection.prepare("UPDATE releases SET status = 'failed', error_message = ? WHERE id = ? AND status = 'building'").run(message, jobId);
     return state(connection.prepare(`${SELECT_RELEASE} WHERE j.id = ?`).get(jobId));
   });

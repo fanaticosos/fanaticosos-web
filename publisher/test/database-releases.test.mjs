@@ -48,6 +48,7 @@ test("a failed release admits one new retry while active duplicate requests rema
     const firstId = `release-${draft.articleId.replaceAll("-", "")}-r1-11111111`;
     queueDatabaseRelease(database, { ...base, jobId: firstId, path: join(root, firstId) });
     failDatabaseRelease(database, firstId, "forced failure", new Date("2026-09-09T01:01:00Z"));
+    assert.equal(failDatabaseRelease(database, firstId, "forced failure", new Date("2026-09-09T01:01:01Z")).status, "failed");
     const retryId = firstId.replace("11111111", "22222222");
     const retry = queueDatabaseRelease(database, { ...base, jobId: retryId, path: join(root, retryId), now: new Date("2026-09-09T01:02:00Z") });
     assert.equal(retry.jobId, retryId);
