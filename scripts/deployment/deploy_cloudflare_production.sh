@@ -228,7 +228,7 @@ for domain in "${domains[@]}"; do
     for attempt in $(seq 1 40); do
       (( SECONDS < validation_deadline )) || break
       temporary_body="$job_root/.cloudflare-body.$$"
-      if curl --fail --silent --show-error --max-time 30 --output "$temporary_body" "$domain$path"; then
+      if curl --fail --silent --show-error --max-time 180 --output "$temporary_body" "$domain$path"; then
         if [[ -s "$temporary_body" && ( -z "$checksum" || "$(sha256sum "$temporary_body" | cut -d' ' -f1)" == "$checksum" ) ]]; then passed=true; fi
       fi
       rm -f "$temporary_body"
