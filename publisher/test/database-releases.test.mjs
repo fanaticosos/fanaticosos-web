@@ -78,3 +78,22 @@ test("a code-only source commit change creates a new immutable release", async (
     assert.equal(repeated.jobId, secondId);
   } finally { closeDatabase(database); }
 });
+
+test("a selected production change creates a fresh article release", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-release-base-test-")); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const draft = createDatabaseDraft(database, { title: "Título", description: "Resumen", body: "Artículo", category: "Bears", season: 2026, tags: [], status: "draft", featuredImage: {} });
+    const revisionId = database.prepare("SELECT current_revision_id FROM articles WHERE id = ?").get(draft.articleId).current_revision_id;
+    const translationArtifact = acceptedArtifact(database, revisionId, { id: "base-translation", type: "translation", locale: "en", sha256: "a".repeat(64) });
+    const esArtifact = acceptedArtifact(database, revisionId, { id: "base-es", type: "audio", locale: "es", sha256: "b".repeat(64) });
+    const enArtifact = acceptedArtifact(database, revisionId, { id: "base-en", type: "audio", locale: "en", sha256: "c".repeat(64) });
+    const base = { draft, translation: { artifact: translationArtifact }, audio: { jobs: { es: { result: { sha256: esArtifact.sha256 }, artifact: esArtifact }, en: { result: { sha256: enArtifact.sha256 }, artifact: enArtifact } } }, settings: { schemaVersion: 1 }, publishedAt: "2026-09-09T01:00:00Z", sourceCommit: "d".repeat(40), now: new Date("2026-09-09T01:00:00Z") };
+    const firstId = `release-${draft.articleId.replaceAll("-", "")}-r1-44444444`;
+    queueDatabaseRelease(database, { ...base, baseReleaseJobId: "base-one", jobId: firstId, path: join(root, "first") });
+    startDatabaseRelease(database, firstId, new Date("2026-09-09T02:00:00Z"));
+    completeDatabaseRelease(database, firstId, { schemaVersion: 1 }, "e".repeat(64));
+    const secondId = firstId.replace("44444444", "55555555");
+    const changed = queueDatabaseRelease(database, { ...base, baseReleaseJobId: "base-two", jobId: secondId, path: join(root, "second"), now: new Date("2026-09-09T03:00:00Z") });
+    assert.equal(changed.jobId, secondId);
+  } finally { closeDatabase(database); }
+});

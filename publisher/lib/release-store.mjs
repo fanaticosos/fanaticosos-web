@@ -53,6 +53,8 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot, upload
   return {
     async queue({ draft, translation, audio, settings, publishedAt, now = new Date() }) {
       const sourceCommit = await resolveSourceCommit(repository);
+      const selectedRelease = database.prepare(`SELECT rel.id FROM deployments d JOIN releases rel ON rel.id = d.release_id
+        WHERE d.status = 'published' ORDER BY d.published_at DESC, d.id DESC LIMIT 1`).get();
       const jobId = `release-${draft.articleId.replaceAll("-", "")}-r${draft.revision}-${randomUUID().slice(0, 8)}`;
       const previous = database.prepare(`SELECT rel.manifest_json
         FROM deployments d JOIN releases rel ON rel.id = d.release_id
@@ -67,7 +69,8 @@ export function databaseReleaseStore({ database, queueRoot, releasesRoot, upload
           : zonedIso(now, "America/Chicago");
       const imageArtifact = await preserveImageArtifact({ draft, uploadsRoot, imagesRoot });
       const state = queueDatabaseRelease(database, { draft, translation, audio, imageArtifact, jobId,
-        path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, sourceCommit, now });
+        path: join(releasesRoot, jobId, "release"), settings, publishedAt: effectivePublishedAt, sourceCommit,
+        baseReleaseJobId: selectedRelease?.id, now });
       if (state.jobId !== jobId) return state;
       try { await writeRequest(queueRoot, jobId, { schemaVersion: 1, articleId: draft.articleId, draftRevision: draft.revision, publishedAt: effectivePublishedAt, sourceCommit, settings }); }
       catch (error) { failDatabaseRelease(database, jobId, "release request could not be queued", now); throw error; }
