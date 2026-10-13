@@ -22,7 +22,7 @@ export function queueDatabaseMusicPublication(database,{settings,jobId,path,now=
     const existing=connection.prepare(`${SELECT} ORDER BY j.created_at DESC,j.id DESC`).all().find((row)=>{try{return digest(JSON.parse(row.checkpoint_json||"{}").settings)===dependency;}catch{return false;}});
     const existingState=state(existing);
     const latest=connection.prepare("SELECT release_id FROM deployments WHERE status='published' ORDER BY published_at DESC,id DESC LIMIT 1").get();
-    if(existingState&&(existingState.status!=="completed"||latest?.release_id===existingState.jobId))return existingState;
+    if(existingState&&(["queued","running"].includes(existingState.status)||(existingState.status==="completed"&&latest?.release_id===existingState.jobId)))return existingState;
     if(connection.prepare("SELECT 1 FROM jobs WHERE type IN ('music_release','deployment') AND status IN ('queued','leased','retry_wait')").get())throw new Error("Ya hay una publicación en curso.");
     const source=connection.prepare("SELECT rel.id,rel.catalog_id FROM deployments d JOIN releases rel ON rel.id=d.release_id WHERE d.status='published' ORDER BY d.published_at DESC,d.id DESC LIMIT 1").get();
     if(!source)throw new Error("a validated selected release is required");

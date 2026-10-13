@@ -66,3 +66,22 @@ test("a failed music job with valid production evidence can be reconciled", asyn
     assert.equal(readDatabaseMusicPublication(database).status, "completed");
   } finally { closeDatabase(database); }
 });
+
+test("a failed music publication admits a fresh retry for the same song", async () => {
+  const root = await mkdtemp(join(tmpdir(), "database-music-retry-")); const database = await openDatabase(join(root, "publisher.sqlite"));
+  try {
+    const settings = { version: 1, music: { weeklySongUrl: "https://music.example/song" } };
+    database.exec(`INSERT INTO article_catalogs VALUES ('catalog','2026-09-09T00:00:00Z');
+      INSERT INTO site_settings_revisions VALUES ('settings', '${JSON.stringify(settings)}','2026-09-09T00:00:00Z');
+      INSERT INTO releases(id,catalog_id,site_settings_revision_id,status,path,manifest_json,manifest_checksum_sha256,created_at,validated_at) VALUES('old','catalog','settings','validated','/old','{}','${"a".repeat(64)}','2026-09-09T00:00:00Z','2026-09-09T00:00:00Z');
+      INSERT INTO deployments(id,release_id,status,cloudflare_deployment_id,immutable_url,created_at,published_at) VALUES('dep','old','published','old','https://old.pages.dev','2026-09-09T00:00:00Z','2026-09-09T00:00:00Z')`);
+    const firstId = "release-33333333333333333333333333333333-r1-1234abcd";
+    queueDatabaseMusicPublication(database, { settings, jobId: firstId, path: join(root, "first"), now: new Date("2026-09-09T01:00:00Z") });
+    startDatabaseMusicPublication(database, firstId, new Date("2026-09-09T01:01:00Z"));
+    failDatabaseMusicPublication(database, firstId, "deployment failed", new Date("2026-09-09T01:02:00Z"));
+    const retryId = firstId.replace("1234abcd", "abcdef12");
+    const retry = queueDatabaseMusicPublication(database, { settings, jobId: retryId, path: join(root, "retry"), now: new Date("2026-09-09T01:03:00Z") });
+    assert.equal(retry.jobId, retryId);
+    assert.equal(retry.status, "queued");
+  } finally { closeDatabase(database); }
+});
