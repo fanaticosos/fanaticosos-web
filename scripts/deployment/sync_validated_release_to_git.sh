@@ -62,8 +62,10 @@ if runuser -u "$service_account" -- git -C "$repository" diff --cached --quiet; 
   exit 0
 fi
 
-runuser -u "$service_account" -- git -C "$repository" commit \
-  -m "[CI Skip] Sync validated production $job_id"
+runuser -u "$service_account" -- git -C "$repository" \
+  -c user.name="Fanaticosos Publisher" \
+  -c user.email="publisher@fanaticosos.com" \
+  commit -m "[CI Skip] Sync validated production $job_id"
 runuser -u "$service_account" -- git -C "$repository" push "$remote" "HEAD:$production_branch"
 
 readonly local_commit="$(runuser -u "$service_account" -- git -C "$repository" rev-parse HEAD)"

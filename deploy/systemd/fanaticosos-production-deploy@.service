@@ -14,4 +14,4 @@ PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/opt/fanaticosos-blog/publisher/releases /run/lock
+ReadWritePaths=/opt/fanaticosos-blog/publisher/releases /opt/fanaticosos-blog/repository /run/lock

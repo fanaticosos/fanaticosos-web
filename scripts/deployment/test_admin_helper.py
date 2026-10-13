@@ -377,6 +377,8 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('readonly production_branch="main"', sync)
         self.assertIn('rsync -a --delete', sync)
         self.assertIn('[CI Skip] Sync validated production', sync)
+        self.assertIn('-c user.name="Fanaticosos Publisher"', sync)
+        self.assertIn('-c user.email="publisher@fanaticosos.com"', sync)
         self.assertIn('git -C "$repository" push "$remote" "HEAD:$production_branch"', sync)
         self.assertIn('src/content/articles', sync)
         self.assertIn('public/audio', sync)

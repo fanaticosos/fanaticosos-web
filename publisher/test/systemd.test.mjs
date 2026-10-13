@@ -68,6 +68,7 @@ test("music publication builds privately then deploys through a root-only unit",
   assert.match(build, /User=fanaticosos-blog/);
   assert.match(build, /PrivateNetwork=yes/);
   assert.match(build, /OnSuccess=fanaticosos-music-deploy@%i\.service/);
+  assert.match(deploy, /ReadWritePaths=.*\/opt\/fanaticosos-blog\/repository/);
   assert.match(deploy, /deploy_music_release\.sh/);
   assert.match(deploy, /record_music_deploy_exit\.mjs/);
   assert.doesNotMatch(deploy, /User=fanaticosos-blog/);
@@ -78,6 +79,7 @@ test("every validated production deployment becomes the source for later music b
   const production = await readFile(new URL("../../scripts/deployment/deploy_cloudflare_production.sh", import.meta.url), "utf8");
   const articleBuild = await readFile(new URL("../../scripts/publisher/build_release.mjs", import.meta.url), "utf8");
   const productionUnit = await readFile(new URL("../../deploy/systemd/fanaticosos-production-deploy@.service", import.meta.url), "utf8");
+  assert.match(productionUnit, /ReadWritePaths=.*\/opt\/fanaticosos-blog\/repository/);
   const failureRecorder = await readFile(new URL("../../scripts/publisher/record_production_deploy_exit.mjs", import.meta.url), "utf8");
   const music = await readFile(new URL("../../scripts/deployment/deploy_music_release.sh", import.meta.url), "utf8");
   const musicBuild = await readFile(new URL("../../scripts/publisher/build_music_release.mjs", import.meta.url), "utf8");
@@ -92,7 +94,7 @@ test("every validated production deployment becomes the source for later music b
   assert.match(production, /The previous validated deployment was restored/);
   assert.match(articleBuild, /homepageSha256: await sha256\(join\(temporary, "dist", "index\.html"\)\)/);
   assert.match(articleBuild, /"src\/data\/game-center\.json"/);
-  assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases \/run\/lock/);
+  assert.match(productionUnit, /ReadWritePaths=\/opt\/fanaticosos-blog\/publisher\/releases \/opt\/fanaticosos-blog\/repository \/run\/lock/);
   assert.match(productionUnit, /TimeoutStartSec=35min/);
   assert.match(productionUnit, /TimeoutStopSec=2min/);
   const deploymentTimeouts = await readFile(new URL("../lib/deployment-timeouts.mjs", import.meta.url), "utf8");
