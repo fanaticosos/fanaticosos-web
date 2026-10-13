@@ -185,6 +185,7 @@ Commands:
   import-audiograms EXPECTED_COMMIT
   database-music-import-preview EXPECTED_COMMIT
   import-music EXPECTED_COMMIT
+  reconcile-music-publication EXPECTED_COMMIT RELEASE_JOB_ID
   latest-private-release
   select-private-release EXPECTED_COMMIT RELEASE_JOB_ID
   release-retention-preview EXPECTED_COMMIT
@@ -1616,6 +1617,17 @@ command_import_music() {
     --states-root "$publisher_data/states" --releases-root "$publisher_data/releases"
 }
 
+command_reconcile_music_publication() {
+  local expected="$1"
+  local job_id="$2"
+  require_repository_commit "$expected"
+  [[ "$job_id" =~ ^release-[0-9a-f]{32}-r1-[0-9a-f]{8}$ ]] || stop "Expected a music release job ID."
+  run_as_service /opt/nodejs/current/bin/node "$repository/scripts/publisher/reconcile_music_publication.mjs" \
+    --database "$publisher_database" \
+    --release-root "$publisher_data/releases/$job_id" \
+    --job-id "$job_id"
+}
+
 command_latest_private_release() {
   local release_dir
   local manifest
@@ -2592,6 +2604,10 @@ case "$command" in
   import-music)
     [[ $# == 1 ]] || stop "import-music requires EXPECTED_COMMIT."
     command_import_music "$1"
+    ;;
+  reconcile-music-publication)
+    [[ $# == 2 ]] || stop "reconcile-music-publication requires EXPECTED_COMMIT RELEASE_JOB_ID."
+    command_reconcile_music_publication "$1" "$2"
     ;;
   latest-private-release)
     [[ $# == 0 ]] || stop "latest-private-release takes no arguments."
