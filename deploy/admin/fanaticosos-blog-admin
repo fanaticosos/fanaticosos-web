@@ -56,7 +56,9 @@ readonly game_center_timer_installed="/etc/systemd/system/fanaticosos-game-cente
 readonly cloudflare_preview_script="$repository/scripts/deployment/deploy_cloudflare_preview.sh"
 readonly cloudflare_production_script="$repository/scripts/deployment/deploy_cloudflare_production.sh"
 readonly cloudflare_automatic_deployments_script="$repository/scripts/deployment/configure_cloudflare_automatic_deployments.sh"
+readonly cloudflare_disable_automatic_deployments_script="$repository/scripts/deployment/disable_cloudflare_automatic_deployments.sh"
 readonly cloudflare_automatic_deployment_status_script="$repository/scripts/deployment/cloudflare_automatic_deployment_status.sh"
+readonly cloudflare_restore_deployment_script="$repository/scripts/deployment/restore_cloudflare_deployment.sh"
 readonly sync_validated_release_to_git_script="$repository/scripts/deployment/sync_validated_release_to_git.sh"
 readonly publisher_data="$data_root/publisher"
 readonly publisher_database_root="$publisher_data/database"
@@ -153,6 +155,8 @@ Commands:
   pages-deployment-runtime-status
   verify-cloudflare-pages-token EXPECTED_COMMIT
   enable-cloudflare-automatic-deployments EXPECTED_COMMIT
+  disable-cloudflare-automatic-deployments EXPECTED_COMMIT
+  restore-cloudflare-deployment EXPECTED_COMMIT DEPLOYMENT_PREFIX
   cloudflare-automatic-deployment-status EXPECTED_COMMIT
   sync-current-production-source EXPECTED_COMMIT
   repair-production-turnstile-binding EXPECTED_COMMIT
@@ -280,6 +284,19 @@ command_enable_cloudflare_automatic_deployments() {
   local expected="$1"
   require_repository_commit "$expected"
   exec "$cloudflare_automatic_deployments_script"
+}
+
+command_disable_cloudflare_automatic_deployments() {
+  local expected="$1"
+  require_repository_commit "$expected"
+  exec "$cloudflare_disable_automatic_deployments_script"
+}
+
+command_restore_cloudflare_deployment() {
+  local expected="$1"
+  local prefix="$2"
+  require_repository_commit "$expected"
+  exec "$cloudflare_restore_deployment_script" "$prefix"
 }
 
 command_cloudflare_automatic_deployment_status() {
@@ -2476,6 +2493,14 @@ case "$command" in
   enable-cloudflare-automatic-deployments)
     [[ $# == 1 ]] || stop "enable-cloudflare-automatic-deployments requires EXPECTED_COMMIT."
     command_enable_cloudflare_automatic_deployments "$1"
+    ;;
+  disable-cloudflare-automatic-deployments)
+    [[ $# == 1 ]] || stop "disable-cloudflare-automatic-deployments requires EXPECTED_COMMIT."
+    command_disable_cloudflare_automatic_deployments "$1"
+    ;;
+  restore-cloudflare-deployment)
+    [[ $# == 2 ]] || stop "restore-cloudflare-deployment requires EXPECTED_COMMIT DEPLOYMENT_PREFIX."
+    command_restore_cloudflare_deployment "$1" "$2"
     ;;
   cloudflare-automatic-deployment-status)
     [[ $# == 1 ]] || stop "cloudflare-automatic-deployment-status requires EXPECTED_COMMIT."

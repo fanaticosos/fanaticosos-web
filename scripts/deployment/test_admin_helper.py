@@ -40,7 +40,9 @@ class AdminHelperTests(unittest.TestCase):
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_preview.sh",
             ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh",
             ROOT / "scripts" / "deployment" / "configure_cloudflare_automatic_deployments.sh",
+            ROOT / "scripts" / "deployment" / "disable_cloudflare_automatic_deployments.sh",
             ROOT / "scripts" / "deployment" / "cloudflare_automatic_deployment_status.sh",
+            ROOT / "scripts" / "deployment" / "restore_cloudflare_deployment.sh",
             ROOT / "scripts" / "deployment" / "sync_validated_release_to_git.sh",
             ROOT / "scripts" / "backup" / "create_recovery_bundle.sh",
             ROOT / "scripts" / "backup" / "verify_recovery_bundle.sh",
@@ -111,6 +113,8 @@ class AdminHelperTests(unittest.TestCase):
                 "pages-deployment-runtime-status",
                 "verify-cloudflare-pages-token",
                 "enable-cloudflare-automatic-deployments",
+                "disable-cloudflare-automatic-deployments",
+                "restore-cloudflare-deployment",
                 "cloudflare-automatic-deployment-status",
                 "sync-current-production-source",
                 "repair-production-turnstile-binding",
@@ -353,7 +357,7 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('deployments?env=production&per_page=10', script)
         self.assertIn('canonical_deployment', script)
         self.assertIn('Resuming validation of the already-uploaded production deployment.', script)
-        self.assertIn('Production recovery state is ambiguous', script)
+        self.assertIn('Re-uploading the immutable release after an interrupted retry.', script)
         self.assertIn('uploaded_url="$(grep -Eo', script)
         self.assertIn('rollback_id="${deployment_state[0]}"', script)
         self.assertIn('Re-uploading the immutable release after a completed rollback.', script)
@@ -367,7 +371,17 @@ class AdminHelperTests(unittest.TestCase):
         self.assertIn('[[ -s "$temporary_body"', script)
         self.assertIn('items = [("/", ""), (routes.get("es"), ""), (routes.get("en"), "")]', script)
         self.assertIn('scripts/publisher/select_release.mjs', script)
-        self.assertIn('scripts/deployment/sync_validated_release_to_git.sh', script)
+        self.assertNotIn('sync_validated_release_to_git.sh" "$repository"', script)
+
+    def test_cloudflare_automatic_production_can_be_disabled_and_release_restored(self):
+        script = (ROOT / "scripts" / "deployment" / "deploy_cloudflare_production.sh").read_text(encoding="utf-8")
+        disable = (ROOT / "scripts" / "deployment" / "disable_cloudflare_automatic_deployments.sh").read_text(encoding="utf-8")
+        self.assertIn('"production_deployments_enabled":false', disable)
+        self.assertIn('config.get("production_deployments_enabled") is not False', disable)
+        restore = (ROOT / "scripts" / "deployment" / "restore_cloudflare_deployment.sh").read_text(encoding="utf-8")
+        self.assertIn('deployments?env=production&per_page=25', restore)
+        self.assertIn('/deployments/$deployment_id/rollback', restore)
+        self.assertIn('len(matches) != 1', restore)
         self.assertIn('--releases-root "$data_root/publisher/releases" --job-id "$job_id"', script)
         self.assertIn("trap 'rollback_on_signal SIGTERM' TERM", script)
         self.assertIn('production_changed=true', script)
