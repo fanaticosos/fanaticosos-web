@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "sourceLocale": "es",
   "targetLocale": "en",
   "scope": "NFL and Chicago Bears sports journalism",
@@ -25,7 +25,7 @@
     { "category": "editorial-phrases", "source": "complicó los despejes", "target": "made punting difficult" },
 
     { "category": "positions", "source": "mariscal de campo", "target": "quarterback" },
-    { "category": "positions", "source": "corredor", "target": "running back" },
+    { "category": "positions", "source": "corredor", "target": "running back", "acceptedTargets": ["rusher"] },
     { "category": "positions", "source": "receptor abierto", "target": "wide receiver" },
     { "category": "positions", "source": "ala cerrada", "target": "tight end" },
     { "category": "positions", "source": "línea ofensiva", "target": "offensive line" },

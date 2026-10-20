@@ -303,7 +303,10 @@ def validate_segment_translation(
         {"source": term["source"], "expectedTarget": term["target"]}
         for term in glossary["terms"]
         if glossary_term_occurs(term["source"], segment["text"])
-        and not glossary_term_occurs(term["target"], translation)
+        and not any(
+            glossary_term_occurs(target, translation)
+            for target in [term["target"], *term.get("acceptedTargets", [])]
+        )
     ]
     if failures:
         details = ", ".join(

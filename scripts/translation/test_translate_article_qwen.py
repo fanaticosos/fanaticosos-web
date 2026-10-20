@@ -418,6 +418,28 @@ class TranslateArticleQwenTests(unittest.TestCase):
                 self.glossary,
             )
 
+    def test_accepts_contextual_glossary_alias(self):
+        segment = {
+            "id": "body-025",
+            "kind": "paragraph",
+            "text": "El corredor de Atlanta llegaba como líder terrestre de la liga.",
+            "preserve": [],
+        }
+        glossary = {
+            "version": 1,
+            "protectedNames": [],
+            "terms": [{
+                "source": "corredor",
+                "target": "running back",
+                "acceptedTargets": ["rusher"],
+            }],
+        }
+        validate_segment_translation(
+            segment,
+            "The Atlanta rusher came into the game as the league's leading rusher.",
+            glossary,
+        )
+
     def test_rejects_output_that_remains_spanish(self):
         segment = self.request["segments"][0]
         with self.assertRaisesRegex(ValueError, "appears to remain Spanish"):
