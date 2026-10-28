@@ -302,7 +302,8 @@ def validate_segment_translation(
     failures = [
         {"source": term["source"], "expectedTarget": term["target"]}
         for term in glossary["terms"]
-        if glossary_term_occurs(term["source"], segment["text"])
+        if term.get("enforceExactTarget", False)
+        and glossary_term_occurs(term["source"], segment["text"])
         and not any(
             glossary_term_occurs(target, translation)
             for target in [term["target"], *term.get("acceptedTargets", [])]

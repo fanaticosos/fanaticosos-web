@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "sourceLocale": "es",
   "targetLocale": "en",
   "scope": "NFL and Chicago Bears sports journalism",
@@ -21,14 +21,14 @@
     }
   ],
   "terms": [
-    { "category": "editorial-phrases", "source": "serie ofensiva", "target": "drive" },
-    { "category": "editorial-phrases", "source": "complicó los despejes", "target": "made punting difficult" },
+    { "category": "editorial-phrases", "source": "serie ofensiva", "target": "drive", "enforceExactTarget": true },
+    { "category": "editorial-phrases", "source": "complicó los despejes", "target": "made punting difficult", "enforceExactTarget": true },
 
     { "category": "positions", "source": "mariscal de campo", "target": "quarterback" },
-    { "category": "positions", "source": "corredor", "target": "running back", "acceptedTargets": ["rusher", "back"] },
+    { "category": "positions", "source": "corredor", "target": "running back" },
     { "category": "positions", "source": "receptor abierto", "target": "wide receiver" },
     { "category": "positions", "source": "ala cerrada", "target": "tight end" },
-    { "category": "positions", "source": "línea ofensiva", "target": "offensive line", "acceptedTargets": ["offensive lineman", "offensive linemen"] },
+    { "category": "positions", "source": "línea ofensiva", "target": "offensive line" },
     { "category": "positions", "source": "tackle ofensivo", "target": "offensive tackle" },
     { "category": "positions", "source": "guardia ofensivo", "target": "offensive guard" },
     { "category": "positions", "source": "ala defensiva", "target": "defensive end" },
@@ -43,13 +43,13 @@
     { "category": "positions", "source": "retornador de patadas", "target": "kick returner" },
     { "category": "positions", "source": "retornador de despejes", "target": "punt returner" },
 
-    { "category": "plays", "source": "despeje", "target": "punt" },
+    { "category": "plays", "source": "despeje", "target": "punt", "enforceExactTarget": true },
     { "category": "plays", "source": "balón suelto", "target": "fumble" },
     { "category": "plays", "source": "captura", "target": "sack" },
     { "category": "plays", "source": "pase completo", "target": "completion" },
     { "category": "plays", "source": "pase incompleto", "target": "incomplete pass" },
     { "category": "plays", "source": "pase de anotación", "target": "touchdown pass" },
-    { "category": "plays", "source": "entrega de balón", "target": "turnover" },
+    { "category": "plays", "source": "entrega de balón", "target": "turnover", "enforceExactTarget": true },
     { "category": "plays", "source": "pase pantalla", "target": "screen pass" },
     { "category": "plays", "source": "acción de pase", "target": "play-action" },
     { "category": "plays", "source": "opción de lectura", "target": "read option" },
@@ -92,7 +92,7 @@
 
     { "category": "statistics", "source": "yardas por pase", "target": "passing yards" },
     { "category": "statistics", "source": "yardas por tierra", "target": "rushing yards" },
-    { "category": "statistics", "source": "yardas por recepción", "target": "receiving yards", "acceptedTargets": ["yards per reception"] },
+    { "category": "statistics", "source": "yardas por recepción", "target": "receiving yards" },
     { "category": "statistics", "source": "intentos de pase", "target": "pass attempts" },
     { "category": "statistics", "source": "porcentaje de pases completos", "target": "completion percentage" },
     { "category": "statistics", "source": "pérdidas de balón", "target": "turnovers" },

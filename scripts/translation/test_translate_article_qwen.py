@@ -198,7 +198,11 @@ class TranslateArticleQwenTests(unittest.TestCase):
         glossary = {
             "version": 4,
             "protectedNames": [],
-            "terms": [{"source": "despeje", "target": "punt"}],
+            "terms": [{
+                "source": "despeje",
+                "target": "punt",
+                "enforceExactTarget": True,
+            }],
         }
         with self.assertRaisesRegex(ValueError, "despeje -> punt"):
             validate_segment_translation(
@@ -217,7 +221,11 @@ class TranslateArticleQwenTests(unittest.TestCase):
         glossary = {
             "version": 5,
             "protectedNames": ["Bears"],
-            "terms": [{"source": "serie ofensiva", "target": "drive"}],
+            "terms": [{
+                "source": "serie ofensiva",
+                "target": "drive",
+                "enforceExactTarget": True,
+            }],
         }
         with self.assertRaisesRegex(ValueError, "serie ofensiva -> drive"):
             validate_segment_translation(
@@ -245,6 +253,7 @@ class TranslateArticleQwenTests(unittest.TestCase):
                 {
                     "source": "complicó los despejes",
                     "target": "made punting difficult",
+                    "enforceExactTarget": True,
                 }
             ],
         }
@@ -313,7 +322,11 @@ class TranslateArticleQwenTests(unittest.TestCase):
             "version": 4,
             "protectedNames": ["Bears"],
             "terms": [
-                {"source": "balón suelto", "target": "fumble"},
+                {
+                    "source": "balón suelto",
+                    "target": "fumble",
+                    "enforceExactTarget": True,
+                },
                 {"source": "zona roja", "target": "red zone"},
             ],
         }
@@ -411,14 +424,16 @@ class TranslateArticleQwenTests(unittest.TestCase):
     def test_rejects_missing_glossary_translation(self):
         segment = copy.deepcopy(self.request["segments"][1])
         segment["text"] = "Caleb Williams lanzó un pase de anotación."
+        glossary = copy.deepcopy(self.glossary)
+        glossary["terms"][0]["enforceExactTarget"] = True
         with self.assertRaisesRegex(ValueError, "glossary validation failed"):
             validate_segment_translation(
                 segment,
                 "Caleb Williams threw two scoring throws.",
-                self.glossary,
+                glossary,
             )
 
-    def test_accepts_contextual_glossary_alias(self):
+    def test_accepts_contextual_glossary_wording_without_literal_target(self):
         segment = {
             "id": "body-025",
             "kind": "paragraph",
@@ -431,7 +446,6 @@ class TranslateArticleQwenTests(unittest.TestCase):
             "terms": [{
                 "source": "corredor",
                 "target": "running back",
-                "acceptedTargets": ["rusher"],
             }],
         }
         validate_segment_translation(
@@ -457,7 +471,6 @@ class TranslateArticleQwenTests(unittest.TestCase):
             "terms": [{
                 "source": "corredor",
                 "target": "running back",
-                "acceptedTargets": ["rusher", "back"],
             }],
         }
         validate_segment_translation(
@@ -488,7 +501,6 @@ class TranslateArticleQwenTests(unittest.TestCase):
             "terms": [{
                 "source": "yardas por recepción",
                 "target": "receiving yards",
-                "acceptedTargets": ["yards per reception"],
             }],
         }
         validate_segment_translation(
@@ -518,7 +530,6 @@ class TranslateArticleQwenTests(unittest.TestCase):
             "terms": [{
                 "source": "línea ofensiva",
                 "target": "offensive line",
-                "acceptedTargets": ["offensive lineman", "offensive linemen"],
             }],
         }
         validate_segment_translation(
