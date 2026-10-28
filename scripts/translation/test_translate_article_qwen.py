@@ -471,6 +471,36 @@ class TranslateArticleQwenTests(unittest.TestCase):
             glossary,
         )
 
+    def test_accepts_offensive_linemen_for_body_010(self):
+        segment = {
+            "id": "body-010",
+            "kind": "paragraph",
+            "text": (
+                "En el touchdown de 24 yardas, un pase pantalla se transformó en "
+                "una carrera entre bloqueadores: Colston Loveland, Kalif Raymond "
+                "y hasta jugadores de la línea ofensiva acompañaron la jugada."
+            ),
+            "preserve": [],
+        }
+        glossary = {
+            "version": 1,
+            "protectedNames": [],
+            "terms": [{
+                "source": "línea ofensiva",
+                "target": "offensive line",
+                "acceptedTargets": ["offensive lineman", "offensive linemen"],
+            }],
+        }
+        validate_segment_translation(
+            segment,
+            (
+                "On the 24-yard touchdown, a screen pass turned into a run between "
+                "blockers: Colston Loveland, Kalif Raymond, and even offensive "
+                "linemen accompanied the play."
+            ),
+            glossary,
+        )
+
     def test_rejects_output_that_remains_spanish(self):
         segment = self.request["segments"][0]
         with self.assertRaisesRegex(ValueError, "appears to remain Spanish"):

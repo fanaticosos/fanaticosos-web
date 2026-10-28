@@ -28,7 +28,7 @@
     { "category": "positions", "source": "corredor", "target": "running back", "acceptedTargets": ["rusher"] },
     { "category": "positions", "source": "receptor abierto", "target": "wide receiver" },
     { "category": "positions", "source": "ala cerrada", "target": "tight end" },
-    { "category": "positions", "source": "línea ofensiva", "target": "offensive line" },
+    { "category": "positions", "source": "línea ofensiva", "target": "offensive line", "acceptedTargets": ["offensive lineman", "offensive linemen"] },
     { "category": "positions", "source": "tackle ofensivo", "target": "offensive tackle" },
     { "category": "positions", "source": "guardia ofensivo", "target": "offensive guard" },
     { "category": "positions", "source": "ala defensiva", "target": "defensive end" },
