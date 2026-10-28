@@ -25,7 +25,7 @@
     { "category": "editorial-phrases", "source": "complicó los despejes", "target": "made punting difficult" },
 
     { "category": "positions", "source": "mariscal de campo", "target": "quarterback" },
-    { "category": "positions", "source": "corredor", "target": "running back", "acceptedTargets": ["rusher"] },
+    { "category": "positions", "source": "corredor", "target": "running back", "acceptedTargets": ["rusher", "back"] },
     { "category": "positions", "source": "receptor abierto", "target": "wide receiver" },
     { "category": "positions", "source": "ala cerrada", "target": "tight end" },
     { "category": "positions", "source": "línea ofensiva", "target": "offensive line", "acceptedTargets": ["offensive lineman", "offensive linemen"] },

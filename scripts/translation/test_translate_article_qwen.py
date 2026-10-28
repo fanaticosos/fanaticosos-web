@@ -440,6 +440,36 @@ class TranslateArticleQwenTests(unittest.TestCase):
             glossary,
         )
 
+    def test_accepts_back_for_corredor_in_body_027(self):
+        segment = {
+            "id": "body-027",
+            "kind": "list-item",
+            "text": (
+                "**D'Andre Swift llegó a siete touchdowns terrestres en los "
+                "primeros siete partidos.** Ningún corredor de Chicago alcanzaba "
+                "esa cifra tan pronto en una temporada desde Neal Anderson en 1990."
+            ),
+            "preserve": [],
+        }
+        glossary = {
+            "version": 1,
+            "protectedNames": ["Chicago"],
+            "terms": [{
+                "source": "corredor",
+                "target": "running back",
+                "acceptedTargets": ["rusher", "back"],
+            }],
+        }
+        validate_segment_translation(
+            segment,
+            (
+                "**D'Andre Swift reached seven rushing touchdowns in the first "
+                "seven games.** No Chicago back had reached that number so early "
+                "in a season since Neal Anderson in 1990."
+            ),
+            glossary,
+        )
+
     def test_accepts_yards_per_reception_for_body_009(self):
         segment = {
             "id": "body-009",
