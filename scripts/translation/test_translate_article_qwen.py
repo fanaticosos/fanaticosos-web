@@ -440,6 +440,37 @@ class TranslateArticleQwenTests(unittest.TestCase):
             glossary,
         )
 
+    def test_accepts_yards_per_reception_for_body_009(self):
+        segment = {
+            "id": "body-009",
+            "kind": "paragraph",
+            "text": (
+                "**Cuatro atrapadas. 130 yardas. Un touchdown. Todas antes del "
+                "descanso.** Ese fue el daño de Luther Burden III, cuyo promedio "
+                "de **32.5 yardas por recepción** resume una noche de explosividad "
+                "poco común."
+            ),
+            "preserve": [],
+        }
+        glossary = {
+            "version": 1,
+            "protectedNames": [],
+            "terms": [{
+                "source": "yardas por recepción",
+                "target": "receiving yards",
+                "acceptedTargets": ["yards per reception"],
+            }],
+        }
+        validate_segment_translation(
+            segment,
+            (
+                "**Four catches. 130 yards. A touchdown. All before halftime.** "
+                "That was the damage of Luther Burden III, whose **32.5 yards per "
+                "reception average** summarizes a night of rare explosiveness."
+            ),
+            glossary,
+        )
+
     def test_rejects_output_that_remains_spanish(self):
         segment = self.request["segments"][0]
         with self.assertRaisesRegex(ValueError, "appears to remain Spanish"):

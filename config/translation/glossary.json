@@ -92,7 +92,7 @@
 
     { "category": "statistics", "source": "yardas por pase", "target": "passing yards" },
     { "category": "statistics", "source": "yardas por tierra", "target": "rushing yards" },
-    { "category": "statistics", "source": "yardas por recepción", "target": "receiving yards" },
+    { "category": "statistics", "source": "yardas por recepción", "target": "receiving yards", "acceptedTargets": ["yards per reception"] },
     { "category": "statistics", "source": "intentos de pase", "target": "pass attempts" },
     { "category": "statistics", "source": "porcentaje de pases completos", "target": "completion percentage" },
     { "category": "statistics", "source": "pérdidas de balón", "target": "turnovers" },
