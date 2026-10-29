@@ -756,12 +756,12 @@ async function pollAudio() {
     } else if (audio.status === "awaiting-english") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
-      workflowState.textContent = "Audio español listo · continúa con la traducción y después genera el audio inglés.";
+      workflowState.textContent = "Audio español listo · genera el audio inglés para completar la publicación.";
       spanishAudioStatus.textContent = "Audio en español: listo y conservado.";
       uploadSpanishAudio.disabled = false;
       generateSpanishAudio.disabled = false;
-      regenerateEnglishAudio.disabled = true;
-      generateEnglish.disabled = false;
+      regenerateEnglishAudio.disabled = translationNeedsConfirmation;
+      generateEnglish.disabled = true;
     } else if (audio.status === "failed") {
       if (audioTimer) clearInterval(audioTimer);
       audioTimer = null;
