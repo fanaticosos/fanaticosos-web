@@ -21,6 +21,7 @@ import { databaseDeploymentStore, filesystemDeploymentStore } from "./lib/deploy
 import { resolveWeeklySong } from "./lib/music-settings.mjs";
 import { databaseMusicStore, filesystemMusicStore } from "./lib/music-store.mjs";
 import { databaseAudiogramStore, filesystemAudiogramStore } from "./lib/audiogram-store.mjs";
+import { audiogramInputSignature, audiogramRequestForDraft } from "./lib/audiogram-jobs.mjs";
 import { MAX_SPANISH_AUDIO_BYTES } from "./lib/spanish-audio-upload.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -135,8 +136,13 @@ export function translationWithFreshness(translation, draft) {
 
 export function audiogramWithFreshness(audiogram, draft, audio) {
   if (!audiogram || audiogram.status !== "completed") return audiogram;
-  const current = audiogram.draftRevision === draft.revision
-    && audiogram.audioSha256 === audio?.jobs?.es?.result?.sha256;
+  let current = false;
+  if (audiogram.inputSignature && audio?.jobs?.es?.status === "completed") {
+    current = audiogram.inputSignature === audiogramInputSignature(audiogramRequestForDraft(draft, audio));
+  } else {
+    current = audiogram.draftRevision === draft.revision
+      && audiogram.audioSha256 === audio?.jobs?.es?.result?.sha256;
+  }
   return current ? audiogram : { ...audiogram, status: "stale" };
 }
 
