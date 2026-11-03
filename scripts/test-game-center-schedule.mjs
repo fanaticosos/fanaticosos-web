@@ -9,6 +9,23 @@ test("Game Center checks every ten minutes inside the game window", () => {
   assert.deepEqual(gameCenterPollDecision({ current, state: { lastSuccessfulCheckAt: "2026-09-20T16:25:00.000Z" }, now: new Date("2026-09-20T16:30:00.000Z") }), { due: false, mode: "game" });
 });
 
+test("Game Center keeps checking after next game rolls over to previous game", () => {
+  const rolledOver = {
+    previousGame: { startsAt: "2026-11-03T01:15:00.000Z" },
+    nextGame: { startsAt: "2026-11-09T01:20:00.000Z" },
+  };
+  assert.deepEqual(gameCenterPollDecision({
+    current: rolledOver,
+    state: { lastSuccessfulCheckAt: "2026-11-03T04:33:33.000Z" },
+    now: new Date("2026-11-03T04:44:00.000Z"),
+  }), { due: true, mode: "game" });
+  assert.deepEqual(gameCenterPollDecision({
+    current: rolledOver,
+    state: { lastSuccessfulCheckAt: "2026-11-03T04:33:33.000Z" },
+    now: new Date("2026-11-03T09:16:00.000Z"),
+  }), { due: false, mode: "daily" });
+});
+
 test("Game Center checks only daily outside the game window", () => {
   assert.deepEqual(gameCenterPollDecision({ current, state: { lastSuccessfulCheckAt: "2026-09-19T12:00:00.000Z" }, now: new Date("2026-09-20T12:00:01.000Z") }), { due: true, mode: "daily" });
   assert.deepEqual(gameCenterPollDecision({ current, state: { lastSuccessfulCheckAt: "2026-09-20T11:00:00.000Z" }, now: new Date("2026-09-20T12:00:00.000Z") }), { due: false, mode: "daily" });

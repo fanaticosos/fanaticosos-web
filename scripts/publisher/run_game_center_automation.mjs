@@ -32,8 +32,14 @@ export function preserveVenues(candidate, current) {
 
 export function gameCenterPollDecision({ current, state, now = new Date() }) {
   if (state?.backoffUntil && now < new Date(state.backoffUntil)) return { due: false, mode: "backoff" };
-  const kickoff = Date.parse(current?.nextGame?.startsAt ?? "");
-  const inGameWindow = Number.isFinite(kickoff) && now.getTime() >= kickoff - GAME_WINDOW_BEFORE_MS && now.getTime() <= kickoff + GAME_WINDOW_AFTER_MS;
+  // A completed update moves the just-finished matchup from nextGame to
+  // previousGame. Keep polling through the postgame window so late ESPN
+  // standings changes are not missed after that rollover.
+  const kickoffs = [current?.nextGame?.startsAt, current?.previousGame?.startsAt]
+    .map((value) => Date.parse(value ?? ""))
+    .filter(Number.isFinite);
+  const inGameWindow = kickoffs.some((kickoff) => now.getTime() >= kickoff - GAME_WINDOW_BEFORE_MS
+    && now.getTime() <= kickoff + GAME_WINDOW_AFTER_MS);
   const interval = inGameWindow ? GAME_INTERVAL_MS : DAILY_INTERVAL_MS;
   const last = Date.parse(state?.lastSuccessfulCheckAt ?? "");
   return { due: !Number.isFinite(last) || now.getTime() - last >= interval, mode: inGameWindow ? "game" : "daily" };
