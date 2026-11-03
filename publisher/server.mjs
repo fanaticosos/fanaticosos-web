@@ -21,6 +21,7 @@ import { databaseDeploymentStore, filesystemDeploymentStore } from "./lib/deploy
 import { resolveWeeklySong } from "./lib/music-settings.mjs";
 import { databaseMusicStore, filesystemMusicStore } from "./lib/music-store.mjs";
 import { databaseAudiogramStore, filesystemAudiogramStore } from "./lib/audiogram-store.mjs";
+import { audiogramInputSignature, audiogramRequestForDraft } from "./lib/audiogram-jobs.mjs";
 import { MAX_SPANISH_AUDIO_BYTES } from "./lib/spanish-audio-upload.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -135,16 +136,14 @@ export function translationWithFreshness(translation, draft) {
 
 export function audiogramWithFreshness(audiogram, draft, audio) {
   if (!audiogram || audiogram.status !== "completed") return audiogram;
-  const current = audiogram.draftRevision === draft.revision
-    && audiogram.audioSha256 === audio?.jobs?.es?.result?.sha256;
+  let current = false;
+  if (audiogram.inputSignature && audio?.jobs?.es?.status === "completed") {
+    current = audiogram.inputSignature === audiogramInputSignature(audiogramRequestForDraft(draft, audio));
+  } else {
+    current = audiogram.draftRevision === draft.revision
+      && audiogram.audioSha256 === audio?.jobs?.es?.result?.sha256;
+  }
   return current ? audiogram : { ...audiogram, status: "stale" };
-}
-
-export function audiogramNeedsRefresh(audiogram, draft, audio) {
-  return audiogramWithFreshness(audiogram, draft, audio)?.status === "stale"
-    && audio?.status === "completed"
-    && audio?.draftRevision === draft.revision
-    && audio?.jobs?.es?.status === "completed";
 }
 
 export function audioByteRange(value, size) {
@@ -315,33 +314,9 @@ export function createPublisherServer({
   }
   async function audiogramCompleted(state) {
     await createNotification(notificationsRoot, { level: "success", event: "audiogram-completed", articleId: state.articleId, message: "El video completo para YouTube está listo para revisar y descargar.", replacePending: true });
-    await refreshAudiogramAfterDraftChange(state.articleId);
   }
   async function audiogramFailed(state) {
     await createNotification(notificationsRoot, { level: "error", event: "audiogram-failed", articleId: state.articleId, message: `El video para YouTube se detuvo: ${state.error}`, replacePending: true });
-  }
-  async function refreshAudiogramAfterDraftChange(articleId) {
-    const [draft, audio, audiogram] = await Promise.all([
-      draftStore.read(articleId),
-      readOptionalState(() => audioStore.read(articleId)),
-      readOptionalState(() => audiogramStore.read(articleId)),
-    ]);
-    if (!audiogramNeedsRefresh(audiogram, draft, audio)) return null;
-    let queued;
-    try {
-      queued = await audiogramStore.queue({ draft, audio });
-    } catch (error) {
-      // A video for the previous revision can still be rendering when the owner
-      // saves again. Its completion callback will retry against the newest draft.
-      if (error.message === "Ya hay un video preparándose.") return null;
-      throw error;
-    }
-    await createNotification(notificationsRoot, {
-      level: "info", event: "audiogram-started", articleId,
-      message: "El artículo o la imagen cambió; creando automáticamente el video actualizado.",
-      replacePending: true,
-    });
-    return queued;
   }
   async function audioFailed(state) {
     const regeneratedLanguage = state.regeneratedLocale === "en" ? "inglés" : "español";
@@ -702,7 +677,6 @@ export function createPublisherServer({
           value.draft,
         );
         await artifactRebaser(draft);
-        await refreshAudiogramAfterDraftChange(draft.articleId);
         return json(response, 200, { draft });
       }
       return json(response, 404, { error: "not found" });

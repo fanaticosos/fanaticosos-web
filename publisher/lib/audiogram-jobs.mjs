@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { slugify } from "./release.mjs";
@@ -56,6 +56,18 @@ export function audiogramRequestForDraft(draft, audio) {
     audioJobId: audio.jobs.es.jobId, audioFile: basename(audio.jobs.es.result.file),
     audioSha256: audio.jobs.es.result.sha256,
   };
+}
+
+export function audiogramInputSignature(request) {
+  const inputs = {
+    title: request.title,
+    description: request.description,
+    canonicalUrl: request.canonicalUrl,
+    tags: request.tags,
+    featuredImage: request.featuredImage,
+    audioSha256: request.audioSha256,
+  };
+  return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
 }
 
 export async function readAudiogramState(statesRoot, articleId) {
