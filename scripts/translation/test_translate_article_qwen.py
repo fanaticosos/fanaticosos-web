@@ -12,6 +12,7 @@ from translate_article_qwen import (
     build_prompt,
     create_batches,
     glossary_term_occurs,
+    split_batch,
     translate_request,
     validate_segment_translation,
     write_failure_artifact,
@@ -78,6 +79,63 @@ class TranslateArticleQwenTests(unittest.TestCase):
     def test_rejects_oversized_single_segment(self):
         with self.assertRaisesRegex(ValueError, "segment exceeds model batch limit"):
             create_batches(self.request["segments"], 10)
+
+    def test_split_batch_balances_characters_without_changing_order(self):
+        segments = [
+            {"id": "one", "text": "x" * 10},
+            {"id": "two", "text": "x" * 40},
+            {"id": "three", "text": "x" * 20},
+            {"id": "four", "text": "x" * 10},
+        ]
+        left, right = split_batch(segments)
+        self.assertEqual([segment["id"] for segment in left], ["one", "two"])
+        self.assertEqual([segment["id"] for segment in right], ["three", "four"])
+
+    def test_malformed_batch_is_split_and_retried_automatically(self):
+        responses = iter(
+            [
+                '[{"id":"title","translation":"The Bears win 27-24 in Chicago"}',
+                '[{"id":"title","translation":"The Bears win 27-24 in Chicago"}]',
+                '[{"id":"body-001","translation":"Caleb Williams threw two touchdown passes."}]',
+            ]
+        )
+        prompts = []
+
+        def invoke(prompt: str) -> str:
+            prompts.append(prompt)
+            return next(responses)
+
+        result = translate_request(
+            self.request,
+            self.glossary,
+            invoke,
+            model_revision="model-revision",
+            runtime_version="runtime-version",
+            configuration_version="10",
+            max_batch_characters=700,
+        )
+
+        self.assertEqual(len(prompts), 3)
+        self.assertEqual(
+            [segment["id"] for segment in result["segments"]],
+            ["title", "body-001"],
+        )
+
+    def test_malformed_single_segment_still_fails(self):
+        request = copy.deepcopy(self.request)
+        request["segments"] = [request["segments"][0]]
+        with self.assertRaisesRegex(
+            ValueError, "model output does not contain a translations JSON object"
+        ):
+            translate_request(
+                request,
+                self.glossary,
+                lambda _: "not json",
+                model_revision="model-revision",
+                runtime_version="runtime-version",
+                configuration_version="10",
+                max_batch_characters=700,
+            )
 
     def test_prompt_contains_contract_and_no_think(self):
         prompt = build_prompt(self.request["segments"], self.glossary)
