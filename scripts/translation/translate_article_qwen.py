@@ -117,6 +117,25 @@ def create_batches(
     return batches
 
 
+def split_batch(
+    segments: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split a failed model batch near its character midpoint."""
+    if len(segments) < 2:
+        raise ValueError("cannot split a translation batch with fewer than two segments")
+    target = sum(len(segment["text"]) for segment in segments) / 2
+    prefix_characters = 0
+    split_at = 1
+    best_distance = float("inf")
+    for index, segment in enumerate(segments[:-1], start=1):
+        prefix_characters += len(segment["text"])
+        distance = abs(target - prefix_characters)
+        if distance < best_distance:
+            best_distance = distance
+            split_at = index
+    return segments[:split_at], segments[split_at:]
+
+
 def build_prompt(
     segments: list[dict[str, Any]], glossary: dict[str, Any]
 ) -> str:
@@ -347,11 +366,18 @@ def translate_request(
     if not isinstance(glossary.get("protectedNames"), list):
         raise ValueError("glossary protectedNames must be an array")
 
-    translated: list[dict[str, str]] = []
-    for batch in create_batches(normalized["segments"], max_batch_characters):
+    def translate_batch(batch: list[dict[str, Any]]) -> list[dict[str, str]]:
         expected_ids = [segment["id"] for segment in batch]
         raw_output = invoke(build_prompt(batch, glossary))
-        values = extract_translations(raw_output, expected_ids)
+        try:
+            values = extract_translations(raw_output, expected_ids)
+        except ValueError:
+            if len(batch) < 2:
+                raise
+            left, right = split_batch(batch)
+            return translate_batch(left) + translate_batch(right)
+
+        batch_translations: list[dict[str, str]] = []
         for segment in batch:
             translation = values[segment["id"]]
             try:
@@ -369,7 +395,14 @@ def translate_request(
                     correction_output, [segment["id"]]
                 )[segment["id"]]
                 validate_segment_translation(segment, translation, glossary)
-            translated.append({"id": segment["id"], "translation": translation})
+            batch_translations.append(
+                {"id": segment["id"], "translation": translation}
+            )
+        return batch_translations
+
+    translated: list[dict[str, str]] = []
+    for batch in create_batches(normalized["segments"], max_batch_characters):
+        translated.extend(translate_batch(batch))
 
     result = {
         "schemaVersion": 1,

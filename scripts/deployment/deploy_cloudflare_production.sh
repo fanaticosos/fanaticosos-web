@@ -26,7 +26,12 @@ readonly wrangler="$repository/node_modules/.bin/wrangler"
 [[ -f "$credential_file" && ! -L "$credential_file" ]] || stop "Cloudflare credential is missing."
 [[ "$(stat -c '%U:%G:%a' "$credential_file")" == "root:root:600" ]] || stop "Cloudflare credential permissions are incorrect."
 [[ -f "$manifest" && -d "$dist_root" ]] || stop "Validated release bundle is missing."
-[[ ! -e "$receipt" && ! -e "$log_file" ]] || stop "This release already has a Cloudflare production record."
+if [[ -e "$receipt" ]]; then
+  stop "This release already has a completed Cloudflare production record."
+fi
+if [[ -e "$log_file" ]]; then
+  mv "$log_file" "$job_root/cloudflare-production-failed-$(date -u +%Y%m%dT%H%M%SZ).log"
+fi
 [[ -x "$wrangler" ]] || stop "Pinned Wrangler runtime is missing."
 exec 9> /run/lock/fanaticosos-cloudflare-production.lock
 flock -n 9 || stop "Another production deployment is in progress."
@@ -119,8 +124,8 @@ set +a
 [[ "$CLOUDFLARE_PAGES_PROJECT" == "$project_name" ]] || stop "Cloudflare project mismatch."
 
 readonly api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$project_name"
-readonly project_json="$(curl --fail --silent --show-error --max-time 30 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api")"
-readonly before_json="$(curl --fail --silent --show-error --max-time 30 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments?env=production&per_page=10")"
+readonly project_json="$(curl --fail --silent --show-error --max-time 180 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api")"
+readonly before_json="$(curl --fail --silent --show-error --max-time 180 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/deployments?env=production&per_page=10")"
 mapfile -t deployment_state < <(python3 - "$project_json" "$before_json" <<'PY'
 import json, sys
 project = json.loads(sys.argv[1]).get("result") or {}
@@ -151,7 +156,7 @@ rollback_url="${deployment_state[1]}"
 production_changed=false
 rollback_production() {
   local rollback_response
-  rollback_response="$(curl --fail --silent --show-error --max-time 30 \
+  rollback_response="$(curl --fail --silent --show-error --max-time 180 \
     --request POST --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
     --header "Content-Type: application/json" --data '{}' \
     "$api/deployments/$rollback_id/rollback")" || return 1
@@ -213,7 +218,7 @@ else
 fi
 cd "$release_root"
 if [[ -z "$deployment_url" ]]; then
-  if ! timeout 5m runuser -u "$service_account" -- env \
+  if ! timeout 30m runuser -u "$service_account" -- env \
     HOME="$data_root" PATH="/opt/nodejs/current/bin:/usr/bin:/bin" \
     CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" \
     "$wrangler" pages deploy "$dist_root" --project-name "$project_name" \
