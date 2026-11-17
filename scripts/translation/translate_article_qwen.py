@@ -117,6 +117,19 @@ def create_batches(
     return batches
 
 
+SAFE_INITIAL_BATCH_CHARACTERS = 3_000
+
+
+def create_initial_batches(
+    segments: list[dict[str, Any]], configured_max_batch_characters: int
+) -> list[list[dict[str, Any]]]:
+    """Bound the first model request so recovery is not the normal path."""
+    return create_batches(
+        segments,
+        min(configured_max_batch_characters, SAFE_INITIAL_BATCH_CHARACTERS),
+    )
+
+
 def split_batch(
     segments: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -401,7 +414,9 @@ def translate_request(
         return batch_translations
 
     translated: list[dict[str, str]] = []
-    for batch in create_batches(normalized["segments"], max_batch_characters):
+    for batch in create_initial_batches(
+        normalized["segments"], max_batch_characters
+    ):
         translated.extend(translate_batch(batch))
 
     result = {

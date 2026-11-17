@@ -11,6 +11,7 @@ from translate_article_qwen import (
     build_correction_prompt,
     build_prompt,
     create_batches,
+    create_initial_batches,
     glossary_term_occurs,
     split_batch,
     translate_request,
@@ -68,6 +69,26 @@ class TranslateArticleQwenTests(unittest.TestCase):
         self.assertTrue(
             all(
                 sum(len(item["text"]) for item in batch) <= 12_000
+                for batch in batches
+            )
+        )
+        self.assertEqual(
+            [item["id"] for batch in batches for item in batch],
+            [item["id"] for item in segments],
+        )
+
+    def test_initial_model_requests_are_capped_below_configured_worker_limit(self):
+        segments = [
+            {"id": f"segment-{index:03d}", "kind": "paragraph", "text": "x" * 600}
+            for index in range(12)
+        ]
+
+        batches = create_initial_batches(segments, 12_000)
+
+        self.assertEqual(len(batches), 3)
+        self.assertTrue(
+            all(
+                sum(len(item["text"]) for item in batch) <= 3_000
                 for batch in batches
             )
         )
