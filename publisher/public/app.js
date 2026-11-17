@@ -611,13 +611,13 @@ async function pollTranslation() {
       generateEnglish.disabled = true;
       generateEnglish.textContent = "Traducción creada";
       await refreshNotifications();
-      generateAudio.hidden = true;
-      generateAudio.disabled = true;
+      generateAudio.hidden = false;
+      generateAudio.disabled = false;
       regenerateEnglishAudio.disabled = false;
       const audioStatus = await pollAudio();
       if (!audioStatus) {
-        generateAudio.hidden = true;
-        generateAudio.disabled = true;
+        generateAudio.hidden = false;
+        generateAudio.disabled = false;
       }
       if (["queued", "running"].includes(audioStatus) && !audioTimer) audioTimer = setInterval(pollAudio, 5000);
     } else if (translation.status === "stale") {
@@ -831,16 +831,18 @@ regenerateAudiogram.addEventListener("click", async () => {
 generateAudio.addEventListener("click", async () => {
   if (!current) return;
   generateAudio.disabled = true;
-  workflowState.textContent = "Enviando audios…";
+  previewRequestedArticleId = current.articleId;
+  workflowState.textContent = "Generando ambos audios; después se crearán el video y la vista previa automáticamente…";
   try {
     await request(`/api/drafts/${current.articleId}/audio`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expectedRevision: current.revision, confirmReviewed: true }),
+      body: JSON.stringify({ expectedRevision: current.revision, confirmReviewed: true, workflow: "preview" }),
     });
     await refreshNotifications();
     const audioStatus = await pollAudio();
     if (["queued", "running"].includes(audioStatus)) audioTimer = setInterval(pollAudio, 5000);
   } catch (error) {
+    previewRequestedArticleId = null;
     generateAudio.disabled = false;
     workflowState.textContent = "No se inició la generación de audio.";
     showError(error.message);
