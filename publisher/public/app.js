@@ -32,6 +32,18 @@ const downloadAudiogram = document.querySelector("#download-audiogram");
 const regenerateAudiogram = document.querySelector("#regenerate-audiogram");
 const copyYoutube = document.querySelector("#copy-youtube");
 const copyArticleLink = document.querySelector("#copy-article-link");
+
+function clearAudiogramArtifact() {
+  audiogramMetadata = null;
+  audiogramVideo.pause();
+  audiogramVideo.removeAttribute("src");
+  audiogramVideo.load();
+  audiogramVideo.hidden = true;
+  downloadAudiogram.hidden = true;
+  downloadAudiogram.removeAttribute("href");
+  copyYoutube.hidden = true;
+  copyArticleLink.hidden = true;
+}
 let audiogramMetadata = null;
 const openPreview = document.querySelector("#open-preview");
 const saveEnglish = document.querySelector("#save-english");
@@ -316,6 +328,7 @@ function setFields(draft) {
   audioResult.hidden = !draft;
   ttsPreflightPanel.hidden = !draft;
   audiogramResult.hidden = true;
+  clearAudiogramArtifact();
   generateAudio.disabled = true;
   generateAudio.hidden = true;
   openPreview.disabled = true;
@@ -803,13 +816,10 @@ async function pollAudiogram() {
       downloadAudiogram.href = `/api/drafts/${articleId}/audiogram/video?download=1`;
       downloadAudiogram.download = `${current.title || "fanaticosos-blog"}.mp4`;
     } else if (audiogram.status === "stale") {
-      audiogramMetadata = null;
+      clearAudiogramArtifact();
       audiogramStatus.textContent = "La imagen o el artículo cambió · crea un video actualizado antes de descargarlo.";
-      audiogramVideo.hidden = true;
-      downloadAudiogram.hidden = true;
-      copyYoutube.hidden = true;
-      copyArticleLink.hidden = true;
     } else {
+      clearAudiogramArtifact();
       audiogramStatus.textContent = audiogram.status === "failed" ? audiogram.error : "Preparando video completo para YouTube…";
       if (["queued", "running"].includes(audiogram.status)) audiogramTimer = setTimeout(pollAudiogram, 5000);
     }
