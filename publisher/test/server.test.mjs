@@ -7,7 +7,7 @@ import test from "node:test";
 import { closeDatabase, openDatabase } from "../lib/database.mjs";
 import { databaseDraftStore } from "../lib/draft-store.mjs";
 import { translationSourceRevision } from "../lib/translation-jobs.mjs";
-import { audiogramWithFreshness, audioByteRange, audioWithFreshness, createPublisherServer, crossSiteRejection, isJsonContentType, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
+import { audiogramRequiresWork, audiogramWithFreshness, audioByteRange, audioWithFreshness, createPublisherServer, crossSiteRejection, isJsonContentType, releaseArtifactsEligible, releaseWithFreshness, translationWithFreshness } from "../server.mjs";
 
 const fields = {
   title: "Los Bears ganan",
@@ -201,6 +201,13 @@ test("audiogram freshness follows the draft image and Spanish audio", () => {
   assert.equal(audiogramWithFreshness(audiogram, draft, audio).status, "completed");
   assert.equal(audiogramWithFreshness({ ...audiogram, draftRevision: 1 }, draft, audio).status, "stale");
   assert.equal(audiogramWithFreshness({ ...audiogram, audioSha256: "old" }, draft, audio).status, "stale");
+});
+
+test("completed audiograms are reused without announcing new work", () => {
+  assert.equal(audiogramRequiresWork({ status: "queued" }), true);
+  assert.equal(audiogramRequiresWork({ status: "running" }), true);
+  assert.equal(audiogramRequiresWork({ status: "completed" }), false);
+  assert.equal(audiogramRequiresWork({ status: "failed" }), false);
 });
 
 async function fixture({ draftStore, ...overrides } = {}) {

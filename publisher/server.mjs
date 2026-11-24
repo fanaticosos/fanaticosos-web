@@ -140,6 +140,10 @@ export function audiogramWithFreshness(audiogram, draft, audio) {
   return current ? audiogram : { ...audiogram, status: "stale" };
 }
 
+export function audiogramRequiresWork(audiogram) {
+  return ["queued", "running"].includes(audiogram?.status);
+}
+
 export function audioByteRange(value, size) {
   if (!value) return null;
   const match = /^bytes=(\d+)-(\d*)$/.exec(value);
@@ -291,8 +295,10 @@ export function createPublisherServer({
     });
     if (state.workflow !== "audio-regeneration" || state.regeneratedLocale === "es") {
       const draft = await draftStore.read(state.articleId);
-      await audiogramStore.queue({ draft, audio: state });
-      await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: state.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
+      const audiogram = await audiogramStore.queue({ draft, audio: state });
+      if (audiogramRequiresWork(audiogram)) {
+        await createNotification(notificationsRoot, { level: "info", event: "audiogram-started", articleId: state.articleId, message: "Creando el video completo para YouTube automáticamente.", replacePending: true });
+      }
     }
     if (!["preview", "spanish-upload"].includes(state.workflow)) return;
     const [draft, translation, settings] = await Promise.all([
