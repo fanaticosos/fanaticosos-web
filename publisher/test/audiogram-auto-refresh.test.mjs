@@ -26,8 +26,14 @@ test("a completed video remains downloadable across revision-only changes", () =
   assert.equal(audiogramWithFreshness(audiogram, draft, audio).status, "completed");
 });
 
-test("a completed video becomes stale when a real video input changes", () => {
+test("a completed video remains downloadable when only the blog image changes", () => {
   const previousDraft = { ...draft, featuredImage: { path: "/uploads/previous.webp" } };
+  const audiogram = { status: "completed", draftRevision: 1, audioSha256: "a".repeat(64), inputSignature: inputs(previousDraft, audio) };
+  assert.equal(audiogramWithFreshness(audiogram, draft, audio).status, "completed");
+});
+
+test("a completed video becomes stale when a rendered video input changes", () => {
+  const previousDraft = { ...draft, title: "Previous title" };
   const audiogram = { status: "completed", draftRevision: 1, audioSha256: "a".repeat(64), inputSignature: inputs(previousDraft, audio) };
   assert.equal(audiogramWithFreshness(audiogram, draft, audio).status, "stale");
 });

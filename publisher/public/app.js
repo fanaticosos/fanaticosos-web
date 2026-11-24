@@ -982,7 +982,7 @@ async function pollRelease() {
       releaseTimer = null;
       previewRequestedArticleId = null;
       openPreview.disabled = false;
-      workflowState.textContent = "Los audios cambiaron · prepara una nueva vista previa antes de publicar.";
+      workflowState.textContent = "El artículo cambió · prepara una nueva vista previa antes de publicar.";
       prepareRelease.disabled = false;
       publishRelease.disabled = true;
     } else {

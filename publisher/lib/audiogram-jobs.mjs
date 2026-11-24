@@ -64,7 +64,6 @@ export function audiogramInputSignature(request) {
     description: request.description,
     canonicalUrl: request.canonicalUrl,
     tags: request.tags,
-    featuredImage: request.featuredImage,
     audioSha256: request.audioSha256,
   };
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
